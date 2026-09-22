@@ -1,0 +1,17 @@
+export 'package:flutter/material.dart';
+export 'package:flutter_bloc/flutter_bloc.dart';
+export 'package:get_it/get_it.dart';
+export 'package:flutter_screenutil/flutter_screenutil.dart';
+export 'package:school_desk_app/core/theme/app_colors.dart';
+export 'package:school_desk_app/core/theme/app_theme.dart';
+export 'package:school_desk_app/core/routes/routes_name.dart';
+export 'package:school_desk_app/core/routes/routes.dart';
+export 'package:school_desk_app/core/di/locator.dart';
+export 'package:school_desk_app/core/extensions/context_extensions.dart';
+export 'package:school_desk_app/data/models/user_model.dart';
+export 'package:school_desk_app/data/models/school_models.dart';
+export 'package:school_desk_app/data/models/chat_models.dart';
+export 'package:school_desk_app/data/repositories/auth_repository.dart';
+export 'package:school_desk_app/data/repositories/school_repository.dart';
+export 'package:school_desk_app/logic/auth/auth_bloc.dart';
+export 'package:school_desk_app/logic/school/school_bloc.dart';

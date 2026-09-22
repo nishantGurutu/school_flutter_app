@@ -1,0 +1,100 @@
+{
+  "categories": [
+    {
+      "id": "1",
+      "name": "City Explore",
+      "icon": "location_on_outlined",
+      "image": "https://images.unsplash.com/photo-1480714378408-67cf0d13bc1b?w=400&h=400&fit=crop",
+      "description": "Explore the city",
+      "is_active": true
+    },
+    {
+      "id": "2",
+      "name": "Intercity Cabs",
+      "icon": "directions_car_rounded",
+      "image": "https://images.unsplash.com/photo-1449965408869-eaa3f722e40d?w=400&h=400&fit=crop",
+      "description": "Book intercity rides",
+      "is_active": true
+    },
+    {
+      "id": "3",
+      "name": "Health",
+      "icon": "local_hospital_outlined",
+      "image": "https://images.unsplash.com/photo-1576091160399-112ba8d25d1d?w=400&h=400&fit=crop",
+      "description": "Healthcare services",
+      "is_active": true
+    },
+    {
+      "id": "4",
+      "name": "Shopping",
+      "icon": "shopping_bag_outlined",
+      "image": "https://images.unsplash.com/photo-1483985988355-763728e1935b?w=400&h=400&fit=crop",
+      "description": "Shopping destinations",
+      "is_active": true
+    },
+    {
+      "id": "5",
+      "name": "Food Order",
+      "icon": "restaurant_rounded",
+      "image": "https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=400&h=400&fit=crop",
+      "description": "Order food online",
+      "is_active": true
+    },
+    {
+      "id": "6",
+      "name": "Hotels",
+      "icon": "apartment_rounded",
+      "image": "https://images.unsplash.com/photo-1566073771259-6a8506099945?w=400&h=400&fit=crop",
+      "description": "Book hotels",
+      "is_active": true
+    },
+    {
+      "id": "7",
+      "name": "Beauty & Salon",
+      "icon": "content_cut_rounded",
+      "image": "https://images.unsplash.com/photo-1522335789203-aabd1fc54bc9?w=400&h=400&fit=crop",
+      "description": "Hair, Skin & Grooming",
+      "is_active": true
+    },
+    {
+      "id": "8",
+      "name": "Gym & Fitness",
+      "icon": "fitness_center_rounded",
+      "image": "https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=400&h=400&fit=crop",
+      "description": "Workout & Training",
+      "is_active": true
+    },
+    {
+      "id": "9",
+      "name": "Real Estate",
+      "icon": "house_rounded",
+      "image": "https://images.unsplash.com/photo-1560518883-ce09059eeffa?w=400&h=400&fit=crop",
+      "description": "Buy, Sell & Rent",
+      "is_active": true
+    },
+    {
+      "id": "10",
+      "name": "Education",
+      "icon": "school_rounded",
+      "image": "https://images.unsplash.com/photo-1523050854058-8df90110c9f1?w=400&h=400&fit=crop",
+      "description": "Academics & Learning",
+      "is_active": true
+    },
+    {
+      "id": "11",
+      "name": "Events",
+      "icon": "event_rounded",
+      "image": "https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=400&h=400&fit=crop",
+      "description": "Events & Parties",
+      "is_active": true
+    },
+    {
+      "id": "12",
+      "name": "Travel",
+      "icon": "flight_rounded",
+      "image": "https://images.unsplash.com/photo-1488085061387-422e29b40080?w=400&h=400&fit=crop",
+      "description": "Travel & Tours",
+      "is_active": true
+    }
+  ]
+}
