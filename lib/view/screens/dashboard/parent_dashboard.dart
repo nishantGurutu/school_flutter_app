@@ -4,6 +4,7 @@ import '../../../core/routes/routes_name.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/extensions/context_extensions.dart';
 import '../../../data/models/user_model.dart';
+import '../../widgets/attendance_check_in_banner.dart';
 import '../../widgets/glass_card.dart';
 
 class ParentDashboard extends StatelessWidget {
@@ -72,43 +73,8 @@ class ParentDashboard extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [  
-                  GestureDetector(
-                    onTap: () => Navigator.pushNamed(context, RoutesName.attendance),
-                    child: GlassCard(
-                      padding: EdgeInsets.all(18.w),
-                      borderColor: AppColors.success.withOpacity(0.3),
-                      child: Row(
-                        children: [
-                          Container(
-                            padding: EdgeInsets.all(12.w),
-                            decoration: BoxDecoration(
-                              color: AppColors.success.withOpacity(0.1),
-                              shape: BoxShape.circle,
-                            ),
-                            child: Icon(Icons.check_circle_outline_rounded, color: AppColors.success, size: 26.sp),
-                          ),
-                          16.w.width,
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  "Today's Attendance Status",
-                                  style: context.caption.copyWith(color: AppColors.textSecondary, fontWeight: FontWeight.w600),
-                                ),
-                                4.h.height,
-                                Text(
-                                  "Present (100% Rate)",
-                                  style: context.h2.copyWith(color: Colors.white),
-                                ),
-                              ],
-                            ),
-                          ),
-                          Icon(Icons.arrow_forward_ios_rounded, color: AppColors.textSecondary, size: 14.sp),
-                        ],
-                      ),
-                    ),
-                  ),
+                  // Top Check-In & Attendance Banner
+                  AttendanceCheckInBanner(user: user),
                   24.h.height, 
                   Text(
                     'Quick Access',

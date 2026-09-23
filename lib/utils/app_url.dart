@@ -11,6 +11,8 @@ class AppUrl {
   static const String profileMe = '$baseUrl/mobile/profile/me';
   static const String attendance = '$baseUrl/mobile/attendance';
   static const String markAttendance = '$baseUrl/mobile/attendance/mark';
+  static const String checkIn = '$baseUrl/mobile/attendance/check-in';
+  static const String checkOut = '$baseUrl/mobile/attendance/check-out';
   static const String attendanceStats = '$baseUrl/mobile/attendance/stats';
   static const String homework = '$baseUrl/mobile/homework';
   static String submitHomework(String id) =>

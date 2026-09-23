@@ -21,6 +21,8 @@ class ApiSchoolRepository implements SchoolRepository {
     return [];
   }
 
+  List<AttendanceRecord>? _cachedAttendance;
+
   @override
   Future<List<AttendanceRecord>> getAttendance(String userId, {String? type, String? date, String? className}) async {
     try {
@@ -36,10 +38,12 @@ class ApiSchoolRepository implements SchoolRepository {
       final res = await _apiService.getApi(url);
       final rawList = _extractList(res);
       if (rawList.isNotEmpty) {
-        return rawList.map((item) => AttendanceRecord.fromJson(Map<String, dynamic>.from(item))).toList();
+        _cachedAttendance = rawList.map((item) => AttendanceRecord.fromJson(Map<String, dynamic>.from(item))).toList();
+        return _cachedAttendance!;
       }
     } catch (_) {}
-    return _fallbackAttendance();
+    _cachedAttendance ??= _fallbackAttendance();
+    return List<AttendanceRecord>.from(_cachedAttendance!);
   }
 
   @override
@@ -49,6 +53,126 @@ class ApiSchoolRepository implements SchoolRepository {
       await _apiService.postApi(AppUrl.markAttendance, payload);
     } catch (_) {}
     return getAttendance('');
+  }
+
+  @override
+  Future<List<AttendanceRecord>> checkIn({required String userId, required String name, String? className, String? role}) async {
+    final now = DateTime.now();
+    final timeStr = '${now.hour % 12 == 0 ? 12 : now.hour % 12}:${now.minute.toString().padLeft(2, '0')} ${now.hour >= 12 ? 'PM' : 'AM'}';
+
+    try {
+      await _apiService.postApi(AppUrl.checkIn, {
+        'userId': userId,
+        'name': name,
+        'className': className,
+        'role': role,
+        'checkInTime': timeStr,
+        'timestamp': now.toIso8601String(),
+        'status': 'present',
+        'attendanceType': role ?? 'student',
+      });
+    } catch (e) {
+      // Try markAttendance endpoint if check-in route fails
+      try {
+        await _apiService.postApi(AppUrl.markAttendance, {
+          'userId': userId,
+          'name': name,
+          'className': className,
+          'role': role,
+          'checkInTime': timeStr,
+          'status': 'present',
+          'attendanceType': role ?? 'student',
+        });
+      } catch (_) {
+        rethrow;
+      }
+    }
+
+    final currentList = await getAttendance(userId);
+    final today = DateTime.now();
+    final index = currentList.indexWhere((r) => r.date.year == today.year && r.date.month == today.month && r.date.day == today.day);
+
+    if (index != -1) {
+      currentList[index] = currentList[index].copyWith(
+        status: AttendanceStatus.present,
+        checkInTime: timeStr,
+        name: name,
+        className: className,
+        userId: userId,
+      );
+    } else {
+      currentList.insert(0, AttendanceRecord(
+        id: 'att_${now.millisecondsSinceEpoch}',
+        userId: userId,
+        date: today,
+        status: AttendanceStatus.present,
+        name: name,
+        className: className,
+        attendanceType: role,
+        checkInTime: timeStr,
+        notes: 'Checked in via App Banner',
+      ));
+    }
+    _cachedAttendance = List.from(currentList);
+    return List<AttendanceRecord>.from(_cachedAttendance!);
+  }
+
+  @override
+  Future<List<AttendanceRecord>> checkOut({required String userId, required String name, String? className, String? role}) async {
+    final now = DateTime.now();
+    final timeStr = '${now.hour % 12 == 0 ? 12 : now.hour % 12}:${now.minute.toString().padLeft(2, '0')} ${now.hour >= 12 ? 'PM' : 'AM'}';
+
+    try {
+      await _apiService.postApi(AppUrl.checkOut, {
+        'userId': userId,
+        'name': name,
+        'className': className,
+        'role': role,
+        'checkOutTime': timeStr,
+        'timestamp': now.toIso8601String(),
+        'status': 'present',
+        'attendanceType': role ?? 'student',
+      });
+    } catch (e) {
+      try {
+        await _apiService.postApi(AppUrl.markAttendance, {
+          'userId': userId,
+          'name': name,
+          'className': className,
+          'role': role,
+          'checkOutTime': timeStr,
+          'status': 'present',
+          'attendanceType': role ?? 'student',
+        });
+      } catch (_) {
+        rethrow;
+      }
+    }
+
+    final currentList = await getAttendance(userId);
+    final today = DateTime.now();
+    final index = currentList.indexWhere((r) => r.date.year == today.year && r.date.month == today.month && r.date.day == today.day);
+
+    if (index != -1) {
+      currentList[index] = currentList[index].copyWith(
+        checkOutTime: timeStr,
+      );
+    } else {
+      currentList.insert(0, AttendanceRecord(
+        id: 'att_${now.millisecondsSinceEpoch}',
+        userId: userId,
+        date: today,
+        status: AttendanceStatus.present,
+        name: name,
+        className: className,
+        attendanceType: role,
+        checkInTime: timeStr,
+        checkOutTime: timeStr,
+        notes: 'Checked out via App Banner',
+      ));
+    }
+    _cachedAttendance = List.from(currentList);
+    return List<AttendanceRecord>.from(_cachedAttendance!);
   }
 
   @override
@@ -408,10 +532,31 @@ class ApiSchoolRepository implements SchoolRepository {
 
   // Fallbacks
   List<AttendanceRecord> _fallbackAttendance() {
-    return List.generate(20, (i) {
+    final now = DateTime.now();
+    return List.generate(30, (i) {
+      final dt = now.subtract(Duration(days: i));
+      AttendanceStatus status;
+      if (dt.weekday == DateTime.sunday) {
+        status = AttendanceStatus.holiday;
+      } else if (i == 5 || i == 12) {
+        status = AttendanceStatus.absent;
+      } else if (i == 3) {
+        status = AttendanceStatus.late;
+      } else {
+        status = AttendanceStatus.present;
+      }
+
       return AttendanceRecord(
-        date: DateTime.now().subtract(Duration(days: i)),
-        status: i % 7 == 0 ? AttendanceStatus.holiday : (i == 5 ? AttendanceStatus.absent : AttendanceStatus.present),
+        id: 'att_$i',
+        date: dt,
+        status: status,
+        checkInTime: status == AttendanceStatus.present ? '09:00 AM' : (status == AttendanceStatus.late ? '09:45 AM' : null),
+        checkOutTime: (status == AttendanceStatus.present || status == AttendanceStatus.late) ? '04:30 PM' : null,
+        notes: status == AttendanceStatus.holiday
+            ? 'Sunday School Holiday'
+            : (status == AttendanceStatus.absent
+                ? 'Sick Leave'
+                : (status == AttendanceStatus.late ? 'Late Arrival (Traffic)' : 'On Time Attendance')),
       );
     });
   }

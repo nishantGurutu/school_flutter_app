@@ -1,9 +1,15 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:school_desk_app/utils/extensions/general_ectensions.dart';
 import '../../core/routes/routes_name.dart';
 import '../../core/theme/app_colors.dart';
+import '../../logic/auth/auth_bloc.dart';
+import '../../logic/auth/auth_event.dart';
+import '../../logic/school/school_bloc.dart';
+import '../../logic/school/school_event.dart';
+import '../../services/storage/local_storage.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -42,11 +48,21 @@ class _SplashScreenState extends State<SplashScreen>
 
     _controller.forward();
 
-    Timer(const Duration(milliseconds: 2500), () {
-      if (mounted) {
-        Navigator.pushReplacementNamed(context, RoutesName.login);
-      }
-    });
+    _checkSessionAndNavigate();
+  }
+
+  Future<void> _checkSessionAndNavigate() async {
+    await Future.delayed(const Duration(milliseconds: 2000));
+    if (!mounted) return;
+
+    final user = await StorageHelper.getUserSession();
+    if (user != null) {
+      context.read<AuthBloc>().add(const CheckAuthStatus());
+      context.read<SchoolBloc>().add(LoadSchoolData(user.id));
+      Navigator.pushReplacementNamed(context, RoutesName.dashboard);
+    } else {
+      Navigator.pushReplacementNamed(context, RoutesName.login);
+    }
   }
 
   @override

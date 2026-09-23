@@ -12,6 +12,8 @@ class SchoolBloc extends Bloc<SchoolEvent, SchoolState> {
   SchoolBloc() : super(const SchoolState()) {
     on<LoadSchoolData>(_onLoadSchoolData);
     on<MarkAttendanceRequested>(_onMarkAttendanceRequested);
+    on<CheckInUserRequested>(_onCheckInUserRequested);
+    on<CheckOutUserRequested>(_onCheckOutUserRequested);
     on<FetchAttendanceStatsRequested>(_onFetchAttendanceStatsRequested);
     on<SubmitHomeworkRequested>(_onSubmitHomeworkRequested);
     on<PayFeeRequested>(_onPayFeeRequested);
@@ -347,6 +349,68 @@ class SchoolBloc extends Bloc<SchoolEvent, SchoolState> {
         state.copyWith(
           isActionInProgress: false,
           errorMessage: 'Failed to mark attendance: ${e.toString()}',
+        ),
+      );
+    }
+  }
+
+  Future<void> _onCheckInUserRequested(
+    CheckInUserRequested event,
+    Emitter<SchoolState> emit,
+  ) async {
+    emit(state.copyWith(isActionInProgress: true, actionSuccessMessage: null));
+    try {
+      final updatedAttendance = await _schoolRepository.checkIn(
+        userId: event.userId,
+        name: event.name,
+        className: event.className,
+        role: event.role,
+      );
+      final updatedStats = await _schoolRepository.getAttendanceStats();
+      emit(
+        state.copyWith(
+          isActionInProgress: false,
+          attendance: updatedAttendance,
+          attendanceStats: updatedStats,
+          actionSuccessMessage: 'Checked in successfully!',
+        ),
+      );
+    } catch (e) {
+      emit(
+        state.copyWith(
+          isActionInProgress: false,
+          errorMessage: 'Failed to check in: ${e.toString()}',
+        ),
+      );
+    }
+  }
+
+  Future<void> _onCheckOutUserRequested(
+    CheckOutUserRequested event,
+    Emitter<SchoolState> emit,
+  ) async {
+    emit(state.copyWith(isActionInProgress: true, actionSuccessMessage: null));
+    try {
+      final updatedAttendance = await _schoolRepository.checkOut(
+        userId: event.userId,
+        name: event.name,
+        className: event.className,
+        role: event.role,
+      );
+      final updatedStats = await _schoolRepository.getAttendanceStats();
+      emit(
+        state.copyWith(
+          isActionInProgress: false,
+          attendance: updatedAttendance,
+          attendanceStats: updatedStats,
+          actionSuccessMessage: 'Checked out successfully!',
+        ),
+      );
+    } catch (e) {
+      emit(
+        state.copyWith(
+          isActionInProgress: false,
+          errorMessage: 'Failed to check out: ${e.toString()}',
         ),
       );
     }

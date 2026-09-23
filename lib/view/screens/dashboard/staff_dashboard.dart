@@ -8,6 +8,7 @@ import '../../../data/models/user_model.dart';
 import '../../../data/models/school_models.dart';
 import '../../../logic/school/school_bloc.dart';
 import '../../../logic/school/school_state.dart';
+import '../../widgets/attendance_check_in_banner.dart';
 import '../../widgets/glass_card.dart';
 
 class StaffDashboard extends StatelessWidget {
@@ -79,40 +80,8 @@ class StaffDashboard extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // Admin Task Overview Header Card
-                    GlassCard(
-                      padding: EdgeInsets.all(18.w),
-                      borderColor: AppColors.warning.withOpacity(0.3),
-                      child: Row(
-                        children: [
-                          Container(
-                            padding: EdgeInsets.all(12.w),
-                            decoration: BoxDecoration(
-                              color: AppColors.warning.withOpacity(0.1),
-                              shape: BoxShape.circle,
-                            ),
-                            child: Icon(Icons.task_alt_outlined, color: AppColors.warning, size: 24.sp),
-                          ),
-                          16.w.width,
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  "Today's Admin Tasks",
-                                  style: context.caption.copyWith(color: AppColors.textSecondary, fontWeight: FontWeight.w600),
-                                ),
-                                4.h.height,
-                                Text(
-                                  "5 Action Items Pending",
-                                  style: context.h2.copyWith(color: Colors.white),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
+                    // Attendance Check-In Banner for Staff
+                    AttendanceCheckInBanner(user: user),
                     24.h.height,
 
                     // School Attendance Tracking Card (Admin / Staff Feature)

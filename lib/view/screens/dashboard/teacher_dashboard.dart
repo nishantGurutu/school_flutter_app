@@ -4,6 +4,7 @@ import '../../../core/routes/routes_name.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/extensions/context_extensions.dart';
 import '../../../data/models/user_model.dart';
+import '../../widgets/attendance_check_in_banner.dart';
 import '../../widgets/glass_card.dart';
 
 class TeacherDashboard extends StatelessWidget {
@@ -68,43 +69,8 @@ class TeacherDashboard extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [ 
-              GestureDetector(
-                onTap: () => Navigator.pushNamed(context, RoutesName.timetable),
-                child: GlassCard(
-                  padding: EdgeInsets.all(18.w),
-                  borderColor: AppColors.info.withOpacity(0.3),
-                  child: Row(
-                    children: [
-                      Container(
-                        padding: EdgeInsets.all(12.w),
-                        decoration: BoxDecoration(
-                          color: AppColors.info.withOpacity(0.1),
-                          shape: BoxShape.circle,
-                        ),
-                        child: Icon(Icons.class_outlined, color: AppColors.info, size: 24.sp),
-                      ),
-                      16.w.width,
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              "Today's Lectures",
-                              style: context.caption.copyWith(color: AppColors.textSecondary, fontWeight: FontWeight.w600),
-                            ),
-                            4.h.height,
-                            Text(
-                              "4 Classes Today",
-                              style: context.h2.copyWith(color: Colors.white),
-                            ),
-                          ],
-                        ),
-                      ),
-                      Icon(Icons.arrow_forward_ios_rounded, color: AppColors.textSecondary, size: 14.sp),
-                    ],
-                  ),
-                ),
-              ),
+              // Top Check-In & Attendance Banner
+              AttendanceCheckInBanner(user: user),
               24.h.height,
 
               // Quick Access Title
@@ -124,10 +90,10 @@ class TeacherDashboard extends StatelessWidget {
                 childAspectRatio: 0.95,
                 children: [
                   _QuickAccessTile(
-                    label: 'Mark Attendance',
-                    icon: Icons.fact_check_outlined,
+                    label: 'Attendance',
+                    icon: Icons.calendar_month_rounded,
                     color: AppColors.success,
-                    onTap: () => context.showAppSnackBar('Opening Class 10-A Register: 24/25 Present.'),
+                    onTap: () => Navigator.pushNamed(context, RoutesName.attendance),
                   ),
                   _QuickAccessTile(
                     label: 'Homework',

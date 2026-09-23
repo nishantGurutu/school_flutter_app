@@ -4,6 +4,7 @@ enum AttendanceStatus { present, absent, holiday, late }
 
 class AttendanceRecord {
   final String id;
+  final String? userId;
   final DateTime date;
   final AttendanceStatus status;
   final String? notes;
@@ -13,9 +14,12 @@ class AttendanceRecord {
   final String? department;
   final String? designation;
   final String? attendanceType;
+  final String? checkInTime;
+  final String? checkOutTime;
 
   const AttendanceRecord({
     this.id = '',
+    this.userId,
     required this.date,
     required this.status,
     this.notes,
@@ -25,6 +29,8 @@ class AttendanceRecord {
     this.department,
     this.designation,
     this.attendanceType,
+    this.checkInTime,
+    this.checkOutTime,
   });
 
   factory AttendanceRecord.fromJson(Map<String, dynamic> json) {
@@ -36,6 +42,7 @@ class AttendanceRecord {
 
     return AttendanceRecord(
       id: (json['id'] ?? '').toString(),
+      userId: json['userId'] ?? json['user_id'],
       date: DateTime.tryParse(json['date'] ?? json['attendanceDate'] ?? '') ?? DateTime.now(),
       status: stat,
       notes: json['notes'] ?? json['note'],
@@ -45,12 +52,15 @@ class AttendanceRecord {
       department: json['department'],
       designation: json['designation'],
       attendanceType: json['attendanceType'],
+      checkInTime: json['checkInTime'] ?? json['check_in_time'],
+      checkOutTime: json['checkOutTime'] ?? json['check_out_time'],
     );
   }
 
   Map<String, dynamic> toJson() {
     return {
       'id': id,
+      'userId': userId,
       'date': '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}',
       'status': status.name,
       'notes': notes,
@@ -60,7 +70,41 @@ class AttendanceRecord {
       'department': department,
       'designation': designation,
       'attendanceType': attendanceType,
+      'checkInTime': checkInTime,
+      'checkOutTime': checkOutTime,
     };
+  }
+
+  AttendanceRecord copyWith({
+    String? id,
+    String? userId,
+    DateTime? date,
+    AttendanceStatus? status,
+    String? notes,
+    String? name,
+    String? rollNo,
+    String? className,
+    String? department,
+    String? designation,
+    String? attendanceType,
+    String? checkInTime,
+    String? checkOutTime,
+  }) {
+    return AttendanceRecord(
+      id: id ?? this.id,
+      userId: userId ?? this.userId,
+      date: date ?? this.date,
+      status: status ?? this.status,
+      notes: notes ?? this.notes,
+      name: name ?? this.name,
+      rollNo: rollNo ?? this.rollNo,
+      className: className ?? this.className,
+      department: department ?? this.department,
+      designation: designation ?? this.designation,
+      attendanceType: attendanceType ?? this.attendanceType,
+      checkInTime: checkInTime ?? this.checkInTime,
+      checkOutTime: checkOutTime ?? this.checkOutTime,
+    );
   }
 }
 

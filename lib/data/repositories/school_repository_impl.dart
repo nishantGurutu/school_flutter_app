@@ -5,4 +5,3 @@ class SchoolRepositoryImpl extends ApiSchoolRepository {
 }
 
 typedef MockSchoolRepository = SchoolRepositoryImpl;
-

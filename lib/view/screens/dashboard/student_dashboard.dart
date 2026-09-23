@@ -4,6 +4,7 @@ import '../../../core/routes/routes_name.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/extensions/context_extensions.dart';
 import '../../../data/models/user_model.dart';
+import '../../widgets/attendance_check_in_banner.dart';
 import '../../widgets/glass_card.dart';
 
 class StudentDashboard extends StatelessWidget {
@@ -72,44 +73,8 @@ class StudentDashboard extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [ 
-              // Dynamic Classes Card
-              GestureDetector(
-                onTap: () => Navigator.pushNamed(context, RoutesName.timetable),
-                child: GlassCard(
-                  padding: EdgeInsets.all(18.w),
-                  borderColor: AppColors.primary.withOpacity(0.3),
-                  child: Row(
-                    children: [
-                      Container(
-                        padding: EdgeInsets.all(12.w),
-                        decoration: BoxDecoration(
-                          color: AppColors.primary.withOpacity(0.1),
-                          shape: BoxShape.circle,
-                        ),
-                        child: Icon(Icons.calendar_today_rounded, color: AppColors.primary, size: 24.sp),
-                      ),
-                      16.w.width,
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              "Today's Classes",
-                              style: context.caption.copyWith(color: AppColors.textSecondary, fontWeight: FontWeight.w600),
-                            ),
-                            4.h.height,
-                            Text(
-                              "3 Classes Scheduled",
-                              style: context.h2.copyWith(color: Colors.white),
-                            ),
-                          ],
-                        ),
-                      ),
-                      Icon(Icons.arrow_forward_ios_rounded, color: AppColors.textSecondary, size: 14.sp),
-                    ],
-                  ),
-                ),
-              ),
+              // Top Check-In & Attendance Banner
+              AttendanceCheckInBanner(user: user),
               24.h.height,
               Text(
                 'Quick Access',

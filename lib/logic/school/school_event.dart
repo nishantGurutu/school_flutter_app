@@ -87,6 +87,34 @@ class MarkAttendanceRequested extends SchoolEvent {
   const MarkAttendanceRequested(this.record);
 }
 
+class CheckInUserRequested extends SchoolEvent {
+  final String userId;
+  final String name;
+  final String? className;
+  final String? role;
+
+  const CheckInUserRequested({
+    required this.userId,
+    required this.name,
+    this.className,
+    this.role,
+  });
+}
+
+class CheckOutUserRequested extends SchoolEvent {
+  final String userId;
+  final String name;
+  final String? className;
+  final String? role;
+
+  const CheckOutUserRequested({
+    required this.userId,
+    required this.name,
+    this.className,
+    this.role,
+  });
+}
+
 class FetchAttendanceStatsRequested extends SchoolEvent {
   const FetchAttendanceStatsRequested();
 }
