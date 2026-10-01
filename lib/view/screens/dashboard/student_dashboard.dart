@@ -5,7 +5,6 @@ import '../../../core/theme/app_colors.dart';
 import '../../../core/extensions/context_extensions.dart';
 import '../../../data/models/user_model.dart';
 import '../../widgets/attendance_check_in_banner.dart';
-import '../../widgets/glass_card.dart';
 
 class StudentDashboard extends StatelessWidget {
   final UserModel user;
@@ -23,13 +22,20 @@ class StudentDashboard extends StatelessWidget {
       backgroundColor: AppColors.background,
       body: SafeArea(
         bottom: false,
-        child: Column(children: [
-          SizedBox(height: 8.h),
-        Padding(padding: EdgeInsets.only(left: 10.w, right: 20.w), child:  Row(
+        child: Column(
+          children: [
+            SizedBox(height: 8.h),
+            Padding(
+              padding: EdgeInsets.only(left: 10.w, right: 20.w),
+              child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   IconButton(
-                    icon: Icon(Icons.menu_rounded, color: AppColors.textPrimary, size: 26.sp),
+                    icon: Icon(
+                      Icons.menu_rounded,
+                      color: AppColors.textPrimary,
+                      size: 26.sp,
+                    ),
                     onPressed: onOpenDrawer,
                   ),
                   Row(
@@ -39,11 +45,15 @@ class StudentDashboard extends StatelessWidget {
                         children: [
                           Text(
                             'Hello, ${user.name.split(' ')[0]} 👋',
-                            style: context.h2.copyWith(fontWeight: FontWeight.w800),
+                            style: context.h2.copyWith(
+                              fontWeight: FontWeight.w800,
+                            ),
                           ),
                           Text(
                             user.className ?? 'Class 10-A',
-                            style: context.caption.copyWith(color: AppColors.textMuted),
+                            style: context.caption.copyWith(
+                              color: AppColors.textMuted,
+                            ),
                           ),
                         ],
                       ),
@@ -53,7 +63,10 @@ class StudentDashboard extends StatelessWidget {
                         height: 40.w,
                         decoration: BoxDecoration(
                           shape: BoxShape.circle,
-                          border: Border.all(color: AppColors.primary, width: 1.5),
+                          border: Border.all(
+                            color: AppColors.primary,
+                            width: 1.5,
+                          ),
                           image: DecorationImage(
                             image: NetworkImage(user.avatarUrl),
                             fit: BoxFit.cover,
@@ -64,95 +77,109 @@ class StudentDashboard extends StatelessWidget {
                   ),
                 ],
               ),
+            ),
+            15.h.height,
+            Expanded(
+              child: SingleChildScrollView(
+                physics: const BouncingScrollPhysics(),
+                padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 10.h),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Top Check-In & Attendance Banner
+                    AttendanceCheckInBanner(user: user),
+                    24.h.height,
+                    Text(
+                      'Quick Access',
+                      style: context.h3.copyWith(fontWeight: FontWeight.w800),
+                    ),
+                    14.h.height,
+                    GridView.count(
+                      shrinkWrap: true,
+                      physics: const NeverScrollableScrollPhysics(),
+                      crossAxisCount: 3,
+                      crossAxisSpacing: 14.w,
+                      mainAxisSpacing: 14.h,
+                      childAspectRatio: 0.95,
+                      children: [
+                        _QuickAccessTile(
+                          label: 'Attendance',
+                          icon: Icons.calendar_month_rounded,
+                          color: AppColors.success,
+                          onTap: () => Navigator.pushNamed(
+                            context,
+                            RoutesName.attendance,
+                          ),
+                        ),
+                        _QuickAccessTile(
+                          label: 'Homework',
+                          icon: Icons.assignment_outlined,
+                          color: AppColors.primary,
+                          onTap: () =>
+                              Navigator.pushNamed(context, RoutesName.homework),
+                        ),
+                        _QuickAccessTile(
+                          label: 'Exams',
+                          icon: Icons.quiz_outlined,
+                          color: AppColors.info,
+                          onTap: () =>
+                              Navigator.pushNamed(context, RoutesName.exam),
+                        ),
+                        _QuickAccessTile(
+                          label: 'Time Table',
+                          icon: Icons.schedule_rounded,
+                          color: AppColors.secondary,
+                          onTap: () => Navigator.pushNamed(
+                            context,
+                            RoutesName.timetable,
+                          ),
+                        ),
+                        _QuickAccessTile(
+                          label: 'Results',
+                          icon: Icons.grade_outlined,
+                          color: AppColors.warning,
+                          onTap: () => Navigator.pushNamed(
+                            context,
+                            RoutesName.exam,
+                            arguments: 1,
+                          ),
+                        ),
+                        _QuickAccessTile(
+                          label: 'Fees',
+                          icon: Icons.account_balance_wallet_outlined,
+                          color: AppColors.error,
+                          onTap: () =>
+                              Navigator.pushNamed(context, RoutesName.fees),
+                        ),
+                      ],
+                    ),
+                    24.h.height,
+                    Text(
+                      'Upcoming Events',
+                      style: context.h3.copyWith(fontWeight: FontWeight.w800),
+                    ),
+                    12.h.height,
+                    _EventCard(
+                      title: 'PTM Meeting',
+                      date: '25 May 2026',
+                      icon: Icons.people_outline_rounded,
+                      color: AppColors.primary,
+                    ),
+                    10.h.height,
+                    _EventCard(
+                      title: 'Science Quiz Competition',
+                      date: '28 May 2026',
+                      icon: Icons.science_outlined,
+                      color: AppColors.info,
+                    ),
+
+                    100.h.height,
+                  ],
+                ),
+              ),
+            ),
+          ],
         ),
-              15.h.height,
-           Expanded( 
-          child:  SingleChildScrollView(
-          physics: const BouncingScrollPhysics(),
-          padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 10.h),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [ 
-              // Top Check-In & Attendance Banner
-              AttendanceCheckInBanner(user: user),
-              24.h.height,
-              Text(
-                'Quick Access',
-                style: context.h3.copyWith(fontWeight: FontWeight.w800),
-              ),
-              14.h.height,
-              GridView.count(
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                crossAxisCount: 3,
-                crossAxisSpacing: 14.w,
-                mainAxisSpacing: 14.h,
-                childAspectRatio: 0.95,
-                children: [
-                  _QuickAccessTile(
-                    label: 'Attendance',
-                    icon: Icons.calendar_month_rounded,
-                    color: AppColors.success,
-                    onTap: () => Navigator.pushNamed(context, RoutesName.attendance),
-                  ),
-                  _QuickAccessTile(
-                    label: 'Homework',
-                    icon: Icons.assignment_outlined,
-                    color: AppColors.primary,
-                    onTap: () => Navigator.pushNamed(context, RoutesName.homework),
-                  ),
-                  _QuickAccessTile(
-                    label: 'Exams',
-                    icon: Icons.quiz_outlined,
-                    color: AppColors.info,
-                    onTap: () => Navigator.pushNamed(context, RoutesName.exam),
-                  ),
-                  _QuickAccessTile(
-                    label: 'Time Table',
-                    icon: Icons.schedule_rounded,
-                    color: AppColors.secondary,
-                    onTap: () => Navigator.pushNamed(context, RoutesName.timetable),
-                  ),
-                  _QuickAccessTile(
-                    label: 'Results',
-                    icon: Icons.grade_outlined,
-                    color: AppColors.warning,
-                    onTap: () => Navigator.pushNamed(context, RoutesName.exam, arguments: 1),
-                  ),
-                  _QuickAccessTile(
-                    label: 'Fees',
-                    icon: Icons.account_balance_wallet_outlined,
-                    color: AppColors.error,
-                    onTap: () => Navigator.pushNamed(context, RoutesName.fees),
-                  ),
-                ],
-              ),
-              24.h.height, 
-              Text(
-                'Upcoming Events',
-                style: context.h3.copyWith(fontWeight: FontWeight.w800),
-              ),
-              12.h.height, 
-              _EventCard(
-                title: 'PTM Meeting',
-                date: '25 May 2026',
-                icon: Icons.people_outline_rounded,
-                color: AppColors.primary,
-              ),
-              10.h.height,
-              _EventCard(
-                title: 'Science Quiz Competition',
-                date: '28 May 2026',
-                icon: Icons.science_outlined,
-                color: AppColors.info,
-              ),
-              
-              100.h.height,  
-            ],
-          ),
-        ),
-        ),
-        ]),
       ),
     );
   }
@@ -249,7 +276,11 @@ class _EventCard extends StatelessWidget {
               children: [
                 Text(
                   title,
-                  style: TextStyle(color: AppColors.textPrimary, fontSize: 14.sp, fontWeight: FontWeight.bold),
+                  style: TextStyle(
+                    color: AppColors.textPrimary,
+                    fontSize: 14.sp,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
                 2.h.height,
                 Text(
@@ -259,7 +290,11 @@ class _EventCard extends StatelessWidget {
               ],
             ),
           ),
-          Icon(Icons.arrow_forward_ios_rounded, color: AppColors.textMuted, size: 12.sp),
+          Icon(
+            Icons.arrow_forward_ios_rounded,
+            color: AppColors.textMuted,
+            size: 12.sp,
+          ),
         ],
       ),
     );
