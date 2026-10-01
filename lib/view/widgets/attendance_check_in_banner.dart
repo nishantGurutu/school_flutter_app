@@ -64,6 +64,18 @@ class AttendanceCheckInBanner extends StatelessWidget {
           final String checkInTimeStr = todayRecord?.checkInTime ?? '--:--';
           final String checkOutTimeStr = todayRecord?.checkOutTime ?? '--:--';
 
+          // Check if today is an official holiday
+          final bool isTodayHoliday = (todayRecord?.status == AttendanceStatus.holiday) ||
+              state.holidays.any((h) => h.coversDate(today));
+          HolidayModel? holidayMatch;
+          for (final h in state.holidays) {
+            if (h.coversDate(today)) {
+              holidayMatch = h;
+              break;
+            }
+          }
+          final String holidayName = holidayMatch?.title ?? todayRecord?.notes ?? 'School Holiday';
+
           return GlassCard(
             padding: EdgeInsets.all(16.w),
             borderColor: hasCheckedIn
@@ -257,7 +269,74 @@ class AttendanceCheckInBanner extends StatelessWidget {
                 14.h.height,
 
                 // Action Buttons Row (Direct Check-In / Check-Out for Logged-In User)
-                if (!hasCheckedIn)
+                if (isTodayHoliday)
+                  Container(
+                    width: double.infinity,
+                    padding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 10.h),
+                    decoration: BoxDecoration(
+                      color: AppColors.info.withOpacity(0.12),
+                      borderRadius: BorderRadius.circular(12.r),
+                      border: Border.all(color: AppColors.info.withOpacity(0.35)),
+                    ),
+                    child: Row(
+                      children: [
+                        Container(
+                          padding: EdgeInsets.all(8.w),
+                          decoration: BoxDecoration(
+                            color: AppColors.info.withOpacity(0.2),
+                            shape: BoxShape.circle,
+                          ),
+                          child: Icon(
+                            Icons.holiday_village_rounded,
+                            color: AppColors.info,
+                            size: 18.sp,
+                          ),
+                        ),
+                        10.w.width,
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'TODAY IS A SCHOOL HOLIDAY',
+                                style: TextStyle(
+                                  fontSize: 12.sp,
+                                  fontWeight: FontWeight.w800,
+                                  color: AppColors.info,
+                                  letterSpacing: 0.3,
+                                ),
+                              ),
+                              2.h.height,
+                              Text(
+                                '$holidayName • Attendance marking disabled',
+                                style: TextStyle(
+                                  fontSize: 10.5.sp,
+                                  color: AppColors.textSecondary,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        Container(
+                          padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 4.h),
+                          decoration: BoxDecoration(
+                            color: AppColors.info.withOpacity(0.2),
+                            borderRadius: BorderRadius.circular(8.r),
+                          ),
+                          child: Text(
+                            'CLOSED',
+                            style: TextStyle(
+                              fontSize: 10.sp,
+                              fontWeight: FontWeight.w800,
+                              color: AppColors.info,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  )
+                else if (!hasCheckedIn)
                   SizedBox(
                     width: double.infinity,
                     height: 44.h,

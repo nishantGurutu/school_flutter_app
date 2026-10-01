@@ -509,3 +509,64 @@ class NoticeItem {
     required this.category,
   });
 }
+
+// Holiday Model
+class HolidayModel {
+  final String id;
+  final String title;
+  final String date;
+  final String? endDate;
+  final String? category;
+  final String? description;
+  final String? target;
+
+  const HolidayModel({
+    required this.id,
+    required this.title,
+    required this.date,
+    this.endDate,
+    this.category,
+    this.description,
+    this.target,
+  });
+
+  factory HolidayModel.fromJson(Map<String, dynamic> json) {
+    return HolidayModel(
+      id: (json['id'] ?? '').toString(),
+      title: json['title'] ?? 'School Holiday',
+      date: json['date'] ?? '',
+      endDate: json['endDate'],
+      category: json['category'] ?? 'School Holiday',
+      description: json['description'],
+      target: json['target'] ?? 'ALL',
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'title': title,
+      'date': date,
+      'endDate': endDate,
+      'category': category,
+      'description': description,
+      'target': target,
+    };
+  }
+
+  bool coversDate(DateTime dt) {
+    try {
+      final start = DateTime.parse(date);
+      final check = DateTime(dt.year, dt.month, dt.day);
+      final startD = DateTime(start.year, start.month, start.day);
+      if (endDate != null && endDate!.isNotEmpty) {
+        final end = DateTime.parse(endDate!);
+        final endD = DateTime(end.year, end.month, end.day);
+        return !check.isBefore(startD) && !check.isAfter(endD);
+      }
+      return check.isAtSameMomentAs(startD);
+    } catch (_) {
+      return false;
+    }
+  }
+}

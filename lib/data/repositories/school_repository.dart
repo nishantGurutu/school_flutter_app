@@ -3,6 +3,7 @@ import '../models/chat_models.dart';
 
 abstract class SchoolRepository {
   Future<List<AttendanceRecord>> getAttendance(String userId, {String? type, String? date, String? className});
+  Future<List<HolidayModel>> getHolidays();
   Future<List<AttendanceRecord>> markAttendance(AttendanceRecord record);
   Future<List<AttendanceRecord>> checkIn({required String userId, required String name, String? className, String? role});
   Future<List<AttendanceRecord>> checkOut({required String userId, required String name, String? className, String? role});

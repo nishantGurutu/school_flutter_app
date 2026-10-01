@@ -4,6 +4,7 @@ import '../../data/models/chat_models.dart';
 class SchoolState {
   final bool isLoading;
   final List<AttendanceRecord> attendance;
+  final List<HolidayModel> holidays;
   final List<HomeworkItem> homework;
   final List<FeeRecord> fees;
   final List<TimetableSlot> timetable;
@@ -21,6 +22,7 @@ class SchoolState {
   const SchoolState({
     this.isLoading = false,
     this.attendance = const [],
+    this.holidays = const [],
     this.homework = const [],
     this.fees = const [],
     this.timetable = const [],
@@ -39,6 +41,7 @@ class SchoolState {
   SchoolState copyWith({
     bool? isLoading,
     List<AttendanceRecord>? attendance,
+    List<HolidayModel>? holidays,
     List<HomeworkItem>? homework,
     List<FeeRecord>? fees,
     List<TimetableSlot>? timetable,
@@ -56,6 +59,7 @@ class SchoolState {
     return SchoolState(
       isLoading: isLoading ?? this.isLoading,
       attendance: attendance ?? this.attendance,
+      holidays: holidays ?? this.holidays,
       homework: homework ?? this.homework,
       fees: fees ?? this.fees,
       timetable: timetable ?? this.timetable,

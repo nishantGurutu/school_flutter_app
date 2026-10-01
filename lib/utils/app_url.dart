@@ -10,6 +10,7 @@ class AppUrl {
   // Mobile App Dynamic Endpoints
   static const String profileMe = '$baseUrl/mobile/profile/me';
   static const String attendance = '$baseUrl/mobile/attendance';
+  static const String holidays = '$baseUrl/mobile/holidays';
   static const String markAttendance = '$baseUrl/mobile/attendance/mark';
   static const String checkIn = '$baseUrl/mobile/attendance/check-in';
   static const String checkOut = '$baseUrl/mobile/attendance/check-out';

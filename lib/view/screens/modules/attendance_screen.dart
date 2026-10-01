@@ -55,16 +55,36 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
 
               final allRecords = state.attendance;
 
+              final year = _focusedMonth.year;
+              final month = _focusedMonth.month;
+              final daysInMonth = DateTime(year, month + 1, 0).day;
+              final firstWeekday = DateTime(year, month, 1).weekday;
+              final String monthName = _getMonthName(month);
+
               // Filter records dynamically for currently focused month and year
               final monthRecords = allRecords.where((r) {
-                return r.date.year == _focusedMonth.year &&
-                    r.date.month == _focusedMonth.month;
+                return r.date.year == year && r.date.month == month;
               }).toList();
 
+              // Collect all unique holiday days in focused month (from records & admin holidays)
+              final holidayDaysSet = <int>{};
+              for (final r in monthRecords) {
+                if (r.status == AttendanceStatus.holiday) {
+                  holidayDaysSet.add(r.date.day);
+                }
+              }
+              for (int d = 1; d <= daysInMonth; d++) {
+                final curDt = DateTime(year, month, d);
+                for (final h in state.holidays) {
+                  if (h.coversDate(curDt)) {
+                    holidayDaysSet.add(d);
+                    break;
+                  }
+                }
+              }
+
               // Calculate 4 top metric boxes dynamically based on filtered month attendance
-              final totalWorkingDays = monthRecords
-                  .where((r) => r.status != AttendanceStatus.holiday)
-                  .length;
+              final holidayDays = holidayDaysSet.length;
               final presentDays = monthRecords
                   .where((r) =>
                       r.status == AttendanceStatus.present ||
@@ -73,26 +93,27 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
               final absentDays = monthRecords
                   .where((r) => r.status == AttendanceStatus.absent)
                   .length;
-              final holidayDays = monthRecords
-                  .where((r) => r.status == AttendanceStatus.holiday)
-                  .length;
+              final totalWorkingDays = daysInMonth > holidayDays ? (daysInMonth - holidayDays) : (presentDays + absentDays);
 
               final double rate = totalWorkingDays > 0
                   ? ((presentDays / totalWorkingDays) * 100.0)
-                  : (monthRecords.isNotEmpty ? 100.0 : 0.0);
+                  : (presentDays > 0 ? 100.0 : 0.0);
 
-              final year = _focusedMonth.year;
-              final month = _focusedMonth.month;
-              final daysInMonth = DateTime(year, month + 1, 0).day;
-              final firstWeekday = DateTime(year, month, 1).weekday;
-              final String monthName = _getMonthName(month);
-
-              // Find record for currently selected day in focused month
+              // Find record & holiday for currently selected day in focused month
               AttendanceRecord? selectedRecord;
               final matchedSelected =
                   monthRecords.where((r) => r.date.day == _selectedDay);
               if (matchedSelected.isNotEmpty) {
                 selectedRecord = matchedSelected.first;
+              }
+
+              HolidayModel? selectedHoliday;
+              final selectedDate = DateTime(year, month, _selectedDay);
+              for (final h in state.holidays) {
+                if (h.coversDate(selectedDate)) {
+                  selectedHoliday = h;
+                  break;
+                }
               }
 
               return SingleChildScrollView(
@@ -294,9 +315,22 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                                 record = matchedRecords.first;
                               }
 
+                              HolidayModel? cellHoliday;
+                              final cellDate = DateTime(year, month, dayIndex);
+                              for (final h in state.holidays) {
+                                if (h.coversDate(cellDate)) {
+                                  cellHoliday = h;
+                                  break;
+                                }
+                              }
+                              final bool isHoliday = cellHoliday != null ||
+                                  record?.status == AttendanceStatus.holiday;
+
                               return _CalendarDayCell(
                                 day: dayIndex,
                                 record: record,
+                                holiday: cellHoliday,
+                                isHoliday: isHoliday,
                                 isSelected: _selectedDay == dayIndex,
                                 onTap: () {
                                   setState(() {
@@ -322,6 +356,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                       monthName: monthName,
                       year: year,
                       record: selectedRecord,
+                      holiday: selectedHoliday,
                       userName: user?.name ?? 'Student Account',
                     ),
 
@@ -419,12 +454,16 @@ class _MetricCard extends StatelessWidget {
 class _CalendarDayCell extends StatelessWidget {
   final int day;
   final AttendanceRecord? record;
+  final HolidayModel? holiday;
+  final bool isHoliday;
   final bool isSelected;
   final VoidCallback onTap;
 
   const _CalendarDayCell({
     required this.day,
     this.record,
+    this.holiday,
+    this.isHoliday = false,
     required this.isSelected,
     required this.onTap,
   });
@@ -434,8 +473,13 @@ class _CalendarDayCell extends StatelessWidget {
     Color? bgColor;
     Color borderCol = isSelected ? AppColors.primary : Colors.transparent;
     Color textCol = AppColors.textPrimary;
+    final bool holidayActive = isHoliday || record?.status == AttendanceStatus.holiday;
 
-    if (record != null) {
+    if (holidayActive) {
+      bgColor = AppColors.info.withOpacity(0.14);
+      textCol = AppColors.info;
+      borderCol = isSelected ? AppColors.primary : AppColors.info.withOpacity(0.35);
+    } else if (record != null) {
       switch (record!.status) {
         case AttendanceStatus.present:
           bgColor = AppColors.success.withOpacity(0.15);
@@ -450,7 +494,7 @@ class _CalendarDayCell extends StatelessWidget {
           textCol = AppColors.warning;
           break;
         case AttendanceStatus.holiday:
-          bgColor = AppColors.info.withOpacity(0.12);
+          bgColor = AppColors.info.withOpacity(0.14);
           textCol = AppColors.info;
           break;
       }
@@ -471,14 +515,43 @@ class _CalendarDayCell extends StatelessWidget {
             width: isSelected ? 2.0 : 1.2,
           ),
         ),
-        child: Text(
-          '$day',
-          style: TextStyle(
-            color: isSelected ? AppColors.primary : textCol,
-            fontSize: 13.sp,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
+        child: holidayActive
+            ? Stack(
+                alignment: Alignment.center,
+                children: [
+                  Positioned(
+                    top: 2.h,
+                    right: 4.w,
+                    child: Text(
+                      '$day',
+                      style: TextStyle(
+                        color: isSelected
+                            ? AppColors.primary
+                            : AppColors.textMuted,
+                        fontSize: 8.5.sp,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                  Text(
+                    'H',
+                    style: TextStyle(
+                      color: isSelected ? AppColors.primary : AppColors.info,
+                      fontSize: 15.sp,
+                      fontWeight: FontWeight.w900,
+                      letterSpacing: 0.5,
+                    ),
+                  ),
+                ],
+              )
+            : Text(
+                '$day',
+                style: TextStyle(
+                  color: isSelected ? AppColors.primary : textCol,
+                  fontSize: 13.sp,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
       ),
     );
   }
@@ -489,6 +562,7 @@ class _DateDetailCard extends StatelessWidget {
   final String monthName;
   final int year;
   final AttendanceRecord? record;
+  final HolidayModel? holiday;
   final String userName;
 
   const _DateDetailCard({
@@ -496,6 +570,7 @@ class _DateDetailCard extends StatelessWidget {
     required this.monthName,
     required this.year,
     this.record,
+    this.holiday,
     required this.userName,
   });
 
@@ -504,7 +579,14 @@ class _DateDetailCard extends StatelessWidget {
     Color statusColor = AppColors.textMuted;
     String statusLabel = 'NO RECORD';
 
-    if (record != null) {
+    final bool isHoliday = holiday != null || record?.status == AttendanceStatus.holiday;
+    final String holidayTitle = holiday?.title ??
+        (record?.status == AttendanceStatus.holiday ? (record?.notes ?? 'Official School Holiday') : '');
+
+    if (isHoliday) {
+      statusColor = AppColors.info;
+      statusLabel = 'HOLIDAY';
+    } else if (record != null) {
       switch (record!.status) {
         case AttendanceStatus.present:
           statusColor = AppColors.success;
@@ -525,17 +607,21 @@ class _DateDetailCard extends StatelessWidget {
       }
     }
 
-    final String checkInStr = record?.checkInTime ??
-        (record?.status == AttendanceStatus.present ||
-                record?.status == AttendanceStatus.late
-            ? '09:00 AM'
-            : 'Not Recorded');
+    final String checkInStr = isHoliday
+        ? 'School Closed'
+        : (record?.checkInTime ??
+            (record?.status == AttendanceStatus.present ||
+                    record?.status == AttendanceStatus.late
+                ? '09:00 AM'
+                : 'Not Recorded'));
 
-    final String checkOutStr = record?.checkOutTime ??
-        (record?.status == AttendanceStatus.present ||
-                record?.status == AttendanceStatus.late
-            ? '04:30 PM'
-            : 'Not Recorded');
+    final String checkOutStr = isHoliday
+        ? 'School Closed'
+        : (record?.checkOutTime ??
+            (record?.status == AttendanceStatus.present ||
+                    record?.status == AttendanceStatus.late
+                ? '04:30 PM'
+                : 'Not Recorded'));
 
     return Container(
       width: double.infinity,
@@ -604,7 +690,7 @@ class _DateDetailCard extends StatelessWidget {
                       style: TextStyle(
                         fontSize: 13.sp,
                         fontWeight: FontWeight.bold,
-                        color: checkInStr != 'Not Recorded'
+                        color: checkInStr != 'Not Recorded' && !isHoliday
                             ? AppColors.success
                             : AppColors.textMuted,
                       ),
@@ -627,7 +713,7 @@ class _DateDetailCard extends StatelessWidget {
                       style: TextStyle(
                         fontSize: 13.sp,
                         fontWeight: FontWeight.bold,
-                        color: checkOutStr != 'Not Recorded'
+                        color: checkOutStr != 'Not Recorded' && !isHoliday
                             ? AppColors.info
                             : AppColors.textMuted,
                       ),
@@ -647,19 +733,65 @@ class _DateDetailCard extends StatelessWidget {
               ),
               4.h.height,
               Text(
-                record?.notes ??
-                    (record?.status == AttendanceStatus.holiday
-                        ? 'Official School Holiday'
-                        : (record != null
+                isHoliday
+                    ? (holidayTitle.isNotEmpty ? holidayTitle : 'Official School Holiday')
+                    : (record?.notes ??
+                        (record != null
                             ? 'Attendance recorded for $userName'
                             : 'No attendance record found for this date')),
                 style: TextStyle(
                   fontSize: 12.sp,
-                  color: AppColors.textSecondary,
+                  color: isHoliday ? AppColors.info : AppColors.textSecondary,
+                  fontWeight: isHoliday ? FontWeight.w700 : FontWeight.normal,
                 ),
               ),
             ],
           ),
+
+          if (isHoliday) ...[
+            14.h.height,
+            Container(
+              width: double.infinity,
+              padding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 10.h),
+              decoration: BoxDecoration(
+                color: AppColors.info.withOpacity(0.12),
+                borderRadius: BorderRadius.circular(12.r),
+                border: Border.all(color: AppColors.info.withOpacity(0.35)),
+              ),
+              child: Row(
+                children: [
+                  Icon(Icons.holiday_village_rounded,
+                      color: AppColors.info, size: 20.sp),
+                  10.w.width,
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'OFFICIAL SCHOOL HOLIDAY',
+                          style: TextStyle(
+                            fontSize: 11.sp,
+                            fontWeight: FontWeight.w800,
+                            color: AppColors.info,
+                            letterSpacing: 0.4,
+                          ),
+                        ),
+                        2.h.height,
+                        Text(
+                          'School remains closed. Attendance cannot be marked on this date.',
+                          style: TextStyle(
+                            fontSize: 10.5.sp,
+                            color: AppColors.textSecondary,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
         ],
       ),
     );

@@ -22,9 +22,52 @@ class ApiSchoolRepository implements SchoolRepository {
   }
 
   List<AttendanceRecord>? _cachedAttendance;
+  List<HolidayModel>? _cachedHolidays;
+
+  @override
+  Future<List<HolidayModel>> getHolidays() async {
+    try {
+      final res = await _apiService.getApi(AppUrl.holidays);
+      final rawList = _extractList(res);
+      if (rawList.isNotEmpty) {
+        _cachedHolidays = rawList.map((item) => HolidayModel.fromJson(Map<String, dynamic>.from(item))).toList();
+        return _cachedHolidays!;
+      }
+    } catch (_) {}
+    _cachedHolidays ??= [
+      const HolidayModel(
+        id: '1',
+        title: 'Gandhi Jayanti',
+        date: '2026-10-02',
+        category: 'National Holiday',
+        description: "Mahatma Gandhi's birthday - School Closed",
+        target: 'ALL',
+      ),
+      const HolidayModel(
+        id: '2',
+        title: 'Dussehra (Vijayadashami)',
+        date: '2026-10-20',
+        endDate: '2026-10-21',
+        category: 'Festival',
+        description: 'Dussehra festive celebration',
+        target: 'ALL',
+      ),
+      const HolidayModel(
+        id: '3',
+        title: 'Diwali Break',
+        date: '2026-11-08',
+        endDate: '2026-11-10',
+        category: 'Festival',
+        description: 'Deepawali Festival Holidays',
+        target: 'ALL',
+      ),
+    ];
+    return List<HolidayModel>.from(_cachedHolidays!);
+  }
 
   @override
   Future<List<AttendanceRecord>> getAttendance(String userId, {String? type, String? date, String? className}) async {
+    List<AttendanceRecord> records = [];
     try {
       String url = AppUrl.attendance;
       List<String> queryParams = [];
@@ -38,12 +81,71 @@ class ApiSchoolRepository implements SchoolRepository {
       final res = await _apiService.getApi(url);
       final rawList = _extractList(res);
       if (rawList.isNotEmpty) {
-        _cachedAttendance = rawList.map((item) => AttendanceRecord.fromJson(Map<String, dynamic>.from(item))).toList();
-        return _cachedAttendance!;
+        records = rawList.map((item) => AttendanceRecord.fromJson(Map<String, dynamic>.from(item))).toList();
       }
     } catch (_) {}
-    _cachedAttendance ??= _fallbackAttendance();
-    return List<AttendanceRecord>.from(_cachedAttendance!);
+
+    if (records.isEmpty) {
+      _cachedAttendance ??= _fallbackAttendance();
+      records = List<AttendanceRecord>.from(_cachedAttendance!);
+    }
+
+    // Merge in holidays so holiday dates always reflect status: AttendanceStatus.holiday
+    try {
+      final holidays = await getHolidays();
+      final List<AttendanceRecord> merged = [];
+      final Set<String> processedKeys = {};
+
+      for (final r in records) {
+        final key = '${r.date.year}-${r.date.month.toString().padLeft(2, '0')}-${r.date.day.toString().padLeft(2, '0')}';
+        processedKeys.add(key);
+
+        HolidayModel? matchingHoliday;
+        for (final h in holidays) {
+          if (h.coversDate(r.date)) {
+            matchingHoliday = h;
+            break;
+          }
+        }
+
+        if (matchingHoliday != null) {
+          merged.add(r.copyWith(
+            status: AttendanceStatus.holiday,
+            notes: matchingHoliday.title,
+          ));
+        } else {
+          merged.add(r);
+        }
+      }
+
+      // Add missing holiday dates that weren't in records
+      for (final h in holidays) {
+        try {
+          final start = DateTime.parse(h.date);
+          final end = (h.endDate != null && h.endDate!.isNotEmpty) ? DateTime.parse(h.endDate!) : start;
+          DateTime cur = start;
+          while (!cur.isAfter(end)) {
+            final key = '${cur.year}-${cur.month.toString().padLeft(2, '0')}-${cur.day.toString().padLeft(2, '0')}';
+            if (!processedKeys.contains(key)) {
+              processedKeys.add(key);
+              merged.add(AttendanceRecord(
+                id: 'hol_${h.id}_$key',
+                date: cur,
+                status: AttendanceStatus.holiday,
+                notes: h.title,
+              ));
+            }
+            cur = cur.add(const Duration(days: 1));
+          }
+        } catch (_) {}
+      }
+
+      _cachedAttendance = merged;
+      return merged;
+    } catch (_) {
+      _cachedAttendance = records;
+      return records;
+    }
   }
 
   @override

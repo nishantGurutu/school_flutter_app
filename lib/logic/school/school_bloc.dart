@@ -47,6 +47,7 @@ class SchoolBloc extends Bloc<SchoolEvent, SchoolState> {
         _schoolRepository.getPayroll(event.userId),
         _schoolRepository.getLeaves(event.userId),
         _schoolRepository.getAttendanceStats(),
+        _schoolRepository.getHolidays(),
       ]);
 
       emit(
@@ -63,6 +64,7 @@ class SchoolBloc extends Bloc<SchoolEvent, SchoolState> {
           payroll: results[8] as List<PayrollRecord>,
           leaves: results[9] as List<LeaveRecord>,
           attendanceStats: results[10] as AttendanceStats,
+          holidays: results[11] as List<HolidayModel>,
         ),
       );
     } catch (e) {
@@ -332,6 +334,22 @@ class SchoolBloc extends Bloc<SchoolEvent, SchoolState> {
     MarkAttendanceRequested event,
     Emitter<SchoolState> emit,
   ) async {
+    // Block marking attendance on official school holidays
+    HolidayModel? activeHoliday;
+    for (final h in state.holidays) {
+      if (h.coversDate(event.record.date)) {
+        activeHoliday = h;
+        break;
+      }
+    }
+    if (activeHoliday != null) {
+      emit(state.copyWith(
+        isActionInProgress: false,
+        errorMessage: 'Attendance cannot be marked: This date is an official school holiday (${activeHoliday.title}).',
+      ));
+      return;
+    }
+
     emit(state.copyWith(isActionInProgress: true, actionSuccessMessage: null));
     try {
       final updatedAttendance = await _schoolRepository.markAttendance(event.record);
@@ -358,6 +376,23 @@ class SchoolBloc extends Bloc<SchoolEvent, SchoolState> {
     CheckInUserRequested event,
     Emitter<SchoolState> emit,
   ) async {
+    // Block checking in on official school holidays
+    final now = DateTime.now();
+    HolidayModel? activeHoliday;
+    for (final h in state.holidays) {
+      if (h.coversDate(now)) {
+        activeHoliday = h;
+        break;
+      }
+    }
+    if (activeHoliday != null) {
+      emit(state.copyWith(
+        isActionInProgress: false,
+        errorMessage: 'Attendance cannot be marked: Today is an official school holiday (${activeHoliday.title}).',
+      ));
+      return;
+    }
+
     emit(state.copyWith(isActionInProgress: true, actionSuccessMessage: null));
     try {
       final updatedAttendance = await _schoolRepository.checkIn(
