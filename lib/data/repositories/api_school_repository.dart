@@ -11,12 +11,15 @@ class ApiSchoolRepository implements SchoolRepository {
       : _apiService = apiService ?? NetworkApiService();
 
   List _extractList(dynamic res) {
+    if (res == null) return [];
     if (res is List) return res;
     if (res is Map) {
       if (res['data'] is List) return res['data'];
       if (res['content'] is List) return res['content'];
       if (res['items'] is List) return res['items'];
       if (res['result'] is List) return res['result'];
+      if (res['holidays'] is List) return res['holidays'];
+      if (res['records'] is List) return res['records'];
     }
     return [];
   }
@@ -28,46 +31,25 @@ class ApiSchoolRepository implements SchoolRepository {
   Future<List<HolidayModel>> getHolidays() async {
     try {
       final res = await _apiService.getApi(AppUrl.holidays);
-      final rawList = _extractList(res);
-      if (rawList.isNotEmpty) {
-        _cachedHolidays = rawList.map((item) => HolidayModel.fromJson(Map<String, dynamic>.from(item))).toList();
-        return _cachedHolidays!;
+      if (res == null) {
+        _cachedHolidays = [];
+        return [];
       }
-    } catch (_) {}
-    _cachedHolidays ??= [
-      const HolidayModel(
-        id: '1',
-        title: 'Gandhi Jayanti',
-        date: '2026-10-02',
-        category: 'National Holiday',
-        description: "Mahatma Gandhi's birthday - School Closed",
-        target: 'ALL',
-      ),
-      const HolidayModel(
-        id: '2',
-        title: 'Dussehra (Vijayadashami)',
-        date: '2026-10-20',
-        endDate: '2026-10-21',
-        category: 'Festival',
-        description: 'Dussehra festive celebration',
-        target: 'ALL',
-      ),
-      const HolidayModel(
-        id: '3',
-        title: 'Diwali Break',
-        date: '2026-11-08',
-        endDate: '2026-11-10',
-        category: 'Festival',
-        description: 'Deepawali Festival Holidays',
-        target: 'ALL',
-      ),
-    ];
-    return List<HolidayModel>.from(_cachedHolidays!);
+      final rawList = _extractList(res);
+      _cachedHolidays = rawList
+          .where((item) => item != null && item is Map)
+          .map((item) => HolidayModel.fromJson(Map<String, dynamic>.from(item)))
+          .toList();
+      return _cachedHolidays!;
+    } catch (_) {
+      return _cachedHolidays ?? [];
+    }
   }
 
   @override
   Future<List<AttendanceRecord>> getAttendance(String userId, {String? type, String? date, String? className}) async {
     List<AttendanceRecord> records = [];
+    bool apiFailed = false;
     try {
       String url = AppUrl.attendance;
       List<String> queryParams = [];
@@ -79,13 +61,20 @@ class ApiSchoolRepository implements SchoolRepository {
       }
 
       final res = await _apiService.getApi(url);
-      final rawList = _extractList(res);
-      if (rawList.isNotEmpty) {
-        records = rawList.map((item) => AttendanceRecord.fromJson(Map<String, dynamic>.from(item))).toList();
+      if (res != null) {
+        final rawList = _extractList(res);
+        if (rawList.isNotEmpty) {
+          records = rawList
+              .where((item) => item != null && item is Map)
+              .map((item) => AttendanceRecord.fromJson(Map<String, dynamic>.from(item)))
+              .toList();
+        }
       }
-    } catch (_) {}
+    } catch (_) {
+      apiFailed = true;
+    }
 
-    if (records.isEmpty) {
+    if (apiFailed && records.isEmpty) {
       _cachedAttendance ??= _fallbackAttendance();
       records = List<AttendanceRecord>.from(_cachedAttendance!);
     }
@@ -93,6 +82,11 @@ class ApiSchoolRepository implements SchoolRepository {
     // Merge in holidays so holiday dates always reflect status: AttendanceStatus.holiday
     try {
       final holidays = await getHolidays();
+      if (holidays.isEmpty) {
+        _cachedAttendance = records;
+        return records;
+      }
+
       final List<AttendanceRecord> merged = [];
       final Set<String> processedKeys = {};
 
