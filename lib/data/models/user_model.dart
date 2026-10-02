@@ -34,7 +34,7 @@ class UserModel {
   });
 
   factory UserModel.fromJson(Map<String, dynamic> json, {String? token, String? refreshToken}) {
-    String roleStr = (json['role'] ?? 'student').toString().toUpperCase();
+    String roleStr = (json['userType'] ?? json['role'] ?? 'student').toString().toUpperCase();
     UserRole roleVal = UserRole.student;
     if (roleStr == 'PARENT') roleVal = UserRole.parent;
     if (roleStr == 'TEACHER') roleVal = UserRole.teacher;

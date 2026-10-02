@@ -27,11 +27,8 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
       if (user == null) {
         emit(state.copyWith(
           status: AuthStatus.error,
-          errorMessage: 'Invalid mobile/email or password.',
+          errorMessage: 'Invalid credentials',
         ));
-        // Reset state back to unauthenticated
-        await Future.delayed(const Duration(seconds: 2));
-        emit(state.copyWith(status: AuthStatus.unauthenticated, errorMessage: null));
         return;
       }
 
@@ -48,15 +45,19 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
       // Finally authenticate
       emit(state.copyWith(status: AuthStatus.authenticated, user: user));
     } catch (e) {
-      final message = e is AppException
-          ? e.message
-          : e.toString().replaceFirst('Exception: ', '');
+      String message = 'Invalid credentials';
+      if (e is AppException && e.message.isNotEmpty) {
+        message = e.message;
+      } else {
+        final errStr = e.toString().replaceFirst('Exception: ', '').trim();
+        if (errStr.isNotEmpty && !errStr.startsWith('Instance of')) {
+          message = errStr;
+        }
+      }
       emit(state.copyWith(
         status: AuthStatus.error,
-        errorMessage: message.isNotEmpty ? message : 'An error occurred. Please try again.',
+        errorMessage: message,
       ));
-      await Future.delayed(const Duration(seconds: 2));
-      emit(state.copyWith(status: AuthStatus.unauthenticated, errorMessage: null));
     }
   }
 

@@ -23,25 +23,11 @@ class _LoginScreenState extends State<LoginScreen> {
   final _formKey = GlobalKey<FormState>();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
-  String _selectedRole = 'STUDENT';
-
   @override
   void dispose() {
     _emailController.dispose();
     _passwordController.dispose();
     super.dispose();
-  }
-
-  // Pre-fill helper for convenience
-  void _quickFill(String email, String role, BuildContext context) {
-    setState(() {
-      _emailController.text = email;
-      _passwordController.text = 'password';
-      _selectedRole = role;
-    });
-    context.showAppSnackBar(
-      'Role set to $role • Credentials: $email / password',
-    );
   }
 
   @override
@@ -166,49 +152,16 @@ class _LoginScreenState extends State<LoginScreen> {
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.stretch,
                               children: [
-                                // User Role Selector Dropdown
-                                Container(
-                                  padding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 4.h),
-                                  decoration: BoxDecoration(
-                                    color: Colors.white.withOpacity(0.08),
-                                    borderRadius: BorderRadius.circular(12.r),
-                                    border: Border.all(color: AppColors.primary.withOpacity(0.2)),
-                                  ),
-                                  child: DropdownButtonHideUnderline(
-                                    child: DropdownButton<String>(
-                                      value: _selectedRole,
-                                      dropdownColor: AppColors.background,
-                                      isExpanded: true,
-                                      icon: const Icon(Icons.arrow_drop_down, color: AppColors.primary),
-                                      style: TextStyle(fontSize: 14.sp, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
-                                      items: const [
-                                        DropdownMenuItem(value: 'STUDENT', child: Text('Login as STUDENT')),
-                                        DropdownMenuItem(value: 'PARENT', child: Text('Login as PARENT')),
-                                        DropdownMenuItem(value: 'TEACHER', child: Text('Login as TEACHER')),
-                                        DropdownMenuItem(value: 'STAFF', child: Text('Login as STAFF')),
-                                      ],
-                                      onChanged: (val) {
-                                        if (val != null) {
-                                          setState(() {
-                                            _selectedRole = val;
-                                          });
-                                        }
-                                      },
-                                    ),
-                                  ),
-                                ),
-                                16.h.height,
-
                                 // Email field
                                 CustomTextField(
                                   controller: _emailController,
-                                  label: 'Email Address / Mobile',
-                                  hint: 'student@schooldesk.com or student',
-                                  prefixIcon: Icons.email_outlined,
+                                  label: 'Email / Login ID',
+                                  hint: 'Enter your email or login ID',
+                                  prefixIcon: Icons.person_outline_rounded,
                                   keyboardType: TextInputType.emailAddress,
                                   validator: (v) {
                                     if (v == null || v.trim().isEmpty) {
-                                      return 'Please enter email/username';
+                                      return 'Please enter email or login ID';
                                     }
                                     return null;
                                   },
@@ -237,7 +190,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                   child: TextButton(
                                     onPressed: () {
                                       context.showAppSnackBar(
-                                        'Forgot password simulator: enter password as "password"',
+                                        'Please contact your school administrator to reset credentials.',
                                       );
                                     },
                                     style: TextButton.styleFrom(
@@ -256,6 +209,46 @@ class _LoginScreenState extends State<LoginScreen> {
                                 ),
                                 20.h.height,
 
+                                // Error feedback banner
+                                if (state.status == AuthStatus.error &&
+                                    state.errorMessage != null &&
+                                    state.errorMessage!.isNotEmpty) ...[
+                                  Container(
+                                    padding: EdgeInsets.symmetric(
+                                      horizontal: 14.w,
+                                      vertical: 10.h,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: AppColors.error.withOpacity(0.08),
+                                      borderRadius: BorderRadius.circular(8.r),
+                                      border: Border.all(
+                                        color: AppColors.error.withOpacity(0.3),
+                                      ),
+                                    ),
+                                    child: Row(
+                                      children: [
+                                        Icon(
+                                          Icons.error_outline_rounded,
+                                          color: AppColors.error,
+                                          size: 18.sp,
+                                        ),
+                                        8.w.width,
+                                        Expanded(
+                                          child: Text(
+                                            state.errorMessage!,
+                                            style: TextStyle(
+                                              color: AppColors.error,
+                                              fontSize: 12.sp,
+                                              fontWeight: FontWeight.w600,
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  16.h.height,
+                                ],
+
                                 // Login Button
                                 ElevatedButton(
                                   onPressed:
@@ -266,10 +259,9 @@ class _LoginScreenState extends State<LoginScreen> {
                                               .validate()) {
                                             context.read<AuthBloc>().add(
                                               LoginRequested(
-                                                email: _emailController.text,
+                                                email: _emailController.text.trim(),
                                                 password:
                                                     _passwordController.text,
-                                                loginUser: _selectedRole,
                                               ),
                                             );
                                           }
@@ -288,75 +280,10 @@ class _LoginScreenState extends State<LoginScreen> {
                                                     >(Colors.white),
                                               ),
                                         )
-                                      : Text('Login as $_selectedRole'),
+                                      : const Text('Login'),
                                 ),
                               ],
                             ),
-                          ),
-                          24.h.height,
-
-                          // Demo quick logins
-                          Text(
-                            'QUICK LOGIN ROLES',
-                            style: TextStyle(
-                              color: AppColors.textMuted,
-                              fontSize: 11.sp,
-                              fontWeight: FontWeight.w700,
-                              letterSpacing: 1.0,
-                            ),
-                            textAlign: TextAlign.center,
-                          ),
-                          12.h.height,
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                            children: [
-                              _QuickLoginChip(
-                                label: 'Student',
-                                icon: Icons.person_outline_rounded,
-                                color: AppColors.primary,
-                                onTap: () => _quickFill(
-                                  'student@schooldesk.com',
-                                  'STUDENT',
-                                  context,
-                                ),
-                              ),
-                              _QuickLoginChip(
-                                label: 'Parent',
-                                icon: Icons.family_restroom_rounded,
-                                color: AppColors.success,
-                                onTap: () => _quickFill(
-                                  'parent@schooldesk.com',
-                                  'PARENT',
-                                  context,
-                                ),
-                              ),
-                            ],
-                          ),
-                          10.h.height,
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                            children: [
-                              _QuickLoginChip(
-                                label: 'Teacher',
-                                icon: Icons.assignment_ind_outlined,
-                                color: AppColors.info,
-                                onTap: () => _quickFill(
-                                  'teacher@schooldesk.com',
-                                  'TEACHER',
-                                  context,
-                                ),
-                              ),
-                              _QuickLoginChip(
-                                label: 'Staff',
-                                icon: Icons.admin_panel_settings_outlined,
-                                color: AppColors.warning,
-                                onTap: () => _quickFill(
-                                  'staff@schooldesk.com',
-                                  'STAFF',
-                                  context,
-                                ),
-                              ),
-                            ],
                           ),
                           36.h.height,
 
@@ -372,7 +299,7 @@ class _LoginScreenState extends State<LoginScreen> {
                               ),
                               GestureDetector(
                                 onTap: () => context.showAppSnackBar(
-                                  'Signup simulator: use Quick Logins to explore',
+                                  'Please contact school administration for registration credentials.',
                                 ),
                                 child: Text(
                                   'Sign Up',
@@ -397,55 +324,6 @@ class _LoginScreenState extends State<LoginScreen> {
             ],
           );
         },
-      ),
-    );
-  }
-}
-
-class _QuickLoginChip extends StatelessWidget {
-  final String label;
-  final IconData icon;
-  final Color color;
-  final VoidCallback onTap;
-
-  const _QuickLoginChip({
-    required this.label,
-    required this.icon,
-    required this.color,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(12.r),
-        child: Container(
-          width: 150.w,
-          padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 10.h),
-          decoration: BoxDecoration(
-            color: color.withOpacity(0.06),
-            borderRadius: BorderRadius.circular(12.r),
-            border: Border.all(color: color.withOpacity(0.3), width: 1.2),
-          ),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(icon, size: 16.sp, color: color),
-              8.w.width,
-              Text(
-                label,
-                style: TextStyle(
-                  color: color,
-                  fontSize: 12.sp,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-            ],
-          ),
-        ),
       ),
     );
   }
