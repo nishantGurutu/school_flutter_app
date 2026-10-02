@@ -110,53 +110,55 @@ class _FloatingBottomNavBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      margin: EdgeInsets.only(left: 20.w, right: 20.w, bottom: 20.h),
-      height: 70.h,
-      decoration: BoxDecoration(
-        color: AppColors.surface.withOpacity(0.92),
-        borderRadius: BorderRadius.circular(24.r),
-        border: Border.all(color: AppColors.border, width: 1.5),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.4),
-            blurRadius: 20,
-            offset: const Offset(0, 10),
-          ),
-        ],
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceAround,
-        children: [
-          _BottomNavItem(
-            icon: Icons.home_rounded,
-            activeIcon: Icons.home_rounded,
-            label: 'Home',
-            isSelected: currentIndex == 0,
-            onTap: () => onTap(0),
-          ),
-          _BottomNavItem(
-            icon: Icons.notifications_none_rounded,
-            activeIcon: Icons.notifications_rounded,
-            label: 'Notices',
-            isSelected: currentIndex == 1,
-            onTap: () => onTap(1),
-          ),
-          _BottomNavItem(
-            icon: Icons.chat_bubble_outline_rounded,
-            activeIcon: Icons.chat_bubble_rounded,
-            label: 'Chats',
-            isSelected: currentIndex == 2,
-            onTap: () => onTap(2),
-          ),
-          _BottomNavItem(
-            icon: Icons.person_outline_rounded,
-            activeIcon: Icons.person_rounded,
-            label: 'Profile',
-            isSelected: currentIndex == 3,
-            onTap: () => onTap(3),
-          ),
-        ],
+    return SafeArea(
+      child: Container(
+        margin: EdgeInsets.only(left: 20.w, right: 20.w, bottom: 20.h),
+        height: 70.h,
+        decoration: BoxDecoration(
+          color: AppColors.surface.withOpacity(0.92),
+          borderRadius: BorderRadius.circular(24.r),
+          border: Border.all(color: AppColors.border, width: 1.5),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.4),
+              blurRadius: 20,
+              offset: const Offset(0, 10),
+            ),
+          ],
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceAround,
+          children: [
+            _BottomNavItem(
+              icon: Icons.home_rounded,
+              activeIcon: Icons.home_rounded,
+              label: 'Home',
+              isSelected: currentIndex == 0,
+              onTap: () => onTap(0),
+            ),
+            _BottomNavItem(
+              icon: Icons.notifications_none_rounded,
+              activeIcon: Icons.notifications_rounded,
+              label: 'Notices',
+              isSelected: currentIndex == 1,
+              onTap: () => onTap(1),
+            ),
+            _BottomNavItem(
+              icon: Icons.chat_bubble_outline_rounded,
+              activeIcon: Icons.chat_bubble_rounded,
+              label: 'Chats',
+              isSelected: currentIndex == 2,
+              onTap: () => onTap(2),
+            ),
+            _BottomNavItem(
+              icon: Icons.person_outline_rounded,
+              activeIcon: Icons.person_rounded,
+              label: 'Profile',
+              isSelected: currentIndex == 3,
+              onTap: () => onTap(3),
+            ),
+          ],
+        ),
       ),
     );
   }

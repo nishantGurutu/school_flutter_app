@@ -7,7 +7,6 @@ import '../../../logic/school/school_bloc.dart';
 import '../../../logic/school/school_event.dart';
 import '../../../logic/school/school_state.dart';
 import '../../../logic/auth/auth_bloc.dart';
-import '../../../logic/auth/auth_state.dart';
 import '../../../data/models/user_model.dart';
 import '../../../data/models/school_models.dart';
 
@@ -672,14 +671,17 @@ class _CreateExamSheetState extends State<_CreateExamSheet> {
   final _formKey = GlobalKey<FormState>();
   final _titleController = TextEditingController();
   final _descriptionController = TextEditingController();
-  final _roomController = TextEditingController(text: 'Room 12');
-  final _maxMarksController = TextEditingController(text: '100');
-  final _startTimeController = TextEditingController(text: '09:00 AM');
-  final _endTimeController = TextEditingController(text: '11:30 AM');
+  final _dateController = TextEditingController();
+  final _roomController = TextEditingController();
+  final _maxMarksController = TextEditingController();
+  final _startTimeController = TextEditingController();
+  final _endTimeController = TextEditingController();
 
-  String _selectedSubject = 'Mathematics';
-  String _selectedClass = 'Class 10-A';
-  final DateTime _selectedDate = DateTime.now().add(const Duration(days: 7));
+  String? _selectedSubject;
+  String? _selectedClass;
+  DateTime? _selectedDate;
+  TimeOfDay? _selectedStartTime;
+  TimeOfDay? _selectedEndTime;
 
   final List<String> _subjects = [
     'Mathematics',
@@ -703,6 +705,7 @@ class _CreateExamSheetState extends State<_CreateExamSheet> {
   void dispose() {
     _titleController.dispose();
     _descriptionController.dispose();
+    _dateController.dispose();
     _roomController.dispose();
     _maxMarksController.dispose();
     _startTimeController.dispose();
@@ -710,20 +713,86 @@ class _CreateExamSheetState extends State<_CreateExamSheet> {
     super.dispose();
   }
 
+  Future<void> _pickDate() async {
+    final now = DateTime.now();
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: _selectedDate ?? now,
+      firstDate: now.subtract(const Duration(days: 365)),
+      lastDate: now.add(const Duration(days: 365 * 2)),
+      builder: (context, child) {
+        return Theme(
+          data: Theme.of(context).copyWith(
+            colorScheme: const ColorScheme.light(
+              primary: AppColors.primary,
+              onPrimary: Colors.white,
+              surface: AppColors.surface,
+              onSurface: AppColors.textPrimary,
+            ),
+          ),
+          child: child!,
+        );
+      },
+    );
+    if (picked != null) {
+      setState(() {
+        _selectedDate = picked;
+        _dateController.text =
+            "${picked.year}-${picked.month.toString().padLeft(2, '0')}-${picked.day.toString().padLeft(2, '0')}";
+      });
+    }
+  }
+
+  Future<void> _pickTime({required bool isStartTime}) async {
+    final initial = isStartTime
+        ? (_selectedStartTime ?? const TimeOfDay(hour: 9, minute: 0))
+        : (_selectedEndTime ?? const TimeOfDay(hour: 11, minute: 30));
+
+    final picked = await showTimePicker(
+      context: context,
+      initialTime: initial,
+      builder: (context, child) {
+        return Theme(
+          data: Theme.of(context).copyWith(
+            colorScheme: const ColorScheme.light(
+              primary: AppColors.primary,
+              onPrimary: Colors.white,
+              surface: AppColors.surface,
+              onSurface: AppColors.textPrimary,
+            ),
+          ),
+          child: child!,
+        );
+      },
+    );
+    if (picked != null) {
+      setState(() {
+        final formatted = picked.format(context);
+        if (isStartTime) {
+          _selectedStartTime = picked;
+          _startTimeController.text = formatted;
+        } else {
+          _selectedEndTime = picked;
+          _endTimeController.text = formatted;
+        }
+      });
+    }
+  }
+
   void _submit() {
     if (_formKey.currentState!.validate()) {
       final exam = ExamItem(
         id: 'exam_${DateTime.now().millisecondsSinceEpoch}',
-        subject: _selectedSubject,
+        subject: _selectedSubject ?? 'General',
         title: _titleController.text.trim(),
         description: _descriptionController.text.trim(),
-        date: _selectedDate,
+        date: _selectedDate ?? DateTime.now(),
         startTime: _startTimeController.text.trim(),
         endTime: _endTimeController.text.trim(),
         room: _roomController.text.trim(),
         maxMarks: double.tryParse(_maxMarksController.text.trim()) ?? 100,
         status: ExamStatus.upcoming,
-        className: _selectedClass,
+        className: _selectedClass ?? '',
       );
 
       context.read<SchoolBloc>().add(CreateExamRequested(exam));
@@ -772,9 +841,10 @@ class _CreateExamSheetState extends State<_CreateExamSheet> {
               ),
               16.h.height,
               DropdownButtonFormField<String>(
-                value: _selectedSubject,
+                initialValue: _selectedSubject,
                 decoration: InputDecoration(
                   labelText: 'Subject',
+                  hintText: 'Select Subject',
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12.r),
                   ),
@@ -785,6 +855,8 @@ class _CreateExamSheetState extends State<_CreateExamSheet> {
                 onChanged: (val) {
                   if (val != null) setState(() => _selectedSubject = val);
                 },
+                validator: (v) =>
+                    (v == null || v.trim().isEmpty) ? 'Please select subject' : null,
               ),
               12.h.height,
               TextFormField(
@@ -814,13 +886,30 @@ class _CreateExamSheetState extends State<_CreateExamSheet> {
                     : null,
               ),
               12.h.height,
+              TextFormField(
+                controller: _dateController,
+                readOnly: true,
+                onTap: _pickDate,
+                decoration: InputDecoration(
+                  labelText: 'Exam Date',
+                  hintText: 'Select Date',
+                  suffixIcon: const Icon(Icons.calendar_today_rounded, size: 20),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12.r),
+                  ),
+                ),
+                validator: (v) =>
+                    (v == null || v.trim().isEmpty) ? 'Please select date' : null,
+              ),
+              12.h.height,
               Row(
                 children: [
                   Expanded(
                     child: DropdownButtonFormField<String>(
-                      value: _selectedClass,
+                      initialValue: _selectedClass,
                       decoration: InputDecoration(
                         labelText: 'Class',
+                        hintText: 'Select Class',
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(12.r),
                         ),
@@ -831,6 +920,8 @@ class _CreateExamSheetState extends State<_CreateExamSheet> {
                       onChanged: (val) {
                         if (val != null) setState(() => _selectedClass = val);
                       },
+                      validator: (v) =>
+                          (v == null || v.trim().isEmpty) ? 'Please select class' : null,
                     ),
                   ),
                   12.w.width,
@@ -840,6 +931,7 @@ class _CreateExamSheetState extends State<_CreateExamSheet> {
                       keyboardType: TextInputType.number,
                       decoration: InputDecoration(
                         labelText: 'Max Marks',
+                        hintText: 'e.g. 100',
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(12.r),
                         ),
@@ -856,24 +948,38 @@ class _CreateExamSheetState extends State<_CreateExamSheet> {
                   Expanded(
                     child: TextFormField(
                       controller: _startTimeController,
+                      readOnly: true,
+                      onTap: () => _pickTime(isStartTime: true),
                       decoration: InputDecoration(
                         labelText: 'Start Time',
+                        hintText: 'Select Time',
+                        suffixIcon: const Icon(Icons.access_time_rounded, size: 20),
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(12.r),
                         ),
                       ),
+                      validator: (v) => (v == null || v.trim().isEmpty)
+                          ? 'Select start time'
+                          : null,
                     ),
                   ),
                   12.w.width,
                   Expanded(
                     child: TextFormField(
                       controller: _endTimeController,
+                      readOnly: true,
+                      onTap: () => _pickTime(isStartTime: false),
                       decoration: InputDecoration(
                         labelText: 'End Time',
+                        hintText: 'Select Time',
+                        suffixIcon: const Icon(Icons.access_time_rounded, size: 20),
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(12.r),
                         ),
                       ),
+                      validator: (v) => (v == null || v.trim().isEmpty)
+                          ? 'Select end time'
+                          : null,
                     ),
                   ),
                 ],
@@ -883,6 +989,7 @@ class _CreateExamSheetState extends State<_CreateExamSheet> {
                 controller: _roomController,
                 decoration: InputDecoration(
                   labelText: 'Room Venue',
+                  hintText: 'e.g. Room 12',
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12.r),
                   ),
