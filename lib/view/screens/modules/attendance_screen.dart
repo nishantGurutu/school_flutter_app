@@ -6,6 +6,7 @@ import '../../../core/extensions/context_extensions.dart';
 import '../../../logic/auth/auth_bloc.dart';
 import '../../../logic/auth/auth_state.dart';
 import '../../../logic/school/school_bloc.dart';
+import '../../../logic/school/school_event.dart';
 import '../../../logic/school/school_state.dart';
 import '../../../data/models/school_models.dart';
 import '../../widgets/glass_card.dart';
@@ -22,6 +23,25 @@ class AttendanceScreen extends StatefulWidget {
 class _AttendanceScreenState extends State<AttendanceScreen> {
   DateTime _focusedMonth = DateTime.now();
   int _selectedDay = DateTime.now().day;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _loadAttendance();
+    });
+  }
+
+  void _loadAttendance() {
+    final authState = context.read<AuthBloc>().state;
+    final currentUser = authState.user;
+    context.read<SchoolBloc>().add(
+      FetchAttendanceRequested(
+        userId: currentUser?.id ?? '1',
+        className: currentUser?.className,
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -46,6 +66,13 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
               style: context.h2.copyWith(color: AppColors.textPrimary),
             ),
             centerTitle: true,
+            actions: [
+              IconButton(
+                icon: const Icon(Icons.refresh_rounded, color: AppColors.textPrimary),
+                tooltip: 'Sync Attendance',
+                onPressed: _loadAttendance,
+              ),
+            ],
           ),
           body: BlocBuilder<SchoolBloc, SchoolState>(
             builder: (context, state) {

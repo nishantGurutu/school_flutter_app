@@ -10,8 +10,29 @@ import '../../../logic/auth/auth_bloc.dart';
 import '../../../data/models/school_models.dart';
 import '../../widgets/glass_card.dart';
 
-class ExpenseScreen extends StatelessWidget {
+class ExpenseScreen extends StatefulWidget {
   const ExpenseScreen({super.key});
+
+  @override
+  State<ExpenseScreen> createState() => _ExpenseScreenState();
+}
+
+class _ExpenseScreenState extends State<ExpenseScreen> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _loadExpenses();
+    });
+  }
+
+  void _loadExpenses() {
+    final authState = context.read<AuthBloc>().state;
+    final currentUser = authState.user;
+    context.read<SchoolBloc>().add(
+      FetchExpensesRequested(currentUser?.id ?? '1'),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -29,6 +50,13 @@ class ExpenseScreen extends StatelessWidget {
           style: context.h2.copyWith(color: AppColors.textPrimary),
         ),
         centerTitle: true,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.refresh_rounded, color: AppColors.textPrimary),
+            tooltip: 'Sync Expenses',
+            onPressed: _loadExpenses,
+          ),
+        ],
       ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () => _showAddExpenseDialog(context),

@@ -35,8 +35,29 @@ class _DateField extends StatelessWidget {
   }
 }
 
-class LeaveScreen extends StatelessWidget {
+class LeaveScreen extends StatefulWidget {
   const LeaveScreen({super.key});
+
+  @override
+  State<LeaveScreen> createState() => _LeaveScreenState();
+}
+
+class _LeaveScreenState extends State<LeaveScreen> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _loadLeaves();
+    });
+  }
+
+  void _loadLeaves() {
+    final authState = context.read<AuthBloc>().state;
+    final currentUser = authState.user;
+    context.read<SchoolBloc>().add(
+      FetchLeavesRequested(currentUser?.id ?? '1'),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -54,6 +75,13 @@ class LeaveScreen extends StatelessWidget {
           style: context.h2.copyWith(color: AppColors.textPrimary),
         ),
         centerTitle: true,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.refresh_rounded, color: AppColors.textPrimary),
+            tooltip: 'Sync Leaves',
+            onPressed: _loadLeaves,
+          ),
+        ],
       ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () => _showApplyLeaveSheet(context),

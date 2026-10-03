@@ -130,3 +130,68 @@ class UploadExamScoreRequested extends SchoolEvent {
   const UploadExamScoreRequested({required this.examId, required this.score});
 }
 
+class FetchTimetableRequested extends SchoolEvent {
+  final String userId;
+  final String? className;
+  final String? day;
+  const FetchTimetableRequested({
+    required this.userId,
+    this.className,
+    this.day,
+  });
+}
+
+class FetchAttendanceRequested extends SchoolEvent {
+  final String userId;
+  final String? type;
+  final String? date;
+  final String? className;
+  const FetchAttendanceRequested({
+    required this.userId,
+    this.type,
+    this.date,
+    this.className,
+  });
+}
+
+class FetchExamsRequested extends SchoolEvent {
+  final String userId;
+  final String? className;
+  const FetchExamsRequested({required this.userId, this.className});
+}
+
+class FetchHomeworkRequested extends SchoolEvent {
+  final String userId;
+  final String? className;
+  const FetchHomeworkRequested({required this.userId, this.className});
+}
+
+class FetchFeesRequested extends SchoolEvent {
+  final String userId;
+  const FetchFeesRequested(this.userId);
+}
+
+class FetchExpensesRequested extends SchoolEvent {
+  final String userId;
+  const FetchExpensesRequested(this.userId);
+}
+
+class FetchNoticesRequested extends SchoolEvent {
+  const FetchNoticesRequested();
+}
+
+class FetchPayrollRequested extends SchoolEvent {
+  final String userId;
+  const FetchPayrollRequested(this.userId);
+}
+
+class FetchLeavesRequested extends SchoolEvent {
+  final String userId;
+  const FetchLeavesRequested(this.userId);
+}
+
+class FetchChatChannelsRequested extends SchoolEvent {
+  final String userId;
+  const FetchChatChannelsRequested(this.userId);
+}
+

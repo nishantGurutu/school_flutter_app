@@ -11,6 +11,16 @@ class SchoolBloc extends Bloc<SchoolEvent, SchoolState> {
 
   SchoolBloc() : super(const SchoolState()) {
     on<LoadSchoolData>(_onLoadSchoolData);
+    on<FetchTimetableRequested>(_onFetchTimetableRequested);
+    on<FetchAttendanceRequested>(_onFetchAttendanceRequested);
+    on<FetchExamsRequested>(_onFetchExamsRequested);
+    on<FetchHomeworkRequested>(_onFetchHomeworkRequested);
+    on<FetchFeesRequested>(_onFetchFeesRequested);
+    on<FetchExpensesRequested>(_onFetchExpensesRequested);
+    on<FetchNoticesRequested>(_onFetchNoticesRequested);
+    on<FetchPayrollRequested>(_onFetchPayrollRequested);
+    on<FetchLeavesRequested>(_onFetchLeavesRequested);
+    on<FetchChatChannelsRequested>(_onFetchChatChannelsRequested);
     on<MarkAttendanceRequested>(_onMarkAttendanceRequested);
     on<CheckInUserRequested>(_onCheckInUserRequested);
     on<CheckOutUserRequested>(_onCheckOutUserRequested);
@@ -74,6 +84,160 @@ class SchoolBloc extends Bloc<SchoolEvent, SchoolState> {
           errorMessage: 'Failed to load school workspace: ${e.toString()}',
         ),
       );
+    }
+  }
+
+  Future<void> _onFetchTimetableRequested(
+    FetchTimetableRequested event,
+    Emitter<SchoolState> emit,
+  ) async {
+    emit(state.copyWith(isLoading: true, errorMessage: null));
+
+    try {
+      final timetable = await _schoolRepository.getTimetable(
+        event.userId,
+        className: event.className,
+        day: event.day,
+      );
+      emit(
+        state.copyWith(
+          isLoading: false,
+          timetable: timetable,
+        ),
+      );
+    } catch (e) {
+      emit(
+        state.copyWith(
+          isLoading: false,
+          errorMessage: 'Failed to load timetable: ${e.toString()}',
+        ),
+      );
+    }
+  }
+
+  Future<void> _onFetchAttendanceRequested(
+    FetchAttendanceRequested event,
+    Emitter<SchoolState> emit,
+  ) async {
+    emit(state.copyWith(isLoading: true, errorMessage: null));
+    try {
+      final results = await Future.wait([
+        _schoolRepository.getAttendance(event.userId, type: event.type, date: event.date, className: event.className),
+        _schoolRepository.getHolidays(),
+        _schoolRepository.getAttendanceStats(),
+      ]);
+      emit(state.copyWith(
+        isLoading: false,
+        attendance: results[0] as List<AttendanceRecord>,
+        holidays: results[1] as List<HolidayModel>,
+        attendanceStats: results[2] as AttendanceStats,
+      ));
+    } catch (e) {
+      emit(state.copyWith(isLoading: false, errorMessage: 'Failed to load attendance: ${e.toString()}'));
+    }
+  }
+
+  Future<void> _onFetchExamsRequested(
+    FetchExamsRequested event,
+    Emitter<SchoolState> emit,
+  ) async {
+    emit(state.copyWith(isLoading: true, errorMessage: null));
+    try {
+      final exams = await _schoolRepository.getExams(event.userId, className: event.className);
+      emit(state.copyWith(isLoading: false, exams: exams));
+    } catch (e) {
+      emit(state.copyWith(isLoading: false, errorMessage: 'Failed to load exams: ${e.toString()}'));
+    }
+  }
+
+  Future<void> _onFetchHomeworkRequested(
+    FetchHomeworkRequested event,
+    Emitter<SchoolState> emit,
+  ) async {
+    emit(state.copyWith(isLoading: true, errorMessage: null));
+    try {
+      final homework = await _schoolRepository.getHomework(event.userId, className: event.className);
+      emit(state.copyWith(isLoading: false, homework: homework));
+    } catch (e) {
+      emit(state.copyWith(isLoading: false, errorMessage: 'Failed to load homework: ${e.toString()}'));
+    }
+  }
+
+  Future<void> _onFetchFeesRequested(
+    FetchFeesRequested event,
+    Emitter<SchoolState> emit,
+  ) async {
+    emit(state.copyWith(isLoading: true, errorMessage: null));
+    try {
+      final fees = await _schoolRepository.getFees(event.userId);
+      emit(state.copyWith(isLoading: false, fees: fees));
+    } catch (e) {
+      emit(state.copyWith(isLoading: false, errorMessage: 'Failed to load fees: ${e.toString()}'));
+    }
+  }
+
+  Future<void> _onFetchExpensesRequested(
+    FetchExpensesRequested event,
+    Emitter<SchoolState> emit,
+  ) async {
+    emit(state.copyWith(isLoading: true, errorMessage: null));
+    try {
+      final expenses = await _schoolRepository.getExpenses(event.userId);
+      emit(state.copyWith(isLoading: false, expenses: expenses));
+    } catch (e) {
+      emit(state.copyWith(isLoading: false, errorMessage: 'Failed to load expenses: ${e.toString()}'));
+    }
+  }
+
+  Future<void> _onFetchNoticesRequested(
+    FetchNoticesRequested event,
+    Emitter<SchoolState> emit,
+  ) async {
+    emit(state.copyWith(isLoading: true, errorMessage: null));
+    try {
+      final notices = await _schoolRepository.getNotices();
+      emit(state.copyWith(isLoading: false, notices: notices));
+    } catch (e) {
+      emit(state.copyWith(isLoading: false, errorMessage: 'Failed to load notices: ${e.toString()}'));
+    }
+  }
+
+  Future<void> _onFetchPayrollRequested(
+    FetchPayrollRequested event,
+    Emitter<SchoolState> emit,
+  ) async {
+    emit(state.copyWith(isLoading: true, errorMessage: null));
+    try {
+      final payroll = await _schoolRepository.getPayroll(event.userId);
+      emit(state.copyWith(isLoading: false, payroll: payroll));
+    } catch (e) {
+      emit(state.copyWith(isLoading: false, errorMessage: 'Failed to load payroll: ${e.toString()}'));
+    }
+  }
+
+  Future<void> _onFetchLeavesRequested(
+    FetchLeavesRequested event,
+    Emitter<SchoolState> emit,
+  ) async {
+    emit(state.copyWith(isLoading: true, errorMessage: null));
+    try {
+      final leaves = await _schoolRepository.getLeaves(event.userId);
+      emit(state.copyWith(isLoading: false, leaves: leaves));
+    } catch (e) {
+      emit(state.copyWith(isLoading: false, errorMessage: 'Failed to load leaves: ${e.toString()}'));
+    }
+  }
+
+  Future<void> _onFetchChatChannelsRequested(
+    FetchChatChannelsRequested event,
+    Emitter<SchoolState> emit,
+  ) async {
+    emit(state.copyWith(isLoading: true, errorMessage: null));
+    try {
+      final channels = await _schoolRepository.getChatChannels(event.userId);
+      emit(state.copyWith(isLoading: false, chatChannels: channels));
+    } catch (e) {
+      emit(state.copyWith(isLoading: false, errorMessage: 'Failed to load chats: ${e.toString()}'));
     }
   }
 

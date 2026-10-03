@@ -273,6 +273,9 @@ class TimetableSlot {
   final String endTime;
   final String teacherName;
   final String classroom;
+  final String? className;
+  final String? section;
+  final String? periodName;
 
   const TimetableSlot({
     required this.id,
@@ -282,6 +285,9 @@ class TimetableSlot {
     required this.endTime,
     required this.teacherName,
     required this.classroom,
+    this.className,
+    this.section,
+    this.periodName,
   });
 }
 

@@ -23,6 +23,20 @@ class _HomeworkScreenState extends State<HomeworkScreen> with SingleTickerProvid
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _loadHomework();
+    });
+  }
+
+  void _loadHomework() {
+    final authState = context.read<AuthBloc>().state;
+    final currentUser = authState.user;
+    context.read<SchoolBloc>().add(
+      FetchHomeworkRequested(
+        userId: currentUser?.id ?? '1',
+        className: currentUser?.className,
+      ),
+    );
   }
 
   @override
@@ -168,6 +182,13 @@ class _HomeworkScreenState extends State<HomeworkScreen> with SingleTickerProvid
           style: context.h2.copyWith(color: AppColors.textPrimary),
         ),
         centerTitle: true,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.refresh_rounded, color: AppColors.textPrimary),
+            tooltip: 'Sync Homework',
+            onPressed: _loadHomework,
+          ),
+        ],
         bottom: TabBar(
           controller: _tabController,
           indicatorColor: AppColors.primary,

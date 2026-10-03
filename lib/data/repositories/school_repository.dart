@@ -14,7 +14,7 @@ abstract class SchoolRepository {
   Future<List<FeeRecord>> getFees(String userId);
   Future<List<FeeRecord>> payFees(String userId, String feeId);
   
-  Future<List<TimetableSlot>> getTimetable(String userId, {String? className});
+  Future<List<TimetableSlot>> getTimetable(String userId, {String? className, String? day});
   Future<List<ExamItem>> getExams(String userId, {String? className});
   Future<List<ExamItem>> createExam(ExamItem exam);
   Future<List<ExamItem>> uploadExamScore(String examId, double score);

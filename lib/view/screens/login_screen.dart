@@ -37,8 +37,6 @@ class _LoginScreenState extends State<LoginScreen> {
       body: BlocConsumer<AuthBloc, AuthState>(
         listener: (context, state) {
           if (state.status == AuthStatus.authenticated && state.user != null) {
-            // Trigger loading school data for the authenticated user
-            context.read<SchoolBloc>().add(LoadSchoolData(state.user!.id));
             // Route to Dashboard shell
             Navigator.pushReplacementNamed(context, RoutesName.dashboard);
           } else if (state.status == AuthStatus.error &&

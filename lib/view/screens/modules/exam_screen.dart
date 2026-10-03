@@ -27,6 +27,20 @@ class _ExamScreenState extends State<ExamScreen>
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this, initialIndex: widget.initialTab);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _loadExams();
+    });
+  }
+
+  void _loadExams() {
+    final authState = context.read<AuthBloc>().state;
+    final currentUser = authState.user;
+    context.read<SchoolBloc>().add(
+      FetchExamsRequested(
+        userId: currentUser?.id ?? '1',
+        className: currentUser?.className,
+      ),
+    );
   }
 
   @override
@@ -69,6 +83,11 @@ class _ExamScreenState extends State<ExamScreen>
         ),
         centerTitle: true,
         actions: [
+          IconButton(
+            icon: const Icon(Icons.refresh_rounded, color: AppColors.textPrimary),
+            tooltip: 'Sync Exams',
+            onPressed: _loadExams,
+          ),
           if (isTeacherOrAdmin)
             Padding(
               padding: EdgeInsets.only(right: 8.w),

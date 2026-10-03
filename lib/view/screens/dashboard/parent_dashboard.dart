@@ -114,10 +114,10 @@ class ParentDashboard extends StatelessWidget {
                         onTap: () => Navigator.pushNamed(context, RoutesName.exam, arguments: 1),
                       ),
                       _QuickAccessTile(
-                        label: 'Bus Tracking',
-                        icon: Icons.directions_bus_outlined,
-                        color: AppColors.info,
-                        onTap: () => context.showAppSnackBar('Live Track: Bus 4 is on its way, currently near Main Square.'),
+                        label: 'Timetable',
+                        icon: Icons.calendar_today_rounded,
+                        color: AppColors.primary,
+                        onTap: () => Navigator.pushNamed(context, RoutesName.timetable),
                       ),
                       _QuickAccessTile(
                         label: 'Notice',

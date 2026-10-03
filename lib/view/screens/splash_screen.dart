@@ -7,8 +7,6 @@ import '../../core/routes/routes_name.dart';
 import '../../core/theme/app_colors.dart';
 import '../../logic/auth/auth_bloc.dart';
 import '../../logic/auth/auth_event.dart';
-import '../../logic/school/school_bloc.dart';
-import '../../logic/school/school_event.dart';
 import '../../services/storage/local_storage.dart';
 
 class SplashScreen extends StatefulWidget {
@@ -56,9 +54,9 @@ class _SplashScreenState extends State<SplashScreen>
     if (!mounted) return;
 
     final user = await StorageHelper.getUserSession();
+    if (!mounted) return;
     if (user != null) {
       context.read<AuthBloc>().add(const CheckAuthStatus());
-      context.read<SchoolBloc>().add(LoadSchoolData(user.id));
       Navigator.pushReplacementNamed(context, RoutesName.dashboard);
     } else {
       Navigator.pushReplacementNamed(context, RoutesName.login);

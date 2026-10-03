@@ -10,8 +10,29 @@ import '../../../logic/auth/auth_bloc.dart';
 import '../../../data/models/school_models.dart';
 import '../../widgets/glass_card.dart';
 
-class FeesScreen extends StatelessWidget {
+class FeesScreen extends StatefulWidget {
   const FeesScreen({super.key});
+
+  @override
+  State<FeesScreen> createState() => _FeesScreenState();
+}
+
+class _FeesScreenState extends State<FeesScreen> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _loadFees();
+    });
+  }
+
+  void _loadFees() {
+    final authState = context.read<AuthBloc>().state;
+    final currentUser = authState.user;
+    context.read<SchoolBloc>().add(
+      FetchFeesRequested(currentUser?.id ?? '1'),
+    );
+  }
 
   void _showPaymentDialog(BuildContext context, FeeRecord fee) {
     final cardController = TextEditingController();
@@ -154,6 +175,13 @@ class FeesScreen extends StatelessWidget {
           style: context.h2.copyWith(color: AppColors.textPrimary),
         ),
         centerTitle: true,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.refresh_rounded, color: AppColors.textPrimary),
+            tooltip: 'Sync Fees',
+            onPressed: _loadFees,
+          ),
+        ],
       ),
       body: BlocListener<SchoolBloc, SchoolState>(
         listener: (context, state) {
@@ -169,7 +197,6 @@ class FeesScreen extends StatelessWidget {
 
             final outstanding = state.totalUnpaidFees;
             final unpaidRecords = state.fees.where((f) => f.status == FeeStatus.unpaid).toList();
-            final paidRecords = state.fees.where((f) => f.status == FeeStatus.paid).toList();
 
             return SingleChildScrollView(
               physics: const BouncingScrollPhysics(),

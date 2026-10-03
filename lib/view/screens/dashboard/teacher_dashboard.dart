@@ -23,11 +23,20 @@ class TeacherDashboard extends StatelessWidget {
       backgroundColor: AppColors.background,
       body: SafeArea(
         bottom: false,
-        child: Column(children: [SizedBox(height: 5.h,), Padding(padding: EdgeInsets.only(left: 10.w, right: 20.w), child: Row(
+        child: Column(
+          children: [
+            SizedBox(height: 5.h),
+            Padding(
+              padding: EdgeInsets.only(left: 10.w, right: 20.w),
+              child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   IconButton(
-                    icon: Icon(Icons.menu_rounded, color: AppColors.textPrimary, size: 26.sp),
+                    icon: Icon(
+                      Icons.menu_rounded,
+                      color: AppColors.textPrimary,
+                      size: 26.sp,
+                    ),
                     onPressed: onOpenDrawer,
                   ),
                   Row(
@@ -37,11 +46,15 @@ class TeacherDashboard extends StatelessWidget {
                         children: [
                           Text(
                             'Hello, ${user.name} 👋',
-                            style: context.h2.copyWith(fontWeight: FontWeight.w800),
+                            style: context.h2.copyWith(
+                              fontWeight: FontWeight.w800,
+                            ),
                           ),
                           Text(
                             user.className ?? 'Faculty Member',
-                            style: context.caption.copyWith(color: AppColors.textMuted),
+                            style: context.caption.copyWith(
+                              color: AppColors.textMuted,
+                            ),
                           ),
                         ],
                       ),
@@ -61,109 +74,132 @@ class TeacherDashboard extends StatelessWidget {
                     ],
                   ),
                 ],
-              ),),
-              10.h.height,
-          Expanded(child:  SingleChildScrollView(
-          physics: const BouncingScrollPhysics(),
-          padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 10.h),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [ 
-              // Top Check-In & Attendance Banner
-              AttendanceCheckInBanner(user: user),
-              24.h.height,
+              ),
+            ),
+            10.h.height,
+            Expanded(
+              child: SingleChildScrollView(
+                physics: const BouncingScrollPhysics(),
+                padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 10.h),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Top Check-In & Attendance Banner
+                    AttendanceCheckInBanner(user: user),
+                    24.h.height,
 
-              // Quick Access Title
-              Text(
-                'Quick Access',
-                style: context.h3.copyWith(fontWeight: FontWeight.w800),
-              ),
-              14.h.height,
+                    // Quick Access Title
+                    Text(
+                      'Quick Access',
+                      style: context.h3.copyWith(fontWeight: FontWeight.w800),
+                    ),
+                    14.h.height,
 
-              // Quick Access Grid
-              GridView.count(
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                crossAxisCount: 3,
-                crossAxisSpacing: 14.w,
-                mainAxisSpacing: 14.h,
-                childAspectRatio: 0.95,
-                children: [
-                  _QuickAccessTile(
-                    label: 'Attendance',
-                    icon: Icons.calendar_month_rounded,
-                    color: AppColors.success,
-                    onTap: () => Navigator.pushNamed(context, RoutesName.attendance),
-                  ),
-                  _QuickAccessTile(
-                    label: 'Homework',
-                    icon: Icons.add_task_rounded,
-                    color: AppColors.primary,
-                    onTap: () => Navigator.pushNamed(context, RoutesName.homework),
-                  ),
-                  _QuickAccessTile(
-                    label: 'Add Marks',
-                    icon: Icons.post_add_rounded,
-                    color: AppColors.warning,
-                    onTap: () => context.showAppSnackBar('Grades entry: Math algebra marks ready to push.'),
-                  ),
-                  _QuickAccessTile(
-                    label: 'Notice',
-                    icon: Icons.campaign_outlined,
-                    color: AppColors.secondary,
-                    onTap: () => Navigator.pushNamed(context, RoutesName.notice),
-                  ),
-                  _QuickAccessTile(
-                    label: 'Leave Apply',
-                    icon: Icons.leave_bags_at_home_outlined,
-                    color: AppColors.error,
-                    onTap: () => context.showAppSnackBar('Leave Request: Submitted for approval (10 June).'),
-                  ),
-                  _QuickAccessTile(
-                    label: 'My Classes',
-                    icon: Icons.groups_outlined,
-                    color: AppColors.info,
-                    onTap: () => context.showAppSnackBar('Assigned classes: Class 10-A, Class 9-B, Class 9-A.'),
-                  ),
-                ],
-              ),
-              24.h.height,
+                    // Quick Access Grid
+                    GridView.count(
+                      shrinkWrap: true,
+                      physics: const NeverScrollableScrollPhysics(),
+                      crossAxisCount: 3,
+                      crossAxisSpacing: 14.w,
+                      mainAxisSpacing: 14.h,
+                      childAspectRatio: 0.95,
+                      children: [
+                        _QuickAccessTile(
+                          label: 'Attendance',
+                          icon: Icons.calendar_month_rounded,
+                          color: AppColors.success,
+                          onTap: () => Navigator.pushNamed(
+                            context,
+                            RoutesName.attendance,
+                          ),
+                        ),
+                        _QuickAccessTile(
+                          label: 'Homework',
+                          icon: Icons.add_task_rounded,
+                          color: AppColors.primary,
+                          onTap: () =>
+                              Navigator.pushNamed(context, RoutesName.homework),
+                        ),
+                        _QuickAccessTile(
+                          label: 'Add Marks',
+                          icon: Icons.post_add_rounded,
+                          color: AppColors.warning,
+                          onTap: () => context.showAppSnackBar(
+                            'Grades entry: Math algebra marks ready to push.',
+                          ),
+                        ),
+                        _QuickAccessTile(
+                          label: 'Notice',
+                          icon: Icons.campaign_outlined,
+                          color: AppColors.secondary,
+                          onTap: () =>
+                              Navigator.pushNamed(context, RoutesName.notice),
+                        ),
+                        _QuickAccessTile(
+                          label: 'Timetable',
+                          icon: Icons.calendar_today_rounded,
+                          color: AppColors.primary,
+                          onTap: () => Navigator.pushNamed(
+                            context,
+                            RoutesName.timetable,
+                          ),
+                        ),
+                        _QuickAccessTile(
+                          label: 'Leave Apply',
+                          icon: Icons.leave_bags_at_home_outlined,
+                          color: AppColors.error,
+                          onTap: () =>
+                              Navigator.pushNamed(context, RoutesName.leave),
+                        ),
+                        _QuickAccessTile(
+                          label: 'My Classes',
+                          icon: Icons.groups_outlined,
+                          color: AppColors.info,
+                          onTap: () => Navigator.pushNamed(
+                            context,
+                            RoutesName.timetable,
+                          ),
+                        ),
+                      ],
+                    ),
+                    24.h.height,
 
-              // Schedule Timeline Title
-              Text(
-                "Today's Schedule",
-                style: context.h3.copyWith(fontWeight: FontWeight.w800),
-              ),
-              12.h.height,
+                    // Schedule Timeline Title
+                    Text(
+                      "Today's Schedule",
+                      style: context.h3.copyWith(fontWeight: FontWeight.w800),
+                    ),
+                    12.h.height,
 
-              // Timeline List
-              _TimelineCard(
-                subject: 'Class 9-B (Algebra)',
-                time: '09:00 AM - 09:45 AM',
-                room: 'Room 8',
-                color: AppColors.primary,
+                    // Timeline List
+                    _TimelineCard(
+                      subject: 'Class 9-B (Algebra)',
+                      time: '09:00 AM - 09:45 AM',
+                      room: 'Room 8',
+                      color: AppColors.primary,
+                    ),
+                    10.h.height,
+                    _TimelineCard(
+                      subject: 'Class 9-A (Geometry)',
+                      time: '10:00 AM - 10:45 AM',
+                      room: 'Room 5',
+                      color: AppColors.info,
+                    ),
+                    10.h.height,
+                    _TimelineCard(
+                      subject: 'Class 10-B (Trigonometry)',
+                      time: '11:00 AM - 11:45 AM',
+                      room: 'Room 12',
+                      color: AppColors.warning,
+                    ),
+
+                    100.h.height, // Spacer for floating nav bar
+                  ],
+                ),
               ),
-              10.h.height,
-              _TimelineCard(
-                subject: 'Class 9-A (Geometry)',
-                time: '10:00 AM - 10:45 AM',
-                room: 'Room 5',
-                color: AppColors.info,
-              ),
-              10.h.height,
-              _TimelineCard(
-                subject: 'Class 10-B (Trigonometry)',
-                time: '11:00 AM - 11:45 AM',
-                room: 'Room 12',
-                color: AppColors.warning,
-              ),
-              
-              100.h.height, // Spacer for floating nav bar
-            ],
-          ),
+            ),
+          ],
         ),
-        ),
-        ],),
       ),
     );
   }
@@ -260,7 +296,11 @@ class _TimelineCard extends StatelessWidget {
               children: [
                 Text(
                   subject,
-                  style: TextStyle(color: AppColors.textPrimary, fontSize: 14.sp, fontWeight: FontWeight.bold),
+                  style: TextStyle(
+                    color: AppColors.textPrimary,
+                    fontSize: 14.sp,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
                 4.h.height,
                 Text(
@@ -278,7 +318,11 @@ class _TimelineCard extends StatelessWidget {
             ),
             child: Text(
               room,
-              style: TextStyle(color: color, fontSize: 11.sp, fontWeight: FontWeight.w700),
+              style: TextStyle(
+                color: color,
+                fontSize: 11.sp,
+                fontWeight: FontWeight.w700,
+              ),
             ),
           ),
         ],

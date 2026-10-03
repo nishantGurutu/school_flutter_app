@@ -4,13 +4,31 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/extensions/context_extensions.dart';
 import '../../../logic/school/school_bloc.dart';
+import '../../../logic/school/school_event.dart';
 import '../../../logic/school/school_state.dart';
 import '../../../data/models/school_models.dart';
 
-class NoticeScreen extends StatelessWidget {
+class NoticeScreen extends StatefulWidget {
   final bool isInline;
 
   const NoticeScreen({super.key, this.isInline = false});
+
+  @override
+  State<NoticeScreen> createState() => _NoticeScreenState();
+}
+
+class _NoticeScreenState extends State<NoticeScreen> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _loadNotices();
+    });
+  }
+
+  void _loadNotices() {
+    context.read<SchoolBloc>().add(const FetchNoticesRequested());
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -19,7 +37,7 @@ class NoticeScreen extends StatelessWidget {
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
-        leading: isInline
+        leading: widget.isInline
             ? null
             : IconButton(
                 icon: const Icon(Icons.arrow_back_ios_new_rounded, color: AppColors.textPrimary),
@@ -30,6 +48,13 @@ class NoticeScreen extends StatelessWidget {
           style: context.h2.copyWith(color: AppColors.textPrimary),
         ),
         centerTitle: true,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.refresh_rounded, color: AppColors.textPrimary),
+            tooltip: 'Sync Notices',
+            onPressed: _loadNotices,
+          ),
+        ],
       ),
       body: BlocBuilder<SchoolBloc, SchoolState>(
         builder: (context, state) {

@@ -5,12 +5,35 @@ import '../../../core/routes/routes_name.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/extensions/context_extensions.dart';
 import '../../../logic/school/school_bloc.dart';
+import '../../../logic/school/school_event.dart';
 import '../../../logic/school/school_state.dart';
+import '../../../logic/auth/auth_bloc.dart';
 
-class ChatScreen extends StatelessWidget {
+class ChatScreen extends StatefulWidget {
   final bool isInline;
 
   const ChatScreen({super.key, this.isInline = false});
+
+  @override
+  State<ChatScreen> createState() => _ChatScreenState();
+}
+
+class _ChatScreenState extends State<ChatScreen> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _loadChats();
+    });
+  }
+
+  void _loadChats() {
+    final authState = context.read<AuthBloc>().state;
+    final currentUser = authState.user;
+    context.read<SchoolBloc>().add(
+      FetchChatChannelsRequested(currentUser?.id ?? '1'),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -19,7 +42,7 @@ class ChatScreen extends StatelessWidget {
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
-        leading: isInline
+        leading: widget.isInline
             ? null
             : IconButton(
                 icon: const Icon(Icons.arrow_back_ios_new_rounded, color: AppColors.textPrimary),
@@ -30,6 +53,13 @@ class ChatScreen extends StatelessWidget {
           style: context.h2.copyWith(color: AppColors.textPrimary),
         ),
         centerTitle: true,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.refresh_rounded, color: AppColors.textPrimary),
+            tooltip: 'Sync Messages',
+            onPressed: _loadChats,
+          ),
+        ],
       ),
       body: BlocBuilder<SchoolBloc, SchoolState>(
         builder: (context, state) {
@@ -83,7 +113,10 @@ class ChatScreen extends StatelessWidget {
                         borderRadius: BorderRadius.circular(16.r),
                         border: Border.all(color: AppColors.border),
                       ),
-                      child: ListTile(
+                      child: Material(
+                        color: Colors.transparent,
+                        borderRadius: BorderRadius.circular(16.r),
+                        child: ListTile(
                         leading: Container(
                           width: 48.w,
                           height: 48.w,
@@ -128,6 +161,7 @@ class ChatScreen extends StatelessWidget {
                           );
                         },
                         contentPadding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 4.h),
+                      ),
                       ),
                     );
                   },

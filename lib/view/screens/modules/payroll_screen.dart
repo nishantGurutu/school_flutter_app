@@ -4,12 +4,35 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/extensions/context_extensions.dart';
 import '../../../logic/school/school_bloc.dart';
+import '../../../logic/school/school_event.dart';
 import '../../../logic/school/school_state.dart';
+import '../../../logic/auth/auth_bloc.dart';
 import '../../../data/models/school_models.dart';
 import '../../widgets/glass_card.dart';
 
-class PayrollScreen extends StatelessWidget {
+class PayrollScreen extends StatefulWidget {
   const PayrollScreen({super.key});
+
+  @override
+  State<PayrollScreen> createState() => _PayrollScreenState();
+}
+
+class _PayrollScreenState extends State<PayrollScreen> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _loadPayroll();
+    });
+  }
+
+  void _loadPayroll() {
+    final authState = context.read<AuthBloc>().state;
+    final currentUser = authState.user;
+    context.read<SchoolBloc>().add(
+      FetchPayrollRequested(currentUser?.id ?? '1'),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -27,6 +50,13 @@ class PayrollScreen extends StatelessWidget {
           style: context.h2.copyWith(color: AppColors.textPrimary),
         ),
         centerTitle: true,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.refresh_rounded, color: AppColors.textPrimary),
+            tooltip: 'Sync Payroll',
+            onPressed: _loadPayroll,
+          ),
+        ],
       ),
       body: BlocBuilder<SchoolBloc, SchoolState>(
         builder: (context, state) {
