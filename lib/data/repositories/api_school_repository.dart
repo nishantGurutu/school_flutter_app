@@ -365,25 +365,43 @@ class ApiSchoolRepository implements SchoolRepository {
   }
 
   @override
-  Future<List<TimetableSlot>> getTimetable(String userId, {String? className}) async {
+  Future<List<TimetableSlot>> getTimetable(String userId, {String? className, String? day}) async {
     try {
-      final res = await _apiService.getApi(AppUrl.timetable);
+      String url = AppUrl.timetable;
+      final queryParams = <String, String>{};
+      if (className != null && className.trim().isNotEmpty) {
+        queryParams['className'] = className.trim();
+      }
+      if (day != null && day.trim().isNotEmpty) {
+        queryParams['day'] = day.trim();
+      }
+      if (queryParams.isNotEmpty) {
+        final qs = queryParams.entries
+            .map((e) => '${Uri.encodeComponent(e.key)}=${Uri.encodeComponent(e.value)}')
+            .join('&');
+        url = '$url?$qs';
+      }
+      final res = await _apiService.getApi(url);
       final rawList = _extractList(res);
       if (rawList.isNotEmpty) {
         return rawList.map((item) {
           return TimetableSlot(
             id: item['id'].toString(),
-            dayOfWeek: item['dayOfWeek'] ?? 'Mon',
+            dayOfWeek: item['dayOfWeek'] ?? (day ?? 'Mon'),
             subject: item['subject'] ?? '',
             startTime: item['startTime'] ?? '',
             endTime: item['endTime'] ?? '',
             teacherName: item['teacherName'] ?? '',
             classroom: item['classroom'] ?? '',
+            className: item['className']?.toString(),
+            section: item['section']?.toString(),
+            periodName: item['periodName']?.toString(),
           );
         }).toList();
       }
+      return [];
     } catch (_) {}
-    return _fallbackTimetable();
+    return [];
   }
 
   @override
@@ -698,13 +716,6 @@ class ApiSchoolRepository implements SchoolRepository {
         paymentDate: DateTime.now().subtract(const Duration(days: 10)),
         transactionId: 'TXN-982348271A',
       ),
-    ];
-  }
-
-  List<TimetableSlot> _fallbackTimetable() {
-    return [
-      TimetableSlot(id: '1', dayOfWeek: 'Mon', subject: 'Mathematics', startTime: '09:00 AM', endTime: '09:45 AM', teacherName: 'Ms. Priya', classroom: 'Room 12'),
-      TimetableSlot(id: '2', dayOfWeek: 'Mon', subject: 'English', startTime: '09:45 AM', endTime: '10:30 AM', teacherName: 'Mr. Sharma', classroom: 'Room 12'),
     ];
   }
 
