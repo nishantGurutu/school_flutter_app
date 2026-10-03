@@ -9,9 +9,11 @@ import '../../../logic/school/school_state.dart';
 import '../../../logic/auth/auth_bloc.dart';
 import '../../../data/models/school_models.dart';
 import '../../widgets/glass_card.dart';
+import '../../widgets/smooth_skeleton.dart';
 
 class FeesScreen extends StatefulWidget {
-  const FeesScreen({super.key});
+  final bool isInline;
+  const FeesScreen({super.key, this.isInline = false});
 
   @override
   State<FeesScreen> createState() => _FeesScreenState();
@@ -29,9 +31,7 @@ class _FeesScreenState extends State<FeesScreen> {
   void _loadFees() {
     final authState = context.read<AuthBloc>().state;
     final currentUser = authState.user;
-    context.read<SchoolBloc>().add(
-      FetchFeesRequested(currentUser?.id ?? '1'),
-    );
+    context.read<SchoolBloc>().add(FetchFeesRequested(currentUser?.id ?? '1'));
   }
 
   void _showPaymentDialog(BuildContext context, FeeRecord fee) {
@@ -48,13 +48,18 @@ class _FeesScreenState extends State<FeesScreen> {
           builder: (statefulCtx, setModalState) {
             return AlertDialog(
               backgroundColor: AppColors.surface,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20.r)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(20.r),
+              ),
               title: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   const Text('Payment Details'),
                   IconButton(
-                    icon: const Icon(Icons.close_rounded, color: AppColors.textSecondary),
+                    icon: const Icon(
+                      Icons.close_rounded,
+                      color: AppColors.textSecondary,
+                    ),
                     onPressed: () => Navigator.pop(dialogCtx),
                   ),
                 ],
@@ -68,12 +73,19 @@ class _FeesScreenState extends State<FeesScreen> {
                     children: [
                       Text(
                         fee.title,
-                        style: TextStyle(color: AppColors.textSecondary, fontSize: 13.sp, fontWeight: FontWeight.w600),
+                        style: TextStyle(
+                          color: AppColors.textSecondary,
+                          fontSize: 13.sp,
+                          fontWeight: FontWeight.w600,
+                        ),
                       ),
                       4.h.height,
                       Text(
                         'Total Payable: ₹${fee.amount.toStringAsFixed(0)}',
-                        style: context.h2.copyWith(color: AppColors.success, fontWeight: FontWeight.bold),
+                        style: context.h2.copyWith(
+                          color: AppColors.success,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
                       18.h.height,
 
@@ -88,27 +100,30 @@ class _FeesScreenState extends State<FeesScreen> {
                           prefixIcon: Icon(Icons.credit_card_rounded),
                         ),
                         validator: (v) {
-                          if (v == null || v.trim().isEmpty) return 'Enter card number';
-                          if (v.trim().replaceAll(" ", "").length < 16) return 'Enter valid 16-digit card';
+                          if (v == null || v.trim().isEmpty)
+                            return 'Enter card number';
+                          if (v.trim().replaceAll(" ", "").length < 16)
+                            return 'Enter valid 16-digit card';
                           return null;
                         },
                       ),
                       12.h.height,
-
-                      // Expiry & CVV
                       Row(
                         children: [
                           Expanded(
                             child: TextFormField(
                               controller: expiryController,
                               keyboardType: TextInputType.datetime,
-                              style: const TextStyle(color: AppColors.textPrimary),
+                              style: const TextStyle(
+                                color: AppColors.textPrimary,
+                              ),
                               decoration: const InputDecoration(
                                 labelText: 'Expiry Date',
                                 hintText: 'MM/YY',
                               ),
                               validator: (v) {
-                                if (v == null || v.trim().isEmpty) return 'Enter expiry';
+                                if (v == null || v.trim().isEmpty)
+                                  return 'Enter expiry';
                                 return null;
                               },
                             ),
@@ -119,14 +134,18 @@ class _FeesScreenState extends State<FeesScreen> {
                               controller: cvvController,
                               keyboardType: TextInputType.number,
                               obscureText: true,
-                              style: const TextStyle(color: AppColors.textPrimary),
+                              style: const TextStyle(
+                                color: AppColors.textPrimary,
+                              ),
                               decoration: const InputDecoration(
                                 labelText: 'CVV',
                                 hintText: '•••',
                               ),
                               validator: (v) {
-                                if (v == null || v.trim().isEmpty) return 'Enter CVV';
-                                if (v.trim().length < 3) return 'Enter 3-digit CVV';
+                                if (v == null || v.trim().isEmpty)
+                                  return 'Enter CVV';
+                                if (v.trim().length < 3)
+                                  return 'Enter 3-digit CVV';
                                 return null;
                               },
                             ),
@@ -138,15 +157,21 @@ class _FeesScreenState extends State<FeesScreen> {
                       ElevatedButton(
                         onPressed: () {
                           if (formKey.currentState!.validate()) {
-                            final userId = context.read<AuthBloc>().state.user?.id ?? 'parent_1';
+                            final userId =
+                                context.read<AuthBloc>().state.user?.id ??
+                                'parent_1';
                             context.read<SchoolBloc>().add(
-                                  PayFeeRequested(userId: userId, feeId: fee.id),
-                                );
+                              PayFeeRequested(userId: userId, feeId: fee.id),
+                            );
                             Navigator.pop(dialogCtx);
-                            context.showAppSnackBar('Contacting payment gateway. Processing transaction...');
+                            context.showAppSnackBar(
+                              'Contacting payment gateway. Processing transaction...',
+                            );
                           }
                         },
-                        child: Text('Pay Dues (₹${fee.amount.toStringAsFixed(0)})'),
+                        child: Text(
+                          'Pay Dues (₹${fee.amount.toStringAsFixed(0)})',
+                        ),
                       ),
                     ],
                   ),
@@ -166,10 +191,15 @@ class _FeesScreenState extends State<FeesScreen> {
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new_rounded, color: AppColors.textPrimary),
-          onPressed: () => Navigator.pop(context),
-        ),
+        leading: widget.isInline
+            ? null
+            : IconButton(
+                icon: const Icon(
+                  Icons.arrow_back_ios_new_rounded,
+                  color: AppColors.textPrimary,
+                ),
+                onPressed: () => Navigator.pop(context),
+              ),
         title: Text(
           'Fees & Transactions',
           style: context.h2.copyWith(color: AppColors.textPrimary),
@@ -177,7 +207,10 @@ class _FeesScreenState extends State<FeesScreen> {
         centerTitle: true,
         actions: [
           IconButton(
-            icon: const Icon(Icons.refresh_rounded, color: AppColors.textPrimary),
+            icon: const Icon(
+              Icons.refresh_rounded,
+              color: AppColors.textPrimary,
+            ),
             tooltip: 'Sync Fees',
             onPressed: _loadFees,
           ),
@@ -185,18 +218,21 @@ class _FeesScreenState extends State<FeesScreen> {
       ),
       body: BlocListener<SchoolBloc, SchoolState>(
         listener: (context, state) {
-          if (state.actionSuccessMessage != null && state.actionSuccessMessage!.contains('payment')) {
+          if (state.actionSuccessMessage != null &&
+              state.actionSuccessMessage!.contains('payment')) {
             context.showAppSnackBar(state.actionSuccessMessage!);
           }
         },
         child: BlocBuilder<SchoolBloc, SchoolState>(
           builder: (context, state) {
-            if (state.isLoading) {
-              return const Center(child: CircularProgressIndicator());
+            if (state.isLoading && state.fees.isEmpty) {
+              return const SmoothSkeletonCardList(count: 3);
             }
 
             final outstanding = state.totalUnpaidFees;
-            final unpaidRecords = state.fees.where((f) => f.status == FeeStatus.unpaid).toList();
+            final unpaidRecords = state.fees
+                .where((f) => f.status == FeeStatus.unpaid)
+                .toList();
 
             return SingleChildScrollView(
               physics: const BouncingScrollPhysics(),
@@ -207,18 +243,26 @@ class _FeesScreenState extends State<FeesScreen> {
                   // Balance Card
                   GlassCard(
                     padding: EdgeInsets.all(20.w),
-                    borderColor: outstanding > 0 ? AppColors.error.withOpacity(0.3) : AppColors.success.withOpacity(0.3),
+                    borderColor: outstanding > 0
+                        ? AppColors.error.withOpacity(0.3)
+                        : AppColors.success.withOpacity(0.3),
                     child: Column(
                       children: [
                         Text(
                           'Outstanding Dues Balance',
-                          style: TextStyle(color: AppColors.textSecondary, fontSize: 13.sp, fontWeight: FontWeight.w500),
+                          style: TextStyle(
+                            color: AppColors.textSecondary,
+                            fontSize: 13.sp,
+                            fontWeight: FontWeight.w500,
+                          ),
                         ),
                         10.h.height,
                         Text(
                           '₹${outstanding.toStringAsFixed(0)}',
                           style: TextStyle(
-                            color: outstanding > 0 ? AppColors.error : AppColors.success,
+                            color: outstanding > 0
+                                ? AppColors.error
+                                : AppColors.success,
                             fontSize: 32.sp,
                             fontWeight: FontWeight.w900,
                           ),
@@ -226,12 +270,21 @@ class _FeesScreenState extends State<FeesScreen> {
                         if (outstanding > 0) ...[
                           16.h.height,
                           ElevatedButton.icon(
-                            onPressed: () => _showPaymentDialog(context, unpaidRecords.first),
-                            icon: const Icon(Icons.payment_rounded, color: Colors.white),
+                            onPressed: () => _showPaymentDialog(
+                              context,
+                              unpaidRecords.first,
+                            ),
+                            icon: const Icon(
+                              Icons.payment_rounded,
+                              color: Colors.white,
+                            ),
                             label: const Text('Pay Dues Now'),
                             style: ElevatedButton.styleFrom(
                               backgroundColor: AppColors.error,
-                              padding: EdgeInsets.symmetric(horizontal: 24.w, vertical: 12.h),
+                              padding: EdgeInsets.symmetric(
+                                horizontal: 24.w,
+                                vertical: 12.h,
+                              ),
                               minimumSize: Size.zero,
                             ),
                           ),
@@ -240,11 +293,19 @@ class _FeesScreenState extends State<FeesScreen> {
                           Row(
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
-                              const Icon(Icons.check_circle_outline_rounded, color: AppColors.success, size: 20),
+                              const Icon(
+                                Icons.check_circle_outline_rounded,
+                                color: AppColors.success,
+                                size: 20,
+                              ),
                               8.w.width,
                               Text(
                                 'All clear! No pending payments.',
-                                style: TextStyle(color: AppColors.success, fontSize: 13.sp, fontWeight: FontWeight.bold),
+                                style: TextStyle(
+                                  color: AppColors.success,
+                                  fontSize: 13.sp,
+                                  fontWeight: FontWeight.bold,
+                                ),
                               ),
                             ],
                           ),
@@ -269,7 +330,9 @@ class _FeesScreenState extends State<FeesScreen> {
                     itemBuilder: (context, i) {
                       final fee = state.fees[i];
                       final isPaid = fee.status == FeeStatus.paid;
-                      final statusColor = isPaid ? AppColors.success : AppColors.error;
+                      final statusColor = isPaid
+                          ? AppColors.success
+                          : AppColors.error;
                       final statusLabel = isPaid ? 'Paid' : 'Unpaid';
 
                       return Container(
@@ -300,7 +363,10 @@ class _FeesScreenState extends State<FeesScreen> {
                                     isPaid
                                         ? 'Receipt No: ${fee.transactionId ?? "TXN"}'
                                         : 'Due Date: ${_formatDate(fee.dueDate)}',
-                                    style: TextStyle(color: AppColors.textMuted, fontSize: 11.sp),
+                                    style: TextStyle(
+                                      color: AppColors.textMuted,
+                                      fontSize: 11.sp,
+                                    ),
                                   ),
                                 ],
                               ),
@@ -318,14 +384,21 @@ class _FeesScreenState extends State<FeesScreen> {
                                 ),
                                 4.h.height,
                                 Container(
-                                  padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 2.h),
+                                  padding: EdgeInsets.symmetric(
+                                    horizontal: 8.w,
+                                    vertical: 2.h,
+                                  ),
                                   decoration: BoxDecoration(
                                     color: statusColor.withOpacity(0.08),
                                     borderRadius: BorderRadius.circular(8.r),
                                   ),
                                   child: Text(
                                     statusLabel,
-                                    style: TextStyle(color: statusColor, fontSize: 10.sp, fontWeight: FontWeight.bold),
+                                    style: TextStyle(
+                                      color: statusColor,
+                                      fontSize: 10.sp,
+                                      fontWeight: FontWeight.bold,
+                                    ),
                                   ),
                                 ),
                               ],
@@ -335,7 +408,7 @@ class _FeesScreenState extends State<FeesScreen> {
                       );
                     },
                   ),
-                  
+
                   100.h.height, // Spacer for floating nav bar
                 ],
               ),
@@ -347,7 +420,20 @@ class _FeesScreenState extends State<FeesScreen> {
   }
 
   String _formatDate(DateTime dt) {
-    final months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    final months = [
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec',
+    ];
     return '${dt.day} ${months[dt.month - 1]} ${dt.year}';
   }
 }

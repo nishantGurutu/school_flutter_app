@@ -8,6 +8,8 @@ import '../../../logic/auth/auth_bloc.dart';
 import '../../../logic/auth/auth_event.dart';
 import '../../../logic/auth/auth_state.dart';
 
+import '../../../core/config/role_navigation_config.dart';
+
 class CustomDrawer extends StatelessWidget {
   const CustomDrawer({super.key});
 
@@ -26,6 +28,8 @@ class CustomDrawer extends StatelessWidget {
         builder: (context, state) {
           final user = state.user;
           if (user == null) return const SizedBox.shrink();
+
+          final drawerItems = RoleNavigationConfig.getDrawerItems(user.role);
 
           return Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -70,13 +74,15 @@ class CustomDrawer extends StatelessWidget {
                     // Subtitle details
                     Text(
                       user.details,
-                      style: context.caption.copyWith(color: AppColors.textMuted),
+                      style: context.caption.copyWith(
+                        color: AppColors.textMuted,
+                      ),
                     ),
                   ],
                 ),
               ),
 
-              // Drawer Navigation Items
+              // Drawer Navigation Items (Dynamic by Role)
               Expanded(
                 child: SingleChildScrollView(
                   physics: const BouncingScrollPhysics(),
@@ -85,63 +91,40 @@ class CustomDrawer extends StatelessWidget {
                     children: [
                       _DrawerTile(
                         icon: Icons.home_rounded,
-                        label: 'Home',
+                        label: 'Home Dashboard',
                         onTap: () => Navigator.pop(context),
                       ),
-                      _DrawerTile(
-                        icon: Icons.person_outline_rounded,
-                        label: 'Profile',
-                        onTap: () {
-                          Navigator.pop(context);
-                          context.showAppSnackBar('Profile summary for ${user.name}');
-                        },
+                      ...drawerItems.map(
+                        (item) => _DrawerTile(
+                          icon: item.icon,
+                          label: item.label,
+                          onTap: () {
+                            Navigator.pop(context);
+                            if (item.route.isNotEmpty) {
+                              Navigator.pushNamed(
+                                context,
+                                item.route,
+                                arguments: item.arguments,
+                              );
+                            }
+                          },
+                        ),
                       ),
-                      _DrawerTile(
-                        icon: Icons.chat_bubble_outline_rounded,
-                        label: 'Messages',
-                        onTap: () {
-                          Navigator.pop(context);
-                          Navigator.pushNamed(context, RoutesName.chat);
-                        },
-                      ),
-                      _DrawerTile(
-                        icon: Icons.notifications_none_rounded,
-                        label: 'Notifications',
-                        onTap: () {
-                          Navigator.pop(context);
-                          Navigator.pushNamed(context, RoutesName.notice);
-                        },
-                      ),
-                      _DrawerTile(
-                        icon: Icons.calendar_month_outlined,
-                        label: 'Calendar',
-                        onTap: () {
-                          Navigator.pop(context);
-                          Navigator.pushNamed(context, RoutesName.timetable);
-                        },
-                      ),
-                      _DrawerTile(
-                        icon: Icons.folder_open_rounded,
-                        label: 'Documents',
-                        onTap: () {
-                          Navigator.pop(context);
-                          context.showAppSnackBar('Documents directory: no pending letters.');
-                        },
-                      ),
-                      _DrawerTile(
-                        icon: Icons.settings_outlined,
-                        label: 'Settings',
-                        onTap: () {
-                          Navigator.pop(context);
-                          context.showAppSnackBar('Settings: Premium Dark Mode active.');
-                        },
+                      const Padding(
+                        padding: EdgeInsets.symmetric(
+                          horizontal: 20,
+                          vertical: 8,
+                        ),
+                        child: Divider(color: AppColors.border, height: 1),
                       ),
                       _DrawerTile(
                         icon: Icons.help_outline_rounded,
                         label: 'Help & Support',
                         onTap: () {
                           Navigator.pop(context);
-                          context.showAppSnackBar('Support Desk: support@schooldesk.com');
+                          context.showAppSnackBar(
+                            'Support Desk: support@schooldesk.com',
+                          );
                         },
                       ),
                     ],
@@ -150,43 +133,70 @@ class CustomDrawer extends StatelessWidget {
               ),
 
               // Drawer Footer (Logout)
-              Padding(
-                padding: EdgeInsets.all(20.w),
-                child: OutlinedButton.icon(
-                  onPressed: () {
-                    // Close drawer
-                    Navigator.pop(context);
-                    // Confirm Dialog
-                    showDialog(
-                      context: context,
-                      builder: (dialogCtx) => AlertDialog(
-                        backgroundColor: AppColors.surface,
-                        title: const Text('Log Out'),
-                        content: const Text('Are you sure you want to log out of your session?'),
-                        actions: [
-                          TextButton(
-                            onPressed: () => Navigator.pop(dialogCtx),
-                            child: const Text('Cancel', style: TextStyle(color: AppColors.textSecondary)),
+              SafeArea(
+                child: Padding(
+                  padding: EdgeInsets.all(20.w),
+                  child: OutlinedButton.icon(
+                    onPressed: () {
+                      // Close drawer
+                      Navigator.pop(context);
+                      // Confirm Dialog
+                      showDialog(
+                        context: context,
+                        builder: (dialogCtx) => AlertDialog(
+                          backgroundColor: AppColors.surface,
+                          title: const Text('Log Out'),
+                          content: const Text(
+                            'Are you sure you want to log out of your session?',
                           ),
-                          TextButton(
-                            onPressed: () {
-                              Navigator.pop(dialogCtx);
-                              context.read<AuthBloc>().add(const LogoutRequested());
-                              Navigator.pushNamedAndRemoveUntil(context, RoutesName.login, (route) => false);
-                            },
-                            child: const Text('Log Out', style: TextStyle(color: AppColors.error)),
-                          ),
-                        ],
+                          actions: [
+                            TextButton(
+                              onPressed: () => Navigator.pop(dialogCtx),
+                              child: const Text(
+                                'Cancel',
+                                style: TextStyle(
+                                  color: AppColors.textSecondary,
+                                ),
+                              ),
+                            ),
+                            TextButton(
+                              onPressed: () {
+                                Navigator.pop(dialogCtx);
+                                context.read<AuthBloc>().add(
+                                  const LogoutRequested(),
+                                );
+                                Navigator.pushNamedAndRemoveUntil(
+                                  context,
+                                  RoutesName.login,
+                                  (route) => false,
+                                );
+                              },
+                              child: const Text(
+                                'Log Out',
+                                style: TextStyle(color: AppColors.error),
+                              ),
+                            ),
+                          ],
+                        ),
+                      );
+                    },
+                    icon: const Icon(
+                      Icons.logout_rounded,
+                      color: AppColors.error,
+                    ),
+                    label: const Text(
+                      'Logout',
+                      style: TextStyle(color: AppColors.error),
+                    ),
+                    style: OutlinedButton.styleFrom(
+                      padding: EdgeInsets.symmetric(vertical: 14.h),
+                      side: const BorderSide(
+                        color: AppColors.error,
+                        width: 1.2,
                       ),
-                    );
-                  },
-                  icon: const Icon(Icons.logout_rounded, color: AppColors.error),
-                  label: const Text('Logout', style: TextStyle(color: AppColors.error)),
-                  style: OutlinedButton.styleFrom(
-                    padding: EdgeInsets.symmetric(vertical: 14.h),
-                    side: const BorderSide(color: AppColors.error, width: 1.2),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12.r),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12.r),
+                      ),
                     ),
                   ),
                 ),

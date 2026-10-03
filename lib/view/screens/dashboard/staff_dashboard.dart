@@ -6,6 +6,7 @@ import '../../../core/theme/app_colors.dart';
 import '../../../core/extensions/context_extensions.dart';
 import '../../../data/models/user_model.dart';
 import '../../../data/models/school_models.dart';
+import '../../../core/config/role_navigation_config.dart';
 import '../../../logic/school/school_bloc.dart';
 import '../../../logic/school/school_state.dart';
 import '../../widgets/attendance_check_in_banner.dart';
@@ -261,51 +262,28 @@ class StaffDashboard extends StatelessWidget {
                       style: context.h3.copyWith(fontWeight: FontWeight.w800),
                     ),
                     14.h.height,
-                    GridView.count(
-                      shrinkWrap: true,
-                      physics: const NeverScrollableScrollPhysics(),
-                      crossAxisCount: 3,
-                      crossAxisSpacing: 14.w,
-                      mainAxisSpacing: 14.h,
-                      childAspectRatio: 0.95,
-                      children: [
-                        _QuickAccessTile(
-                          label: 'Attendance',
-                          icon: Icons.calendar_month_rounded,
-                          color: AppColors.success,
-                          onTap: () => Navigator.pushNamed(context, RoutesName.attendance),
-                        ),
-                        _QuickAccessTile(
-                          label: 'Leave Approv.',
-                          icon: Icons.assignment_turned_in_outlined,
-                          color: AppColors.primary,
-                          onTap: () => Navigator.pushNamed(context, RoutesName.leave),
-                        ),
-                        _QuickAccessTile(
-                          label: 'Expenses',
-                          icon: Icons.payments_outlined,
-                          color: AppColors.error,
-                          onTap: () => Navigator.pushNamed(context, RoutesName.expense),
-                        ),
-                        _QuickAccessTile(
-                          label: 'Payroll',
-                          icon: Icons.receipt_long_outlined,
-                          color: AppColors.warning,
-                          onTap: () => Navigator.pushNamed(context, RoutesName.payroll),
-                        ),
-                        _QuickAccessTile(
-                          label: 'Documents',
-                          icon: Icons.folder_shared_outlined,
-                          color: AppColors.info,
-                          onTap: () => context.showAppSnackBar('Document database loaded.'),
-                        ),
-                        _QuickAccessTile(
-                          label: 'Notice',
-                          icon: Icons.campaign_outlined,
-                          color: AppColors.secondary,
-                          onTap: () => Navigator.pushNamed(context, RoutesName.notice),
-                        ),
-                      ],
+                    Builder(
+                      builder: (context) {
+                        final actions = RoleNavigationConfig.getQuickAccessActions(user.role);
+                        return GridView.count(
+                          shrinkWrap: true,
+                          physics: const NeverScrollableScrollPhysics(),
+                          crossAxisCount: 3,
+                          crossAxisSpacing: 14.w,
+                          mainAxisSpacing: 14.h,
+                          childAspectRatio: 0.95,
+                          children: actions.map((act) => _QuickAccessTile(
+                            label: act.label,
+                            icon: act.icon,
+                            color: act.color,
+                            onTap: () => Navigator.pushNamed(
+                              context,
+                              act.route,
+                              arguments: act.arguments,
+                            ),
+                          )).toList(),
+                        );
+                      },
                     ),
                     24.h.height,
                     Text(

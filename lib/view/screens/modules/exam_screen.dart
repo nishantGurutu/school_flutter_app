@@ -9,11 +9,13 @@ import '../../../logic/school/school_state.dart';
 import '../../../logic/auth/auth_bloc.dart';
 import '../../../data/models/user_model.dart';
 import '../../../data/models/school_models.dart';
+import '../../widgets/smooth_skeleton.dart';
 
 class ExamScreen extends StatefulWidget {
   final int initialTab;
+  final bool isInline;
 
-  const ExamScreen({super.key, this.initialTab = 0});
+  const ExamScreen({super.key, this.initialTab = 0, this.isInline = false});
 
   @override
   State<ExamScreen> createState() => _ExamScreenState();
@@ -72,11 +74,13 @@ class _ExamScreenState extends State<ExamScreen>
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new_rounded,
-              color: AppColors.textPrimary),
-          onPressed: () => Navigator.pop(context),
-        ),
+        leading: widget.isInline
+            ? null
+            : IconButton(
+                icon: const Icon(Icons.arrow_back_ios_new_rounded,
+                    color: AppColors.textPrimary),
+                onPressed: () => Navigator.pop(context),
+              ),
         title: Text(
           'Examinations',
           style: context.h2.copyWith(color: AppColors.textPrimary),
@@ -152,8 +156,8 @@ class _ExamScreenState extends State<ExamScreen>
         },
         child: BlocBuilder<SchoolBloc, SchoolState>(
           builder: (context, state) {
-            if (state.isLoading) {
-              return const Center(child: CircularProgressIndicator());
+            if (state.isLoading && state.exams.isEmpty) {
+              return const SmoothSkeletonCardList(count: 4);
             }
 
             final upcoming = state.exams

@@ -13,6 +13,12 @@ import 'teacher_dashboard.dart';
 import 'staff_dashboard.dart';
 import '../modules/notice_screen.dart';
 import '../modules/chat_screen.dart';
+import '../modules/homework_screen.dart';
+import '../modules/fees_screen.dart';
+import '../modules/exam_screen.dart';
+import '../modules/attendance_screen.dart';
+import '../modules/leave_screen.dart';
+import '../../../core/config/role_navigation_config.dart';
 
 class DashboardShell extends StatefulWidget {
   const DashboardShell({super.key});
@@ -67,25 +73,46 @@ class _DashboardShellState extends State<DashboardShell> {
             break;
         }
 
-        // 2. Define pages for standard tabs
-        final List<Widget> pages = [
-          homeDashboard,
-          const NoticeScreen(isInline: true),
-          const ChatScreen(isInline: true),
-          _ProfileTabScreen(
-            user: user,
-            onOpenDrawer: () => _scaffoldKey.currentState?.openDrawer(),
-          ),
-        ];
+        // 2. Resolve dynamic bottom nav items for this role
+        final navItems = RoleNavigationConfig.getBottomNavItems(user.role);
+
+        // Build dynamic pages corresponding to navItems
+        final List<Widget> pages = navItems.map((item) {
+          switch (item.key) {
+            case 'home':
+              return homeDashboard;
+            case 'homework':
+              return const HomeworkScreen(isInline: true);
+            case 'exams':
+              return const ExamScreen(isInline: true);
+            case 'fees':
+              return const FeesScreen(isInline: true);
+            case 'attendance':
+              return const AttendanceScreen(isInline: true);
+            case 'leaves':
+              return const LeaveScreen(isInline: true);
+            case 'notices':
+              return const NoticeScreen(isInline: true);
+            case 'profile':
+            default:
+              return _ProfileTabScreen(
+                user: user,
+                onOpenDrawer: () => _scaffoldKey.currentState?.openDrawer(),
+              );
+          }
+        }).toList();
+
+        final safeIndex = _currentIndex >= pages.length ? 0 : _currentIndex;
 
         return Scaffold(
           key: _scaffoldKey,
           backgroundColor: AppColors.background,
           drawer: const CustomDrawer(),
           extendBody: true,
-          body: IndexedStack(index: _currentIndex, children: pages),
+          body: IndexedStack(index: safeIndex, children: pages),
           bottomNavigationBar: _FloatingBottomNavBar(
-            currentIndex: _currentIndex,
+            currentIndex: safeIndex,
+            items: navItems,
             onTap: (index) {
               setState(() {
                 _currentIndex = index;
@@ -102,20 +129,22 @@ class _DashboardShellState extends State<DashboardShell> {
 class _FloatingBottomNavBar extends StatelessWidget {
   final int currentIndex;
   final ValueChanged<int> onTap;
+  final List<RoleNavItem> items;
 
   const _FloatingBottomNavBar({
     required this.currentIndex,
     required this.onTap,
+    required this.items,
   });
 
   @override
   Widget build(BuildContext context) {
     return SafeArea(
       child: Container(
-        margin: EdgeInsets.only(left: 20.w, right: 20.w, bottom: 20.h),
-        height: 70.h,
+        margin: EdgeInsets.only(left: 16.w, right: 16.w, bottom: 16.h),
+        height: 68.h,
         decoration: BoxDecoration(
-          color: AppColors.surface.withOpacity(0.92),
+          color: AppColors.surface.withOpacity(0.95),
           borderRadius: BorderRadius.circular(24.r),
           border: Border.all(color: AppColors.border, width: 1.5),
           boxShadow: [
@@ -128,36 +157,17 @@ class _FloatingBottomNavBar extends StatelessWidget {
         ),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceAround,
-          children: [
-            _BottomNavItem(
-              icon: Icons.home_rounded,
-              activeIcon: Icons.home_rounded,
-              label: 'Home',
-              isSelected: currentIndex == 0,
-              onTap: () => onTap(0),
-            ),
-            _BottomNavItem(
-              icon: Icons.notifications_none_rounded,
-              activeIcon: Icons.notifications_rounded,
-              label: 'Notices',
-              isSelected: currentIndex == 1,
-              onTap: () => onTap(1),
-            ),
-            _BottomNavItem(
-              icon: Icons.chat_bubble_outline_rounded,
-              activeIcon: Icons.chat_bubble_rounded,
-              label: 'Chats',
-              isSelected: currentIndex == 2,
-              onTap: () => onTap(2),
-            ),
-            _BottomNavItem(
-              icon: Icons.person_outline_rounded,
-              activeIcon: Icons.person_rounded,
-              label: 'Profile',
-              isSelected: currentIndex == 3,
-              onTap: () => onTap(3),
-            ),
-          ],
+          children: items.asMap().entries.map((entry) {
+            final idx = entry.key;
+            final nav = entry.value;
+            return _BottomNavItem(
+              icon: nav.icon,
+              activeIcon: nav.activeIcon,
+              label: nav.label,
+              isSelected: currentIndex == idx,
+              onTap: () => onTap(idx),
+            );
+          }).toList(),
         ),
       ),
     );

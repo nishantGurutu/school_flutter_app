@@ -36,7 +36,8 @@ class _DateField extends StatelessWidget {
 }
 
 class LeaveScreen extends StatefulWidget {
-  const LeaveScreen({super.key});
+  final bool isInline;
+  const LeaveScreen({super.key, this.isInline = false});
 
   @override
   State<LeaveScreen> createState() => _LeaveScreenState();
@@ -66,10 +67,12 @@ class _LeaveScreenState extends State<LeaveScreen> {
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new_rounded, color: AppColors.textPrimary),
-          onPressed: () => Navigator.pop(context),
-        ),
+        leading: widget.isInline
+            ? null
+            : IconButton(
+                icon: const Icon(Icons.arrow_back_ios_new_rounded, color: AppColors.textPrimary),
+                onPressed: () => Navigator.pop(context),
+              ),
         title: Text(
           'Leave Requests',
           style: context.h2.copyWith(color: AppColors.textPrimary),

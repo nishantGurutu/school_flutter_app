@@ -8,9 +8,11 @@ import '../../../logic/school/school_event.dart';
 import '../../../logic/school/school_state.dart';
 import '../../../logic/auth/auth_bloc.dart';
 import '../../../data/models/school_models.dart';
+import '../../widgets/smooth_skeleton.dart';
 
 class HomeworkScreen extends StatefulWidget {
-  const HomeworkScreen({super.key});
+  final bool isInline;
+  const HomeworkScreen({super.key, this.isInline = false});
 
   @override
   State<HomeworkScreen> createState() => _HomeworkScreenState();
@@ -173,10 +175,12 @@ class _HomeworkScreenState extends State<HomeworkScreen> with SingleTickerProvid
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new_rounded, color: AppColors.textPrimary),
-          onPressed: () => Navigator.pop(context),
-        ),
+        leading: widget.isInline
+            ? null
+            : IconButton(
+                icon: const Icon(Icons.arrow_back_ios_new_rounded, color: AppColors.textPrimary),
+                onPressed: () => Navigator.pop(context),
+              ),
         title: Text(
           'Homework & Tasks',
           style: context.h2.copyWith(color: AppColors.textPrimary),
@@ -209,8 +213,8 @@ class _HomeworkScreenState extends State<HomeworkScreen> with SingleTickerProvid
         },
         child: BlocBuilder<SchoolBloc, SchoolState>(
           builder: (context, state) {
-            if (state.isLoading) {
-              return const Center(child: CircularProgressIndicator());
+            if (state.isLoading && state.homework.isEmpty) {
+              return const SmoothSkeletonCardList(count: 3);
             }
 
             final pendingList = state.homework.where((h) => h.status == HomeworkStatus.pending).toList();

@@ -4,6 +4,7 @@ import '../../../core/routes/routes_name.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/extensions/context_extensions.dart';
 import '../../../data/models/user_model.dart';
+import '../../../core/config/role_navigation_config.dart';
 import '../../widgets/attendance_check_in_banner.dart';
 import '../../widgets/glass_card.dart';
 
@@ -95,72 +96,29 @@ class TeacherDashboard extends StatelessWidget {
                     ),
                     14.h.height,
 
-                    // Quick Access Grid
-                    GridView.count(
-                      shrinkWrap: true,
-                      physics: const NeverScrollableScrollPhysics(),
-                      crossAxisCount: 3,
-                      crossAxisSpacing: 14.w,
-                      mainAxisSpacing: 14.h,
-                      childAspectRatio: 0.95,
-                      children: [
-                        _QuickAccessTile(
-                          label: 'Attendance',
-                          icon: Icons.calendar_month_rounded,
-                          color: AppColors.success,
-                          onTap: () => Navigator.pushNamed(
-                            context,
-                            RoutesName.attendance,
-                          ),
-                        ),
-                        _QuickAccessTile(
-                          label: 'Homework',
-                          icon: Icons.add_task_rounded,
-                          color: AppColors.primary,
-                          onTap: () =>
-                              Navigator.pushNamed(context, RoutesName.homework),
-                        ),
-                        _QuickAccessTile(
-                          label: 'Add Marks',
-                          icon: Icons.post_add_rounded,
-                          color: AppColors.warning,
-                          onTap: () => context.showAppSnackBar(
-                            'Grades entry: Math algebra marks ready to push.',
-                          ),
-                        ),
-                        _QuickAccessTile(
-                          label: 'Notice',
-                          icon: Icons.campaign_outlined,
-                          color: AppColors.secondary,
-                          onTap: () =>
-                              Navigator.pushNamed(context, RoutesName.notice),
-                        ),
-                        _QuickAccessTile(
-                          label: 'Timetable',
-                          icon: Icons.calendar_today_rounded,
-                          color: AppColors.primary,
-                          onTap: () => Navigator.pushNamed(
-                            context,
-                            RoutesName.timetable,
-                          ),
-                        ),
-                        _QuickAccessTile(
-                          label: 'Leave Apply',
-                          icon: Icons.leave_bags_at_home_outlined,
-                          color: AppColors.error,
-                          onTap: () =>
-                              Navigator.pushNamed(context, RoutesName.leave),
-                        ),
-                        _QuickAccessTile(
-                          label: 'My Classes',
-                          icon: Icons.groups_outlined,
-                          color: AppColors.info,
-                          onTap: () => Navigator.pushNamed(
-                            context,
-                            RoutesName.timetable,
-                          ),
-                        ),
-                      ],
+                    // Quick Access Grid (Dynamic)
+                    Builder(
+                      builder: (context) {
+                        final actions = RoleNavigationConfig.getQuickAccessActions(user.role);
+                        return GridView.count(
+                          shrinkWrap: true,
+                          physics: const NeverScrollableScrollPhysics(),
+                          crossAxisCount: 3,
+                          crossAxisSpacing: 14.w,
+                          mainAxisSpacing: 14.h,
+                          childAspectRatio: 0.95,
+                          children: actions.map((act) => _QuickAccessTile(
+                            label: act.label,
+                            icon: act.icon,
+                            color: act.color,
+                            onTap: () => Navigator.pushNamed(
+                              context,
+                              act.route,
+                              arguments: act.arguments,
+                            ),
+                          )).toList(),
+                        );
+                      },
                     ),
                     24.h.height,
 
