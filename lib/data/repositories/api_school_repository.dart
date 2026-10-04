@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:school_desk_app/data/network/network_api_services.dart';
 import 'package:school_desk_app/utils/app_url.dart';
 import '../models/school_models.dart';
@@ -601,20 +602,39 @@ class ApiSchoolRepository implements SchoolRepository {
       final rawList = _extractList(res);
       if (rawList.isNotEmpty) {
         return rawList.map((item) {
+          final catStr = (item['category'] ?? '').toString().toLowerCase();
           NoticeCategory cat = NoticeCategory.regular;
-          if (item['category'] == 'urgent') cat = NoticeCategory.urgent;
-          if (item['category'] == 'informational') cat = NoticeCategory.informational;
+          if (catStr.contains('urgent')) {
+            cat = NoticeCategory.urgent;
+          } else if (catStr.contains('info') || catStr.contains('academic')) {
+            cat = NoticeCategory.informational;
+          } else {
+            cat = NoticeCategory.regular;
+          }
+
+          DateTime noticeDate = DateTime.now();
+          if (item['date'] != null && item['date'].toString().trim().isNotEmpty) {
+            noticeDate = DateTime.tryParse(item['date'].toString()) ?? noticeDate;
+          } else if (item['createdAt'] != null && item['createdAt'].toString().trim().isNotEmpty) {
+            noticeDate = DateTime.tryParse(item['createdAt'].toString()) ?? noticeDate;
+          }
+
           return NoticeItem(
-            id: item['id'].toString(),
-            title: item['title'] ?? '',
-            content: item['content'] ?? '',
-            date: DateTime.tryParse(item['date'] ?? '') ?? DateTime.now(),
+            id: (item['id'] ?? item['dbId'] ?? '').toString(),
+            title: (item['title'] ?? '').toString(),
+            content: (item['content'] ?? item['title'] ?? '').toString(),
+            date: noticeDate,
             category: cat,
           );
         }).toList();
       }
-    } catch (_) {}
-    return _fallbackNotices();
+      return [];
+    } catch (e) {
+      if (kDebugMode) {
+        print('❌ Error fetching notices from API: $e');
+      }
+      return [];
+    }
   }
 
   @override

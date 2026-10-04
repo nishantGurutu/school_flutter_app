@@ -38,7 +38,7 @@ class UserModel {
     UserRole roleVal = UserRole.student;
     if (roleStr == 'PARENT') roleVal = UserRole.parent;
     if (roleStr == 'TEACHER') roleVal = UserRole.teacher;
-    if (roleStr == 'STAFF') roleVal = UserRole.staff;
+    if (roleStr == 'STAFF' || roleStr == 'PRINCIPAL') roleVal = UserRole.staff;
     if (roleStr == 'ADMIN') roleVal = UserRole.admin;
     if (roleStr == 'MASTER_ADMIN' || roleStr == 'MASTERADMIN') roleVal = UserRole.masterAdmin;
 
