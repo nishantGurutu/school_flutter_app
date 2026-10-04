@@ -10,7 +10,6 @@ import '../../../core/config/role_navigation_config.dart';
 import '../../../logic/school/school_bloc.dart';
 import '../../../logic/school/school_state.dart';
 import '../../widgets/attendance_check_in_banner.dart';
-import '../../widgets/glass_card.dart';
 
 class StaffDashboard extends StatelessWidget {
   final UserModel user;
@@ -93,25 +92,7 @@ class StaffDashboard extends StatelessWidget {
                     12.h.height,
                     BlocBuilder<SchoolBloc, SchoolState>(
                       builder: (context, state) {
-                        final stats = state.attendanceStats ??
-                            const AttendanceStats(
-                              totalStudents: 450,
-                              presentStudents: 418,
-                              absentStudents: 32,
-                              studentPercentage: 92.8,
-                              totalStaff: 45,
-                              presentStaff: 42,
-                              absentStaff: 3,
-                              staffPercentage: 93.3,
-                              overallPercentage: 93.0,
-                              classBreakdown: [
-                                ClassAttendanceStat(className: 'Class 10-A', total: 40, present: 38, absent: 2, percentage: 95.0),
-                                ClassAttendanceStat(className: 'Class 10-B', total: 42, present: 39, absent: 3, percentage: 92.8),
-                                ClassAttendanceStat(className: 'Class 9-A', total: 38, present: 36, absent: 2, percentage: 94.7),
-                                ClassAttendanceStat(className: 'Class 9-B', total: 45, present: 41, absent: 4, percentage: 91.1),
-                              ],
-                              date: 'Today',
-                            );
+                        final stats = state.attendanceStats ?? AttendanceStats.empty();
 
                         return Container(
                           padding: EdgeInsets.all(18.w),

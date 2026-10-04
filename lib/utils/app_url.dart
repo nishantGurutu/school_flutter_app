@@ -1,5 +1,5 @@
 class AppUrl {
-  static const String baseUrl = 'http://10.139.234.107:8080/api';
+  static const String baseUrl = 'http://10.176.247.107:8080/api';
   // static const String baseUrl = 'http://localhost:8080/api';
 
   // Auth Endpoints

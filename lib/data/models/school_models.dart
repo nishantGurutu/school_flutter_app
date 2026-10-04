@@ -161,20 +161,36 @@ class AttendanceStats {
     required this.date,
   });
 
+  factory AttendanceStats.empty() {
+    return const AttendanceStats(
+      totalStudents: 0,
+      presentStudents: 0,
+      absentStudents: 0,
+      studentPercentage: 0.0,
+      totalStaff: 0,
+      presentStaff: 0,
+      absentStaff: 0,
+      staffPercentage: 0.0,
+      overallPercentage: 0.0,
+      classBreakdown: [],
+      date: 'Today',
+    );
+  }
+
   factory AttendanceStats.fromJson(Map<String, dynamic> json) {
     final list = json['classBreakdown'] is List ? (json['classBreakdown'] as List) : [];
     return AttendanceStats(
-      totalStudents: (json['totalStudents'] ?? 450) is int ? json['totalStudents'] : int.tryParse(json['totalStudents'].toString()) ?? 450,
-      presentStudents: (json['presentStudents'] ?? 418) is int ? json['presentStudents'] : int.tryParse(json['presentStudents'].toString()) ?? 418,
-      absentStudents: (json['absentStudents'] ?? 32) is int ? json['absentStudents'] : int.tryParse(json['absentStudents'].toString()) ?? 32,
-      studentPercentage: (json['studentPercentage'] ?? 92.8).toDouble(),
-      totalStaff: (json['totalStaff'] ?? 45) is int ? json['totalStaff'] : int.tryParse(json['totalStaff'].toString()) ?? 45,
-      presentStaff: (json['presentStaff'] ?? 42) is int ? json['presentStaff'] : int.tryParse(json['presentStaff'].toString()) ?? 42,
-      absentStaff: (json['absentStaff'] ?? 3) is int ? json['absentStaff'] : int.tryParse(json['absentStaff'].toString()) ?? 3,
-      staffPercentage: (json['staffPercentage'] ?? 93.3).toDouble(),
-      overallPercentage: (json['overallPercentage'] ?? 93.0).toDouble(),
+      totalStudents: (json['totalStudents'] ?? 0) is int ? json['totalStudents'] : int.tryParse(json['totalStudents'].toString()) ?? 0,
+      presentStudents: (json['presentStudents'] ?? 0) is int ? json['presentStudents'] : int.tryParse(json['presentStudents'].toString()) ?? 0,
+      absentStudents: (json['absentStudents'] ?? 0) is int ? json['absentStudents'] : int.tryParse(json['absentStudents'].toString()) ?? 0,
+      studentPercentage: ((json['studentPercentage'] ?? 0.0) is num ? json['studentPercentage'] : double.tryParse(json['studentPercentage'].toString()) ?? 0.0).toDouble(),
+      totalStaff: (json['totalStaff'] ?? 0) is int ? json['totalStaff'] : int.tryParse(json['totalStaff'].toString()) ?? 0,
+      presentStaff: (json['presentStaff'] ?? 0) is int ? json['presentStaff'] : int.tryParse(json['presentStaff'].toString()) ?? 0,
+      absentStaff: (json['absentStaff'] ?? 0) is int ? json['absentStaff'] : int.tryParse(json['absentStaff'].toString()) ?? 0,
+      staffPercentage: ((json['staffPercentage'] ?? 0.0) is num ? json['staffPercentage'] : double.tryParse(json['staffPercentage'].toString()) ?? 0.0).toDouble(),
+      overallPercentage: ((json['overallPercentage'] ?? 0.0) is num ? json['overallPercentage'] : double.tryParse(json['overallPercentage'].toString()) ?? 0.0).toDouble(),
       classBreakdown: list.map((item) => ClassAttendanceStat.fromJson(item)).toList(),
-      date: json['date'] ?? '',
+      date: json['date'] ?? 'Today',
     );
   }
 }
