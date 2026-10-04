@@ -104,9 +104,9 @@ class TeacherDashboard extends StatelessWidget {
                           shrinkWrap: true,
                           physics: const NeverScrollableScrollPhysics(),
                           crossAxisCount: 3,
-                          crossAxisSpacing: 14.w,
-                          mainAxisSpacing: 14.h,
-                          childAspectRatio: 0.95,
+                          crossAxisSpacing: 12.w,
+                          mainAxisSpacing: 12.h,
+                          childAspectRatio: 0.88,
                           children: actions.map((act) => _QuickAccessTile(
                             label: act.label,
                             icon: act.icon,
@@ -182,6 +182,7 @@ class _QuickAccessTile extends StatelessWidget {
       onTap: onTap,
       borderRadius: BorderRadius.circular(16.r),
       child: Container(
+        padding: EdgeInsets.symmetric(horizontal: 6.w, vertical: 8.h),
         decoration: BoxDecoration(
           color: AppColors.surface,
           borderRadius: BorderRadius.circular(16.r),
@@ -191,22 +192,25 @@ class _QuickAccessTile extends StatelessWidget {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Container(
-              padding: EdgeInsets.all(10.w),
+              padding: EdgeInsets.all(9.w),
               decoration: BoxDecoration(
                 color: color.withOpacity(0.08),
                 borderRadius: BorderRadius.circular(12.r),
               ),
               child: Icon(icon, color: color, size: 22.sp),
             ),
-            10.h.height,
+            8.h.height,
             Text(
               label,
               style: TextStyle(
                 color: AppColors.textPrimary,
                 fontSize: 11.sp,
                 fontWeight: FontWeight.w700,
+                height: 1.15,
               ),
               textAlign: TextAlign.center,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
             ),
           ],
         ),

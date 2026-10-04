@@ -28,13 +28,10 @@ class CustomDrawer extends StatelessWidget {
         builder: (context, state) {
           final user = state.user;
           if (user == null) return const SizedBox.shrink();
-
           final drawerItems = RoleNavigationConfig.getDrawerItems(user.role);
-
           return Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              // Drawer Profile Header
               Container(
                 padding: EdgeInsets.only(
                   top: context.topPadding + 20.h,
@@ -51,7 +48,6 @@ class CustomDrawer extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // Profile Photo
                     Container(
                       width: 60.w,
                       height: 60.w,
@@ -65,13 +61,11 @@ class CustomDrawer extends StatelessWidget {
                       ),
                     ),
                     14.h.height,
-                    // User name
                     Text(
                       user.name,
                       style: context.h2.copyWith(color: AppColors.textPrimary),
                     ),
                     4.h.height,
-                    // Subtitle details
                     Text(
                       user.details,
                       style: context.caption.copyWith(
@@ -81,8 +75,6 @@ class CustomDrawer extends StatelessWidget {
                   ],
                 ),
               ),
-
-              // Drawer Navigation Items (Dynamic by Role)
               Expanded(
                 child: SingleChildScrollView(
                   physics: const BouncingScrollPhysics(),
@@ -99,10 +91,10 @@ class CustomDrawer extends StatelessWidget {
                           icon: item.icon,
                           label: item.label,
                           onTap: () {
-                            Navigator.pop(context);
+                            final navigator = Navigator.of(context);
+                            navigator.pop();
                             if (item.route.isNotEmpty) {
-                              Navigator.pushNamed(
-                                context,
+                              navigator.pushNamed(
                                 item.route,
                                 arguments: item.arguments,
                               );
@@ -121,27 +113,25 @@ class CustomDrawer extends StatelessWidget {
                         icon: Icons.help_outline_rounded,
                         label: 'Help & Support',
                         onTap: () {
-                          Navigator.pop(context);
                           context.showAppSnackBar(
                             'Support Desk: support@schooldesk.com',
                           );
+                          Navigator.pop(context);
                         },
                       ),
                     ],
                   ),
                 ),
               ),
-
-              // Drawer Footer (Logout)
               SafeArea(
                 child: Padding(
                   padding: EdgeInsets.all(20.w),
                   child: OutlinedButton.icon(
-                    onPressed: () {
-                      // Close drawer
-                      Navigator.pop(context);
-                      // Confirm Dialog
-                      showDialog(
+                    onPressed: () async {
+                      final authBloc = context.read<AuthBloc>();
+                      final navigator = Navigator.of(context);
+
+                      final shouldLogout = await showDialog<bool>(
                         context: context,
                         builder: (dialogCtx) => AlertDialog(
                           backgroundColor: AppColors.surface,
@@ -151,7 +141,7 @@ class CustomDrawer extends StatelessWidget {
                           ),
                           actions: [
                             TextButton(
-                              onPressed: () => Navigator.pop(dialogCtx),
+                              onPressed: () => Navigator.pop(dialogCtx, false),
                               child: const Text(
                                 'Cancel',
                                 style: TextStyle(
@@ -160,17 +150,7 @@ class CustomDrawer extends StatelessWidget {
                               ),
                             ),
                             TextButton(
-                              onPressed: () {
-                                Navigator.pop(dialogCtx);
-                                context.read<AuthBloc>().add(
-                                  const LogoutRequested(),
-                                );
-                                Navigator.pushNamedAndRemoveUntil(
-                                  context,
-                                  RoutesName.login,
-                                  (route) => false,
-                                );
-                              },
+                              onPressed: () => Navigator.pop(dialogCtx, true),
                               child: const Text(
                                 'Log Out',
                                 style: TextStyle(color: AppColors.error),
@@ -179,6 +159,14 @@ class CustomDrawer extends StatelessWidget {
                           ],
                         ),
                       );
+
+                      if (shouldLogout == true) {
+                        authBloc.add(const LogoutRequested());
+                        navigator.pushNamedAndRemoveUntil(
+                          RoutesName.login,
+                          (route) => false,
+                        );
+                      }
                     },
                     icon: const Icon(
                       Icons.logout_rounded,

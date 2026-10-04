@@ -15,4 +15,8 @@ class RoutesName {
   static const String expense = 'expense_screen';
   static const String payroll = 'payroll_screen';
   static const String leave = 'leave_screen';
+  static const String classes = 'classes_screen';
+  static const String lesson = 'lesson_screen';
+  static const String topics = 'topics_screen';
+  static const String academicCalendar = 'academic_calendar_screen';
 }

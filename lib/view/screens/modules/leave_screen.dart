@@ -37,7 +37,8 @@ class _DateField extends StatelessWidget {
 
 class LeaveScreen extends StatefulWidget {
   final bool isInline;
-  const LeaveScreen({super.key, this.isInline = false});
+  final String? initialFilter;
+  const LeaveScreen({super.key, this.isInline = false, this.initialFilter});
 
   @override
   State<LeaveScreen> createState() => _LeaveScreenState();
@@ -62,6 +63,13 @@ class _LeaveScreenState extends State<LeaveScreen> {
 
   @override
   Widget build(BuildContext context) {
+    String titleText = 'Leave Requests';
+    if (widget.initialFilter == 'student_leaves') {
+      titleText = 'Student Leaves';
+    } else if (widget.initialFilter == 'manage_leave') {
+      titleText = 'Manage Leave';
+    }
+
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
@@ -74,7 +82,7 @@ class _LeaveScreenState extends State<LeaveScreen> {
                 onPressed: () => Navigator.pop(context),
               ),
         title: Text(
-          'Leave Requests',
+          titleText,
           style: context.h2.copyWith(color: AppColors.textPrimary),
         ),
         centerTitle: true,

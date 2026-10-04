@@ -56,8 +56,9 @@ class StorageHelper {
     if (json.containsKey('name') && json['name'] != null) {
       await setName(json['name'].toString());
     }
-    if (json.containsKey('role') && json['role'] != null) {
-      await setRole(json['role'].toString());
+    final roleVal = json['userType'] ?? json['role'];
+    if (roleVal != null) {
+      await setRole(roleVal.toString());
     }
     if (json.containsKey('className') && json['className'] != null) {
       await setClassName(json['className'].toString());

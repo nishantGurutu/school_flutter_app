@@ -5,6 +5,7 @@ class UserModel {
   final String name;
   final String email;
   final UserRole role;
+  final String? userType;
   final String avatarUrl;
   final String? className; // e.g., "Class 10-A"
   final String details; // e.g. "Roll No: 24" or "Parent of Rohan" or "Mathematics Teacher"
@@ -21,6 +22,7 @@ class UserModel {
     required this.name,
     required this.email,
     required this.role,
+    this.userType,
     required this.avatarUrl,
     this.className,
     required this.details,
@@ -34,7 +36,9 @@ class UserModel {
   });
 
   factory UserModel.fromJson(Map<String, dynamic> json, {String? token, String? refreshToken}) {
-    String roleStr = (json['userType'] ?? json['role'] ?? 'student').toString().toUpperCase();
+    final rawUserType = json['userType']?.toString();
+    final rawRole = json['role']?.toString();
+    String roleStr = (rawUserType ?? rawRole ?? 'student').toString().toUpperCase();
     UserRole roleVal = UserRole.student;
     if (roleStr == 'PARENT') roleVal = UserRole.parent;
     if (roleStr == 'TEACHER') roleVal = UserRole.teacher;
@@ -47,6 +51,7 @@ class UserModel {
       name: json['name'] ?? 'User',
       email: json['email'] ?? '',
       role: roleVal,
+      userType: rawUserType ?? rawRole ?? roleVal.name.toUpperCase(),
       avatarUrl: json['avatarUrl'] ?? 'https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?w=150',
       className: json['className'],
       details: json['details'] ?? (roleStr == 'MASTER_ADMIN' ? 'System Administrator' : 'School Desk User'),
@@ -66,6 +71,7 @@ class UserModel {
       'name': name,
       'email': email,
       'role': role.name.toUpperCase(),
+      'userType': userType ?? role.name.toUpperCase(),
       'avatarUrl': avatarUrl,
       'className': className,
       'details': details,
@@ -78,6 +84,9 @@ class UserModel {
       'department': department,
     };
   }
+
+  bool get isTeacher =>
+      role == UserRole.teacher || (userType?.toUpperCase() == 'TEACHER');
 
   String get roleDisplayName {
     switch (role) {

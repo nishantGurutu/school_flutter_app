@@ -14,6 +14,10 @@ import '../../view/screens/modules/chat_detail_screen.dart';
 import '../../view/screens/modules/expense_screen.dart';
 import '../../view/screens/modules/payroll_screen.dart';
 import '../../view/screens/modules/leave_screen.dart';
+import '../../view/screens/modules/classes_screen.dart';
+import '../../view/screens/modules/lesson_screen.dart';
+import '../../view/screens/modules/topics_screen.dart';
+import '../../view/screens/modules/academic_calendar_screen.dart';
 import '../../data/models/chat_models.dart';
 
 class Routes {
@@ -61,7 +65,20 @@ class Routes {
         return _slideLeftRoute(const PayrollScreen());
 
       case RoutesName.leave:
-        return _slideLeftRoute(const LeaveScreen());
+        final filter = settings.arguments?.toString();
+        return _slideLeftRoute(LeaveScreen(initialFilter: filter));
+
+      case RoutesName.classes:
+        return _slideLeftRoute(const ClassesScreen());
+
+      case RoutesName.lesson:
+        return _slideLeftRoute(const LessonScreen());
+
+      case RoutesName.topics:
+        return _slideLeftRoute(const TopicsScreen());
+
+      case RoutesName.academicCalendar:
+        return _slideLeftRoute(const AcademicCalendarScreen());
 
       default:
         return MaterialPageRoute(
