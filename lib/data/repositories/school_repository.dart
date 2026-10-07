@@ -1,7 +1,9 @@
 import '../models/school_models.dart';
 import '../models/chat_models.dart';
+import '../models/home_dashboard_model.dart';
 
 abstract class SchoolRepository {
+  Future<HomeDashboardResponse?> getHomeDashboard({String? admissionNo});
   Future<List<AttendanceRecord>> getAttendance(String userId, {String? type, String? date, String? className});
   Future<List<HolidayModel>> getHolidays();
   Future<List<AttendanceRecord>> markAttendance(AttendanceRecord record);

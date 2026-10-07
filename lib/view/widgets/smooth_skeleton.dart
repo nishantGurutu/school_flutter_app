@@ -87,50 +87,83 @@ class SkeletonBox extends StatelessWidget {
 
 class SmoothSkeletonCardList extends StatelessWidget {
   final int count;
+  final bool shrinkWrap;
+  final ScrollPhysics? physics;
+  final EdgeInsetsGeometry? padding;
 
-  const SmoothSkeletonCardList({super.key, this.count = 4});
+  const SmoothSkeletonCardList({
+    super.key,
+    this.count = 4,
+    this.shrinkWrap = false,
+    this.physics,
+    this.padding,
+  });
 
   @override
   Widget build(BuildContext context) {
+    final listPadding = padding ?? EdgeInsets.symmetric(horizontal: 20.w, vertical: 16.h);
+
+    if (shrinkWrap) {
+      return SmoothShimmer(
+        child: Padding(
+          padding: listPadding,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: List.generate(
+              count,
+              (index) => Padding(
+                padding: EdgeInsets.only(bottom: index == count - 1 ? 0 : 14.h),
+                child: _buildItem(context, index),
+              ),
+            ),
+          ),
+        ),
+      );
+    }
+
     return SmoothShimmer(
       child: ListView.separated(
-        padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 16.h),
+        shrinkWrap: shrinkWrap,
+        physics: physics,
+        padding: listPadding,
         itemCount: count,
         separatorBuilder: (_, _) => SizedBox(height: 14.h),
-        itemBuilder: (context, index) {
-          return Container(
-            padding: EdgeInsets.all(16.w),
-            decoration: BoxDecoration(
-              color: AppColors.surface,
-              borderRadius: BorderRadius.circular(16.r),
-              border: Border.all(color: AppColors.border.withOpacity(0.5)),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    SkeletonBox(width: 80.w, height: 22.h, borderRadius: 12),
-                    SkeletonBox(width: 60.w, height: 16.h, borderRadius: 6),
-                  ],
-                ),
-                SizedBox(height: 12.h),
-                SkeletonBox(width: double.infinity, height: 18.h, borderRadius: 6),
-                SizedBox(height: 8.h),
-                SkeletonBox(width: 220.w, height: 14.h, borderRadius: 6),
-                SizedBox(height: 14.h),
-                Row(
-                  children: [
-                    SkeletonBox(width: 14.w, height: 14.h, borderRadius: 4),
-                    SizedBox(width: 8.w),
-                    SkeletonBox(width: 100.w, height: 12.h, borderRadius: 4),
-                  ],
-                ),
-              ],
-            ),
-          );
-        },
+        itemBuilder: _buildItem,
+      ),
+    );
+  }
+
+  Widget _buildItem(BuildContext context, int index) {
+    return Container(
+      padding: EdgeInsets.all(16.w),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(16.r),
+        border: Border.all(color: AppColors.border.withOpacity(0.5)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              SkeletonBox(width: 80.w, height: 22.h, borderRadius: 12),
+              SkeletonBox(width: 60.w, height: 16.h, borderRadius: 6),
+            ],
+          ),
+          SizedBox(height: 12.h),
+          SkeletonBox(width: double.infinity, height: 18.h, borderRadius: 6),
+          SizedBox(height: 8.h),
+          SkeletonBox(width: 220.w, height: 14.h, borderRadius: 6),
+          SizedBox(height: 14.h),
+          Row(
+            children: [
+              SkeletonBox(width: 14.w, height: 14.h, borderRadius: 4),
+              SizedBox(width: 8.w),
+              SkeletonBox(width: 100.w, height: 12.h, borderRadius: 4),
+            ],
+          ),
+        ],
       ),
     );
   }

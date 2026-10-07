@@ -3,13 +3,14 @@ import 'package:school_desk_app/data/network/network_api_services.dart';
 import 'package:school_desk_app/utils/app_url.dart';
 import '../models/school_models.dart';
 import '../models/chat_models.dart';
+import '../models/home_dashboard_model.dart';
 import 'school_repository.dart';
 
 class ApiSchoolRepository implements SchoolRepository {
   final NetworkApiService _apiService;
 
   ApiSchoolRepository({NetworkApiService? apiService})
-      : _apiService = apiService ?? NetworkApiService();
+    : _apiService = apiService ?? NetworkApiService();
 
   List _extractList(dynamic res) {
     if (res == null) return [];
@@ -51,14 +52,22 @@ class ApiSchoolRepository implements SchoolRepository {
   }
 
   @override
-  Future<List<AttendanceRecord>> getAttendance(String userId, {String? type, String? date, String? className}) async {
+  Future<List<AttendanceRecord>> getAttendance(
+    String userId, {
+    String? type,
+    String? date,
+    String? className,
+  }) async {
     List<AttendanceRecord> records = [];
     try {
       String url = AppUrl.attendance;
       List<String> queryParams = [];
-      if (type != null && type.trim().isNotEmpty) queryParams.add('type=${Uri.encodeComponent(type.trim())}');
-      if (date != null && date.trim().isNotEmpty) queryParams.add('date=${Uri.encodeComponent(date.trim())}');
-      if (className != null && className.trim().isNotEmpty) queryParams.add('className=${Uri.encodeComponent(className.trim())}');
+      if (type != null && type.trim().isNotEmpty)
+        queryParams.add('type=${Uri.encodeComponent(type.trim())}');
+      if (date != null && date.trim().isNotEmpty)
+        queryParams.add('date=${Uri.encodeComponent(date.trim())}');
+      if (className != null && className.trim().isNotEmpty)
+        queryParams.add('className=${Uri.encodeComponent(className.trim())}');
       if (queryParams.isNotEmpty) {
         url += '?${queryParams.join('&')}';
       }
@@ -69,7 +78,10 @@ class ApiSchoolRepository implements SchoolRepository {
         if (rawList.isNotEmpty) {
           records = rawList
               .where((item) => item != null && item is Map)
-              .map((item) => AttendanceRecord.fromJson(Map<String, dynamic>.from(item)))
+              .map(
+                (item) =>
+                    AttendanceRecord.fromJson(Map<String, dynamic>.from(item)),
+              )
               .toList();
         }
       }
@@ -91,7 +103,8 @@ class ApiSchoolRepository implements SchoolRepository {
       final Set<String> processedKeys = {};
 
       for (final r in records) {
-        final key = '${r.date.year}-${r.date.month.toString().padLeft(2, '0')}-${r.date.day.toString().padLeft(2, '0')}';
+        final key =
+            '${r.date.year}-${r.date.month.toString().padLeft(2, '0')}-${r.date.day.toString().padLeft(2, '0')}';
         processedKeys.add(key);
 
         HolidayModel? matchingHoliday;
@@ -103,10 +116,12 @@ class ApiSchoolRepository implements SchoolRepository {
         }
 
         if (matchingHoliday != null) {
-          merged.add(r.copyWith(
-            status: AttendanceStatus.holiday,
-            notes: matchingHoliday.title,
-          ));
+          merged.add(
+            r.copyWith(
+              status: AttendanceStatus.holiday,
+              notes: matchingHoliday.title,
+            ),
+          );
         } else {
           merged.add(r);
         }
@@ -116,18 +131,23 @@ class ApiSchoolRepository implements SchoolRepository {
       for (final h in holidays) {
         try {
           final start = DateTime.parse(h.date);
-          final end = (h.endDate != null && h.endDate!.isNotEmpty) ? DateTime.parse(h.endDate!) : start;
+          final end = (h.endDate != null && h.endDate!.isNotEmpty)
+              ? DateTime.parse(h.endDate!)
+              : start;
           DateTime cur = start;
           while (!cur.isAfter(end)) {
-            final key = '${cur.year}-${cur.month.toString().padLeft(2, '0')}-${cur.day.toString().padLeft(2, '0')}';
+            final key =
+                '${cur.year}-${cur.month.toString().padLeft(2, '0')}-${cur.day.toString().padLeft(2, '0')}';
             if (!processedKeys.contains(key)) {
               processedKeys.add(key);
-              merged.add(AttendanceRecord(
-                id: 'hol_${h.id}_$key',
-                date: cur,
-                status: AttendanceStatus.holiday,
-                notes: h.title,
-              ));
+              merged.add(
+                AttendanceRecord(
+                  id: 'hol_${h.id}_$key',
+                  date: cur,
+                  status: AttendanceStatus.holiday,
+                  notes: h.title,
+                ),
+              );
             }
             cur = cur.add(const Duration(days: 1));
           }
@@ -156,9 +176,15 @@ class ApiSchoolRepository implements SchoolRepository {
   }
 
   @override
-  Future<List<AttendanceRecord>> checkIn({required String userId, required String name, String? className, String? role}) async {
+  Future<List<AttendanceRecord>> checkIn({
+    required String userId,
+    required String name,
+    String? className,
+    String? role,
+  }) async {
     final now = DateTime.now();
-    final timeStr = '${now.hour % 12 == 0 ? 12 : now.hour % 12}:${now.minute.toString().padLeft(2, '0')} ${now.hour >= 12 ? 'PM' : 'AM'}';
+    final timeStr =
+        '${now.hour % 12 == 0 ? 12 : now.hour % 12}:${now.minute.toString().padLeft(2, '0')} ${now.hour >= 12 ? 'PM' : 'AM'}';
 
     try {
       await _apiService.postApi(AppUrl.checkIn, {
@@ -189,7 +215,12 @@ class ApiSchoolRepository implements SchoolRepository {
 
     final currentList = await getAttendance(userId);
     final today = DateTime.now();
-    final index = currentList.indexWhere((r) => r.date.year == today.year && r.date.month == today.month && r.date.day == today.day);
+    final index = currentList.indexWhere(
+      (r) =>
+          r.date.year == today.year &&
+          r.date.month == today.month &&
+          r.date.day == today.day,
+    );
 
     if (index != -1) {
       currentList[index] = currentList[index].copyWith(
@@ -200,26 +231,35 @@ class ApiSchoolRepository implements SchoolRepository {
         userId: userId,
       );
     } else {
-      currentList.insert(0, AttendanceRecord(
-        id: 'att_${now.millisecondsSinceEpoch}',
-        userId: userId,
-        date: today,
-        status: AttendanceStatus.present,
-        name: name,
-        className: className,
-        attendanceType: role,
-        checkInTime: timeStr,
-        notes: 'Checked in via App Banner',
-      ));
+      currentList.insert(
+        0,
+        AttendanceRecord(
+          id: 'att_${now.millisecondsSinceEpoch}',
+          userId: userId,
+          date: today,
+          status: AttendanceStatus.present,
+          name: name,
+          className: className,
+          attendanceType: role,
+          checkInTime: timeStr,
+          notes: 'Checked in via App Banner',
+        ),
+      );
     }
     _cachedAttendance = List.from(currentList);
     return List<AttendanceRecord>.from(_cachedAttendance!);
   }
 
   @override
-  Future<List<AttendanceRecord>> checkOut({required String userId, required String name, String? className, String? role}) async {
+  Future<List<AttendanceRecord>> checkOut({
+    required String userId,
+    required String name,
+    String? className,
+    String? role,
+  }) async {
     final now = DateTime.now();
-    final timeStr = '${now.hour % 12 == 0 ? 12 : now.hour % 12}:${now.minute.toString().padLeft(2, '0')} ${now.hour >= 12 ? 'PM' : 'AM'}';
+    final timeStr =
+        '${now.hour % 12 == 0 ? 12 : now.hour % 12}:${now.minute.toString().padLeft(2, '0')} ${now.hour >= 12 ? 'PM' : 'AM'}';
 
     try {
       await _apiService.postApi(AppUrl.checkOut, {
@@ -250,25 +290,31 @@ class ApiSchoolRepository implements SchoolRepository {
 
     final currentList = await getAttendance(userId);
     final today = DateTime.now();
-    final index = currentList.indexWhere((r) => r.date.year == today.year && r.date.month == today.month && r.date.day == today.day);
+    final index = currentList.indexWhere(
+      (r) =>
+          r.date.year == today.year &&
+          r.date.month == today.month &&
+          r.date.day == today.day,
+    );
 
     if (index != -1) {
-      currentList[index] = currentList[index].copyWith(
-        checkOutTime: timeStr,
-      );
+      currentList[index] = currentList[index].copyWith(checkOutTime: timeStr);
     } else {
-      currentList.insert(0, AttendanceRecord(
-        id: 'att_${now.millisecondsSinceEpoch}',
-        userId: userId,
-        date: today,
-        status: AttendanceStatus.present,
-        name: name,
-        className: className,
-        attendanceType: role,
-        checkInTime: timeStr,
-        checkOutTime: timeStr,
-        notes: 'Checked out via App Banner',
-      ));
+      currentList.insert(
+        0,
+        AttendanceRecord(
+          id: 'att_${now.millisecondsSinceEpoch}',
+          userId: userId,
+          date: today,
+          status: AttendanceStatus.present,
+          name: name,
+          className: className,
+          attendanceType: role,
+          checkInTime: timeStr,
+          checkOutTime: timeStr,
+          notes: 'Checked out via App Banner',
+        ),
+      );
     }
     _cachedAttendance = List.from(currentList);
     return List<AttendanceRecord>.from(_cachedAttendance!);
@@ -290,7 +336,10 @@ class ApiSchoolRepository implements SchoolRepository {
   }
 
   @override
-  Future<List<HomeworkItem>> getHomework(String userId, {String? className}) async {
+  Future<List<HomeworkItem>> getHomework(
+    String userId, {
+    String? className,
+  }) async {
     try {
       String url = AppUrl.homework;
       if (className != null && className.trim().isNotEmpty) {
@@ -305,9 +354,14 @@ class ApiSchoolRepository implements SchoolRepository {
             subject: item['subject'] ?? 'Subject',
             title: item['title'] ?? 'Title',
             description: item['description'] ?? '',
-            dueDate: DateTime.tryParse(item['dueDate'] ?? item['due_date'] ?? '') ?? DateTime.now(),
-            status: item['status'] == 'submitted' ? HomeworkStatus.submitted : HomeworkStatus.pending,
-            className: item['className'] ?? item['class_name'] ?? (className ?? ''),
+            dueDate:
+                DateTime.tryParse(item['dueDate'] ?? item['due_date'] ?? '') ??
+                DateTime.now(),
+            status: item['status'] == 'submitted'
+                ? HomeworkStatus.submitted
+                : HomeworkStatus.pending,
+            className:
+                item['className'] ?? item['class_name'] ?? (className ?? ''),
           );
         }).toList();
       }
@@ -321,7 +375,10 @@ class ApiSchoolRepository implements SchoolRepository {
   }
 
   @override
-  Future<List<HomeworkItem>> submitHomework(String userId, String homeworkId) async {
+  Future<List<HomeworkItem>> submitHomework(
+    String userId,
+    String homeworkId,
+  ) async {
     try {
       await _apiService.postApi(AppUrl.submitHomework(homeworkId), {});
     } catch (e) {
@@ -347,9 +404,15 @@ class ApiSchoolRepository implements SchoolRepository {
             id: (item['id'] ?? item['dbId'] ?? '').toString(),
             title: item['title'] ?? 'School Fee',
             amount: (item['amount'] ?? 0.0).toDouble(),
-            dueDate: DateTime.tryParse(item['dueDate'] ?? item['due_date'] ?? '') ?? DateTime.now(),
-            status: (item['status'] ?? '').toString().toLowerCase() == 'paid' ? FeeStatus.paid : FeeStatus.unpaid,
-            paymentDate: item['paymentDate'] != null ? DateTime.tryParse(item['paymentDate'].toString()) : null,
+            dueDate:
+                DateTime.tryParse(item['dueDate'] ?? item['due_date'] ?? '') ??
+                DateTime.now(),
+            status: (item['status'] ?? '').toString().toLowerCase() == 'paid'
+                ? FeeStatus.paid
+                : FeeStatus.unpaid,
+            paymentDate: item['paymentDate'] != null
+                ? DateTime.tryParse(item['paymentDate'].toString())
+                : null,
             transactionId: item['transactionId']?.toString(),
           );
         }).toList();
@@ -376,7 +439,11 @@ class ApiSchoolRepository implements SchoolRepository {
   }
 
   @override
-  Future<List<TimetableSlot>> getTimetable(String userId, {String? className, String? day}) async {
+  Future<List<TimetableSlot>> getTimetable(
+    String userId, {
+    String? className,
+    String? day,
+  }) async {
     try {
       String url = AppUrl.timetable;
       final queryParams = <String, String>{};
@@ -388,7 +455,10 @@ class ApiSchoolRepository implements SchoolRepository {
       }
       if (queryParams.isNotEmpty) {
         final qs = queryParams.entries
-            .map((e) => '${Uri.encodeComponent(e.key)}=${Uri.encodeComponent(e.value)}')
+            .map(
+              (e) =>
+                  '${Uri.encodeComponent(e.key)}=${Uri.encodeComponent(e.value)}',
+            )
             .join('&');
         url = '$url?$qs';
       }
@@ -439,16 +509,22 @@ class ApiSchoolRepository implements SchoolRepository {
             subject: item['subject'] ?? '',
             title: item['title'] ?? '',
             description: item['description'] ?? '',
-            date: DateTime.tryParse(item['date'] ?? item['examDate'] ?? '') ?? DateTime.now(),
+            date:
+                DateTime.tryParse(item['date'] ?? item['examDate'] ?? '') ??
+                DateTime.now(),
             startTime: item['startTime'] ?? item['start_time'] ?? '',
             endTime: item['endTime'] ?? item['end_time'] ?? '',
             room: item['room'] ?? item['roomNo'] ?? '',
-            maxMarks: (item['maxMarks'] ?? item['max_marks'] ?? 100.0).toDouble(),
+            maxMarks: (item['maxMarks'] ?? item['max_marks'] ?? 100.0)
+                .toDouble(),
             scoredMarks: item['scoredMarks'] != null
                 ? (item['scoredMarks']).toDouble()
-                : (item['scored_marks'] != null ? (item['scored_marks']).toDouble() : null),
+                : (item['scored_marks'] != null
+                      ? (item['scored_marks']).toDouble()
+                      : null),
             status: status,
-            className: item['className'] ?? item['class_name'] ?? (className ?? ''),
+            className:
+                item['className'] ?? item['class_name'] ?? (className ?? ''),
           );
         }).toList();
       }
@@ -529,7 +605,9 @@ class ApiSchoolRepository implements SchoolRepository {
             description: item['description'] ?? '',
             amount: (item['amount'] ?? 0.0).toDouble(),
             category: category,
-            date: DateTime.tryParse(item['date'] ?? item['createdAt'] ?? '') ?? DateTime.now(),
+            date:
+                DateTime.tryParse(item['date'] ?? item['createdAt'] ?? '') ??
+                DateTime.now(),
             status: status,
             submittedBy: item['submittedBy'] ?? 'Staff',
             approvedBy: item['approvedBy']?.toString(),
@@ -548,15 +626,12 @@ class ApiSchoolRepository implements SchoolRepository {
   @override
   Future<List<ExpenseItem>> addExpense(ExpenseItem expense) async {
     try {
-      await _apiService.postApi(
-        AppUrl.expenses,
-        {
-          'title': expense.title,
-          'description': expense.description,
-          'amount': expense.amount,
-          'category': expense.category.name,
-        },
-      );
+      await _apiService.postApi(AppUrl.expenses, {
+        'title': expense.title,
+        'description': expense.description,
+        'amount': expense.amount,
+        'category': expense.category.name,
+      });
     } catch (e) {
       if (kDebugMode) {
         print('❌ Error adding expense: $e');
@@ -566,7 +641,10 @@ class ApiSchoolRepository implements SchoolRepository {
   }
 
   @override
-  Future<List<ExpenseItem>> approveExpense(String userId, String expenseId) async {
+  Future<List<ExpenseItem>> approveExpense(
+    String userId,
+    String expenseId,
+  ) async {
     try {
       await _apiService.patchApi(AppUrl.approveExpense(expenseId), {});
     } catch (e) {
@@ -635,7 +713,8 @@ class ApiSchoolRepository implements SchoolRepository {
             employeeName: item['employeeName'] ?? '',
             designation: item['designation'] ?? '',
             reason: item['reason'] ?? '',
-            fromDate: DateTime.tryParse(item['fromDate'] ?? '') ?? DateTime.now(),
+            fromDate:
+                DateTime.tryParse(item['fromDate'] ?? '') ?? DateTime.now(),
             toDate: DateTime.tryParse(item['toDate'] ?? '') ?? DateTime.now(),
             status: status,
             appliedOn: item['appliedOn'] ?? '',
@@ -654,14 +733,11 @@ class ApiSchoolRepository implements SchoolRepository {
   @override
   Future<List<LeaveRecord>> applyLeave(LeaveRecord leave) async {
     try {
-      await _apiService.postApi(
-        AppUrl.leaves,
-        {
-          'reason': leave.reason,
-          'fromDate': leave.fromDate.toString(),
-          'toDate': leave.toDate.toString(),
-        },
-      );
+      await _apiService.postApi(AppUrl.leaves, {
+        'reason': leave.reason,
+        'fromDate': leave.fromDate.toString(),
+        'toDate': leave.toDate.toString(),
+      });
     } catch (e) {
       if (kDebugMode) {
         print('❌ Error applying leave: $e');
@@ -712,10 +788,14 @@ class ApiSchoolRepository implements SchoolRepository {
           }
 
           DateTime noticeDate = DateTime.now();
-          if (item['date'] != null && item['date'].toString().trim().isNotEmpty) {
-            noticeDate = DateTime.tryParse(item['date'].toString()) ?? noticeDate;
-          } else if (item['createdAt'] != null && item['createdAt'].toString().trim().isNotEmpty) {
-            noticeDate = DateTime.tryParse(item['createdAt'].toString()) ?? noticeDate;
+          if (item['date'] != null &&
+              item['date'].toString().trim().isNotEmpty) {
+            noticeDate =
+                DateTime.tryParse(item['date'].toString()) ?? noticeDate;
+          } else if (item['createdAt'] != null &&
+              item['createdAt'].toString().trim().isNotEmpty) {
+            noticeDate =
+                DateTime.tryParse(item['createdAt'].toString()) ?? noticeDate;
           }
 
           return NoticeItem(
@@ -742,7 +822,30 @@ class ApiSchoolRepository implements SchoolRepository {
   }
 
   @override
-  Future<List<ChatChannel>> sendMessage(String userId, String channelId, String text) async {
+  Future<List<ChatChannel>> sendMessage(
+    String userId,
+    String channelId,
+    String text,
+  ) async {
     return [];
+  }
+
+  @override
+  Future<HomeDashboardResponse?> getHomeDashboard({String? admissionNo}) async {
+    try {
+      final url = (admissionNo != null && admissionNo.trim().isNotEmpty)
+          ? AppUrl.homeDashboardWithStudent(admissionNo.trim())
+          : AppUrl.homeDashboard;
+
+      final res = await _apiService.getApi(url);
+      if (res != null && res is Map) {
+        return HomeDashboardResponse.fromJson(Map<String, dynamic>.from(res));
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        print('❌ Error fetching composite home dashboard from API: $e');
+      }
+    }
+    return null;
   }
 }

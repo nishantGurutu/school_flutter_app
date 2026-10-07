@@ -1,5 +1,5 @@
 class AppUrl {
-  static const String baseUrl = 'http://10.176.247.107:8080/api';
+  static const String baseUrl = 'http://10.103.237.107:8080/api';
   // static const String baseUrl = 'http://localhost:8080/api';
 
   // Auth Endpoints
@@ -32,4 +32,7 @@ class AppUrl {
   static String approveLeave(String id) => '$baseUrl/mobile/leaves/$id/approve';
   static String rejectLeave(String id) => '$baseUrl/mobile/leaves/$id/reject';
   static const String notices = '$baseUrl/mobile/notices';
+  static const String homeDashboard = '$baseUrl/mobile/dashboard/home';
+  static String homeDashboardWithStudent(String admissionNo) =>
+      '$baseUrl/mobile/dashboard/home?admissionNo=${Uri.encodeComponent(admissionNo)}';
 }
