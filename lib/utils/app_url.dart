@@ -35,4 +35,12 @@ class AppUrl {
   static const String homeDashboard = '$baseUrl/mobile/dashboard/home';
   static String homeDashboardWithStudent(String admissionNo) =>
       '$baseUrl/mobile/dashboard/home?admissionNo=${Uri.encodeComponent(admissionNo)}';
+
+  // Curriculum & Study Notes
+  static String subjectCurriculum(String subjectId) =>
+      '$baseUrl/mobile/subjects/$subjectId/curriculum';
+  static String chapterNotes(String chapterId) =>
+      '$baseUrl/mobile/chapters/$chapterId/notes';
+  static String topicNotes(String topicId) =>
+      '$baseUrl/mobile/topics/$topicId/notes';
 }

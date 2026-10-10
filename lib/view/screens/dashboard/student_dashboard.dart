@@ -7,6 +7,7 @@ import '../../../data/models/user_model.dart';
 import '../../../data/models/home_dashboard_model.dart';
 import '../../../data/repositories/api_school_repository.dart';
 import '../../widgets/smooth_skeleton.dart';
+import '../modules/subject_curriculum_screen.dart';
 
 class StudentDashboard extends StatefulWidget {
   final UserModel? user;
@@ -738,7 +739,20 @@ class _StudentDashboardState extends State<StudentDashboard> {
     final iconWidget = _resolveSubjectIcon(sub.name, sub.code);
 
     return GestureDetector(
-      onTap: () => context.showAppSnackBar('Opening ${sub.name} curriculum...'),
+      onTap: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => SubjectCurriculumScreen(
+              subjectId: sub.id.toString(),
+              subjectName: sub.name,
+              subjectCode: sub.code,
+              colorHex: sub.colorHex,
+              secondaryColorHex: sub.secondaryColorHex,
+            ),
+          ),
+        );
+      },
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
