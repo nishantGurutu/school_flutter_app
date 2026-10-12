@@ -264,7 +264,7 @@ class _LessonScreenState extends State<LessonScreen> {
                 Expanded(
                   child: GlassCard(
                     padding: EdgeInsets.all(14.w),
-                    borderColor: AppColors.success.withOpacity(0.3),
+                    borderColor: AppColors.success.withValues(alpha: 0.3),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
@@ -279,7 +279,7 @@ class _LessonScreenState extends State<LessonScreen> {
                 Expanded(
                   child: GlassCard(
                     padding: EdgeInsets.all(14.w),
-                    borderColor: AppColors.warning.withOpacity(0.3),
+                    borderColor: AppColors.warning.withValues(alpha: 0.3),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
@@ -294,7 +294,7 @@ class _LessonScreenState extends State<LessonScreen> {
                 Expanded(
                   child: GlassCard(
                     padding: EdgeInsets.all(14.w),
-                    borderColor: AppColors.primary.withOpacity(0.3),
+                    borderColor: AppColors.primary.withValues(alpha: 0.3),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
@@ -366,7 +366,7 @@ class _LessonScreenState extends State<LessonScreen> {
         color: AppColors.surface,
         borderRadius: BorderRadius.circular(16.r),
         border: Border.all(
-          color: item.isInProgress ? AppColors.warning.withOpacity(0.5) : AppColors.border,
+          color: item.isInProgress ? AppColors.warning.withValues(alpha: 0.5) : AppColors.border,
           width: 1.2,
         ),
       ),
@@ -382,7 +382,7 @@ class _LessonScreenState extends State<LessonScreen> {
                 Container(
                   padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 4.h),
                   decoration: BoxDecoration(
-                    color: AppColors.primary.withOpacity(0.08),
+                    color: AppColors.primary.withValues(alpha: 0.08),
                     borderRadius: BorderRadius.circular(6.r),
                   ),
                   child: Text(
@@ -397,7 +397,7 @@ class _LessonScreenState extends State<LessonScreen> {
                 Container(
                   padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 4.h),
                   decoration: BoxDecoration(
-                    color: badgeColor.withOpacity(0.12),
+                    color: badgeColor.withValues(alpha: 0.12),
                     borderRadius: BorderRadius.circular(8.r),
                   ),
                   child: Text(

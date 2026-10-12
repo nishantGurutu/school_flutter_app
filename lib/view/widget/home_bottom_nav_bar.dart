@@ -42,7 +42,7 @@ class HomeBottomNavBar extends StatelessWidget {
           border: Border.all(color: AppColors.navBorder),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.35),
+              color: Colors.black.withValues(alpha: 0.35),
               blurRadius: 18,
               offset: const Offset(0, 10),
             ),
@@ -144,7 +144,7 @@ class _CenterNavButton extends StatelessWidget {
             gradient: AppColors.purpleGlowGradient,
             boxShadow: [
               BoxShadow(
-                color: AppColors.accentPurple.withOpacity(0.45),
+                color: AppColors.accentPurple.withValues(alpha: 0.45),
                 blurRadius: 22,
                 offset: const Offset(0, 10),
               ),

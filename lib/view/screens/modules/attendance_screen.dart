@@ -157,10 +157,10 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                         padding: EdgeInsets.symmetric(
                             horizontal: 16.w, vertical: 12.h),
                         decoration: BoxDecoration(
-                          color: AppColors.primary.withOpacity(0.08),
+                          color: AppColors.primary.withValues(alpha: 0.08),
                           borderRadius: BorderRadius.circular(16.r),
                           border: Border.all(
-                              color: AppColors.primary.withOpacity(0.2)),
+                              color: AppColors.primary.withValues(alpha: 0.2)),
                         ),
                         child: Row(
                           children: [
@@ -195,7 +195,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                               padding: EdgeInsets.symmetric(
                                   horizontal: 10.w, vertical: 4.h),
                               decoration: BoxDecoration(
-                                color: AppColors.info.withOpacity(0.15),
+                                color: AppColors.info.withValues(alpha: 0.15),
                                 borderRadius: BorderRadius.circular(12.r),
                               ),
                               child: Text(
@@ -444,7 +444,7 @@ class _MetricCard extends StatelessWidget {
           Container(
             padding: EdgeInsets.all(8.w),
             decoration: BoxDecoration(
-              color: color.withOpacity(0.08),
+              color: color.withValues(alpha: 0.08),
               shape: BoxShape.circle,
             ),
             child: Icon(icon, color: color, size: 18.sp),
@@ -503,25 +503,25 @@ class _CalendarDayCell extends StatelessWidget {
     final bool holidayActive = isHoliday || record?.status == AttendanceStatus.holiday;
 
     if (holidayActive) {
-      bgColor = AppColors.info.withOpacity(0.14);
+      bgColor = AppColors.info.withValues(alpha: 0.14);
       textCol = AppColors.info;
-      borderCol = isSelected ? AppColors.primary : AppColors.info.withOpacity(0.35);
+      borderCol = isSelected ? AppColors.primary : AppColors.info.withValues(alpha: 0.35);
     } else if (record != null) {
       switch (record!.status) {
         case AttendanceStatus.present:
-          bgColor = AppColors.success.withOpacity(0.15);
+          bgColor = AppColors.success.withValues(alpha: 0.15);
           textCol = AppColors.success;
           break;
         case AttendanceStatus.absent:
-          bgColor = AppColors.error.withOpacity(0.15);
+          bgColor = AppColors.error.withValues(alpha: 0.15);
           textCol = AppColors.error;
           break;
         case AttendanceStatus.late:
-          bgColor = AppColors.warning.withOpacity(0.15);
+          bgColor = AppColors.warning.withValues(alpha: 0.15);
           textCol = AppColors.warning;
           break;
         case AttendanceStatus.holiday:
-          bgColor = AppColors.info.withOpacity(0.14);
+          bgColor = AppColors.info.withValues(alpha: 0.14);
           textCol = AppColors.info;
           break;
       }
@@ -535,7 +535,7 @@ class _CalendarDayCell extends StatelessWidget {
       child: Container(
         alignment: Alignment.center,
         decoration: BoxDecoration(
-          color: isSelected ? AppColors.primary.withOpacity(0.25) : bgColor,
+          color: isSelected ? AppColors.primary.withValues(alpha: 0.25) : bgColor,
           borderRadius: BorderRadius.circular(10.r),
           border: Border.all(
             color: isSelected ? AppColors.primary : borderCol,
@@ -682,9 +682,9 @@ class _DateDetailCard extends StatelessWidget {
               Container(
                 padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 4.h),
                 decoration: BoxDecoration(
-                  color: statusColor.withOpacity(0.12),
+                  color: statusColor.withValues(alpha: 0.12),
                   borderRadius: BorderRadius.circular(20.r),
-                  border: Border.all(color: statusColor.withOpacity(0.4)),
+                  border: Border.all(color: statusColor.withValues(alpha: 0.4)),
                 ),
                 child: Text(
                   statusLabel,
@@ -781,9 +781,9 @@ class _DateDetailCard extends StatelessWidget {
               width: double.infinity,
               padding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 10.h),
               decoration: BoxDecoration(
-                color: AppColors.info.withOpacity(0.12),
+                color: AppColors.info.withValues(alpha: 0.12),
                 borderRadius: BorderRadius.circular(12.r),
-                border: Border.all(color: AppColors.info.withOpacity(0.35)),
+                border: Border.all(color: AppColors.info.withValues(alpha: 0.35)),
               ),
               child: Row(
                 children: [

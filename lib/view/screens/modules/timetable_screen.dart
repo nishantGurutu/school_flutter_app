@@ -178,7 +178,7 @@ class _TimetableScreenState extends State<TimetableScreen> {
                             boxShadow: isSelected
                                 ? [
                                     BoxShadow(
-                                      color: AppColors.primary.withOpacity(0.25),
+                                      color: AppColors.primary.withValues(alpha: 0.25),
                                       blurRadius: 8,
                                       offset: const Offset(0, 3),
                                     )
@@ -293,7 +293,7 @@ class _TimetableScreenState extends State<TimetableScreen> {
                                           Container(
                                             padding: EdgeInsets.symmetric(horizontal: 6.w, vertical: 2.h),
                                             decoration: BoxDecoration(
-                                              color: badgeCol.withOpacity(0.1),
+                                              color: badgeCol.withValues(alpha: 0.1),
                                               borderRadius: BorderRadius.circular(6.r),
                                             ),
                                             child: Text(
@@ -379,9 +379,9 @@ class _TimetableScreenState extends State<TimetableScreen> {
                                     Container(
                                       padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 6.h),
                                       decoration: BoxDecoration(
-                                        color: badgeCol.withOpacity(0.08),
+                                        color: badgeCol.withValues(alpha: 0.08),
                                         borderRadius: BorderRadius.circular(10.r),
-                                        border: Border.all(color: badgeCol.withOpacity(0.25)),
+                                        border: Border.all(color: badgeCol.withValues(alpha: 0.25)),
                                       ),
                                       child: Text(
                                         slot.classroom,

@@ -79,8 +79,8 @@ class AttendanceCheckInBanner extends StatelessWidget {
           return GlassCard(
             padding: EdgeInsets.all(16.w),
             borderColor: hasCheckedIn
-                ? AppColors.success.withOpacity(0.4)
-                : AppColors.primary.withOpacity(0.4),
+                ? AppColors.success.withValues(alpha: 0.4)
+                : AppColors.primary.withValues(alpha: 0.4),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -94,7 +94,7 @@ class AttendanceCheckInBanner extends StatelessWidget {
                             (hasCheckedIn
                                     ? AppColors.success
                                     : AppColors.primary)
-                                .withOpacity(0.12),
+                                .withValues(alpha: 0.12),
                         shape: BoxShape.circle,
                         border: Border.all(
                           color: hasCheckedIn
@@ -150,10 +150,10 @@ class AttendanceCheckInBanner extends StatelessWidget {
                     vertical: 10.h,
                   ),
                   decoration: BoxDecoration(
-                    color: AppColors.background.withOpacity(0.6),
+                    color: AppColors.background.withValues(alpha: 0.6),
                     borderRadius: BorderRadius.circular(12.r),
                     border: Border.all(
-                      color: AppColors.border.withOpacity(0.6),
+                      color: AppColors.border.withValues(alpha: 0.6),
                     ),
                   ),
                   child: Row(
@@ -274,16 +274,16 @@ class AttendanceCheckInBanner extends StatelessWidget {
                     width: double.infinity,
                     padding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 10.h),
                     decoration: BoxDecoration(
-                      color: AppColors.info.withOpacity(0.12),
+                      color: AppColors.info.withValues(alpha: 0.12),
                       borderRadius: BorderRadius.circular(12.r),
-                      border: Border.all(color: AppColors.info.withOpacity(0.35)),
+                      border: Border.all(color: AppColors.info.withValues(alpha: 0.35)),
                     ),
                     child: Row(
                       children: [
                         Container(
                           padding: EdgeInsets.all(8.w),
                           decoration: BoxDecoration(
-                            color: AppColors.info.withOpacity(0.2),
+                            color: AppColors.info.withValues(alpha: 0.2),
                             shape: BoxShape.circle,
                           ),
                           child: Icon(
@@ -321,7 +321,7 @@ class AttendanceCheckInBanner extends StatelessWidget {
                         Container(
                           padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 4.h),
                           decoration: BoxDecoration(
-                            color: AppColors.info.withOpacity(0.2),
+                            color: AppColors.info.withValues(alpha: 0.2),
                             borderRadius: BorderRadius.circular(8.r),
                           ),
                           child: Text(
@@ -439,10 +439,10 @@ class AttendanceCheckInBanner extends StatelessWidget {
                     width: double.infinity,
                     padding: EdgeInsets.symmetric(vertical: 10.h),
                     decoration: BoxDecoration(
-                      color: AppColors.success.withOpacity(0.12),
+                      color: AppColors.success.withValues(alpha: 0.12),
                       borderRadius: BorderRadius.circular(12.r),
                       border: Border.all(
-                        color: AppColors.success.withOpacity(0.3),
+                        color: AppColors.success.withValues(alpha: 0.3),
                       ),
                     ),
                     child: Row(
@@ -522,9 +522,9 @@ class _StatusBadge extends StatelessWidget {
     return Container(
       padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 4.h),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.12),
+        color: color.withValues(alpha: 0.12),
         borderRadius: BorderRadius.circular(20.r),
-        border: Border.all(color: color.withOpacity(0.3)),
+        border: Border.all(color: color.withValues(alpha: 0.3)),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,

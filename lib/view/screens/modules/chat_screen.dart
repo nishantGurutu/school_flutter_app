@@ -122,7 +122,7 @@ class _ChatScreenState extends State<ChatScreen> {
                           height: 48.w,
                           decoration: BoxDecoration(
                             shape: BoxShape.circle,
-                            border: Border.all(color: AppColors.primary.withOpacity(0.4), width: 1.5),
+                            border: Border.all(color: AppColors.primary.withValues(alpha: 0.4), width: 1.5),
                             image: DecorationImage(
                               image: NetworkImage(ch.avatarUrl),
                               fit: BoxFit.cover,

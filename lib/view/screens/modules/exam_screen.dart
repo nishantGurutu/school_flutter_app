@@ -236,8 +236,9 @@ class _ExamListTab extends StatelessWidget {
       if (scoredExams.isNotEmpty) {
         final totalPct = scoredExams.fold(0.0, (sum, e) => sum + e.percentage);
         avgPercentage = double.parse((totalPct / scoredExams.length).toStringAsFixed(1));
-        if (avgPercentage >= 90) overallGrade = 'A+';
-        else if (avgPercentage >= 80) overallGrade = 'A';
+        if (avgPercentage >= 90) {
+          overallGrade = 'A+';
+        } else if (avgPercentage >= 80) overallGrade = 'A';
         else if (avgPercentage >= 70) overallGrade = 'B';
         else if (avgPercentage >= 60) overallGrade = 'C';
         else if (avgPercentage >= 50) overallGrade = 'D';
@@ -257,7 +258,7 @@ class _ExamListTab extends StatelessWidget {
               gradient: LinearGradient(
                 colors: [
                   AppColors.primary,
-                  AppColors.primary.withOpacity(0.85),
+                  AppColors.primary.withValues(alpha: 0.85),
                 ],
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
@@ -265,7 +266,7 @@ class _ExamListTab extends StatelessWidget {
               borderRadius: BorderRadius.circular(20.r),
               boxShadow: [
                 BoxShadow(
-                  color: AppColors.primary.withOpacity(0.25),
+                  color: AppColors.primary.withValues(alpha: 0.25),
                   blurRadius: 10,
                   offset: const Offset(0, 4),
                 ),
@@ -277,7 +278,7 @@ class _ExamListTab extends StatelessWidget {
                   width: 52.w,
                   height: 52.w,
                   decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.2),
+                    color: Colors.white.withValues(alpha: 0.2),
                     shape: BoxShape.circle,
                   ),
                   child: Center(
@@ -299,7 +300,7 @@ class _ExamListTab extends StatelessWidget {
                       Text(
                         'Child\'s Exam Performance',
                         style: TextStyle(
-                          color: Colors.white.withOpacity(0.9),
+                          color: Colors.white.withValues(alpha: 0.9),
                           fontSize: 12.sp,
                           fontWeight: FontWeight.w600,
                         ),
@@ -317,7 +318,7 @@ class _ExamListTab extends StatelessWidget {
                       Text(
                         'Grade Rating: $overallGrade (Overall Outstanding)',
                         style: TextStyle(
-                          color: Colors.white.withOpacity(0.8),
+                          color: Colors.white.withValues(alpha: 0.8),
                           fontSize: 11.sp,
                         ),
                       ),
@@ -396,7 +397,7 @@ class _ExamListTab extends StatelessWidget {
                         width: 44.w,
                         height: 44.w,
                         decoration: BoxDecoration(
-                          color: subjectColor.withOpacity(0.1),
+                          color: subjectColor.withValues(alpha: 0.1),
                           borderRadius: BorderRadius.circular(12.r),
                         ),
                         child: Center(
@@ -430,7 +431,7 @@ class _ExamListTab extends StatelessWidget {
                                   padding: EdgeInsets.symmetric(
                                       horizontal: 8.w, vertical: 4.h),
                                   decoration: BoxDecoration(
-                                    color: dateColor.withOpacity(0.08),
+                                    color: dateColor.withValues(alpha: 0.08),
                                     borderRadius: BorderRadius.circular(8.r),
                                   ),
                                   child: Text(
@@ -514,7 +515,7 @@ class _ExamListTab extends StatelessWidget {
                                 color: (exam.isPassed
                                         ? AppColors.success
                                         : AppColors.error)
-                                    .withOpacity(0.1),
+                                    .withValues(alpha: 0.1),
                                 borderRadius: BorderRadius.circular(8.r),
                               ),
                               child: Text(
@@ -568,7 +569,7 @@ class _ExamListTab extends StatelessWidget {
                           padding: EdgeInsets.symmetric(
                               horizontal: 8.w, vertical: 4.h),
                           decoration: BoxDecoration(
-                            color: AppColors.info.withOpacity(0.08),
+                            color: AppColors.info.withValues(alpha: 0.08),
                             borderRadius: BorderRadius.circular(8.r),
                           ),
                           child: Text(

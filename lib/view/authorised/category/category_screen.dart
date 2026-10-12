@@ -277,7 +277,7 @@ class _CategoryScreenState extends State<CategoryScreen>
           borderRadius: BorderRadius.circular(16.r),
           boxShadow: [
             BoxShadow(
-              color: AppColors.accentPurple.withOpacity(0.3),
+              color: AppColors.accentPurple.withValues(alpha: 0.3),
               blurRadius: 16,
               offset: const Offset(0, 4),
             ),
@@ -355,8 +355,8 @@ class _CategoryScreenState extends State<CategoryScreen>
       decoration: BoxDecoration(
         gradient: LinearGradient(
           colors: [
-            AppColors.accentPurple.withOpacity(0.9),
-            AppColors.accentPurple2.withOpacity(0.8),
+            AppColors.accentPurple.withValues(alpha: 0.9),
+            AppColors.accentPurple2.withValues(alpha: 0.8),
           ],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
@@ -364,7 +364,7 @@ class _CategoryScreenState extends State<CategoryScreen>
         borderRadius: BorderRadius.circular(24.r),
         boxShadow: [
           BoxShadow(
-            color: AppColors.accentPurple.withOpacity(0.3),
+            color: AppColors.accentPurple.withValues(alpha: 0.3),
             blurRadius: 20,
             offset: const Offset(0, 8),
           ),
@@ -387,7 +387,7 @@ class _CategoryScreenState extends State<CategoryScreen>
                 Text(
                   'Off on local services\nexplore & save daily',
                   style: context.bodySmall.copyWith(
-                    color: Colors.white.withOpacity(0.9),
+                    color: Colors.white.withValues(alpha: 0.9),
                     fontWeight: FontWeight.w600,
                   ),
                 ),
@@ -396,7 +396,7 @@ class _CategoryScreenState extends State<CategoryScreen>
           ),
           Icon(
             Icons.local_offer_rounded,
-            color: Colors.white.withOpacity(0.3),
+            color: Colors.white.withValues(alpha: 0.3),
             size: 64.sp,
           ),
         ],
@@ -515,7 +515,7 @@ class _CategoryCardState extends State<_CategoryCard>
                 border: Border.all(color: AppColors.border, width: 2.w),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withOpacity(0.3),
+                    color: Colors.black.withValues(alpha: 0.3),
                     blurRadius: 12,
                     offset: const Offset(0, 6),
                   ),

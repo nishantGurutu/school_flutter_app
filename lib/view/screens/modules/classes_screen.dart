@@ -143,7 +143,7 @@ class _ClassesScreenState extends State<ClassesScreen> {
                 Expanded(
                   child: GlassCard(
                     padding: EdgeInsets.all(16.w),
-                    borderColor: AppColors.primary.withOpacity(0.2),
+                    borderColor: AppColors.primary.withValues(alpha: 0.2),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
@@ -164,7 +164,7 @@ class _ClassesScreenState extends State<ClassesScreen> {
                 Expanded(
                   child: GlassCard(
                     padding: EdgeInsets.all(16.w),
-                    borderColor: AppColors.success.withOpacity(0.2),
+                    borderColor: AppColors.success.withValues(alpha: 0.2),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
@@ -279,7 +279,7 @@ class _ClassesScreenState extends State<ClassesScreen> {
         border: Border.all(color: AppColors.border, width: 1.2),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.02),
+            color: Colors.black.withValues(alpha: 0.02),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
@@ -299,7 +299,7 @@ class _ClassesScreenState extends State<ClassesScreen> {
                     Container(
                       padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 6.h),
                       decoration: BoxDecoration(
-                        color: AppColors.primary.withOpacity(0.1),
+                        color: AppColors.primary.withValues(alpha: 0.1),
                         borderRadius: BorderRadius.circular(8.r),
                       ),
                       child: Text(
@@ -322,7 +322,7 @@ class _ClassesScreenState extends State<ClassesScreen> {
                   Container(
                     padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 4.h),
                     decoration: BoxDecoration(
-                      color: AppColors.success.withOpacity(0.1),
+                      color: AppColors.success.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(6.r),
                     ),
                     child: Text(

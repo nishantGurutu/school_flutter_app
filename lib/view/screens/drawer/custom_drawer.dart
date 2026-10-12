@@ -223,7 +223,7 @@ class _DrawerTile extends StatelessWidget {
       onTap: onTap,
       horizontalTitleGap: 12.w,
       contentPadding: EdgeInsets.symmetric(horizontal: 24.w, vertical: 2.h),
-      hoverColor: AppColors.primary.withOpacity(0.08),
+      hoverColor: AppColors.primary.withValues(alpha: 0.08),
     );
   }
 }

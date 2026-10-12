@@ -1,751 +1,136 @@
-import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:flutter_html/flutter_html.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../../data/models/curriculum_model.dart';
 import '../../../data/repositories/api_school_repository.dart';
-import '../../../core/extensions/context_extensions.dart';
+import '../../../utils/app_url.dart';
+
+Uri? resolveNoteUrl(String? value) {
+  if (value == null || value.trim().isEmpty) return null;
+  final uri = Uri.tryParse(value.trim());
+  if (uri == null) return null;
+  final resolved = Uri.parse(AppUrl.baseUrl).resolveUri(uri);
+  return ['http', 'https'].contains(resolved.scheme) && resolved.host.isNotEmpty ? resolved : null;
+}
+
+Future<void> openNoteAttachment(BuildContext context, String? url, {bool download = false}) async {
+  final uri = resolveNoteUrl(url);
+  try {
+    if (uri == null) throw StateError('Attachment unavailable');
+    final target = download ? uri.replace(queryParameters: {...uri.queryParameters, 'attachment': 'true'}) : uri;
+    if (!await launchUrl(target, mode: LaunchMode.externalApplication)) throw StateError('Unable to open attachment');
+  } catch (_) {
+    if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Unable to open attachment. Check your connection and try again.')));
+  }
+}
 
 class TopicNotesScreen extends StatefulWidget {
-  final String? topicId;
-  final String? topicTitle;
-  final String? chapterId;
-  final String? chapterTitle;
-  final String? chapterNumber;
+  final ApiSchoolRepository? repository;
+  final String? topicId, topicTitle, chapterId, chapterTitle, chapterNumber;
   final String subjectName;
   final List<StudyNoteModel>? preloadedNotes;
-
-  const TopicNotesScreen({
-    super.key,
-    this.topicId,
-    this.topicTitle,
-    this.chapterId,
-    this.chapterTitle,
-    this.chapterNumber,
-    required this.subjectName,
-    this.preloadedNotes,
-  });
-
+  const TopicNotesScreen({super.key, this.repository, this.topicId, this.topicTitle, this.chapterId, this.chapterTitle, this.chapterNumber, required this.subjectName, this.preloadedNotes});
   @override
   State<TopicNotesScreen> createState() => _TopicNotesScreenState();
 }
 
 class _TopicNotesScreenState extends State<TopicNotesScreen> {
-  final ApiSchoolRepository _repository = ApiSchoolRepository();
-  bool _isLoading = true;
-  TopicNotesResponseModel? _topicData;
-
-  // Track download progress per note: noteId -> double (0.0 to 1.0)
-  final Map<String, double> _downloadProgress = {};
-  final Set<String> _downloadedNotes = {};
+  late final ApiSchoolRepository _repository;
+  TopicNotesResponseModel? _data;
+  bool _loading = true;
+  String? _error;
 
   @override
-  void initState() {
-    super.initState();
-    _loadTopicNotes();
-  }
+  void initState() { super.initState(); _repository = widget.repository ?? ApiSchoolRepository(); _load(); }
 
-  Future<void> _loadTopicNotes() async {
-    if (widget.preloadedNotes != null && widget.preloadedNotes!.isNotEmpty) {
-      setState(() {
-        _topicData = TopicNotesResponseModel(
-          topicId: widget.chapterId ?? widget.topicId ?? '',
-          topicTitle: widget.topicTitle ?? widget.chapterTitle ?? 'Chapter Notes',
-          chapterTitle: widget.chapterTitle ?? '',
-          chapterNumber: widget.chapterNumber ?? '',
-          subjectName: widget.subjectName,
-          notes: widget.preloadedNotes!,
-        );
-        _isLoading = false;
-      });
-      return;
-    }
-
-    setState(() => _isLoading = true);
+  Future<void> _load() async {
+    setState(() { _loading = true; _error = null; });
     try {
-      TopicNotesResponseModel? res;
-      if (widget.chapterId != null && widget.chapterId!.isNotEmpty) {
-        res = await _repository.getChapterNotes(widget.chapterId!);
-      } else if (widget.topicId != null && widget.topicId!.isNotEmpty) {
-        res = await _repository.getTopicNotes(widget.topicId!);
+      final TopicNotesResponseModel? data;
+      // Topic ID takes priority: chapter metadata must never load unrelated chapter notes.
+      if (widget.topicId?.isNotEmpty == true) {
+        data = await _repository.getTopicNotes(widget.topicId!);
+      } else if (widget.chapterId?.isNotEmpty == true) {
+        data = await _repository.getChapterNotes(widget.chapterId!);
+      } else {
+        throw StateError('Topic is missing');
       }
-      if (mounted) {
-        setState(() {
-          _topicData = res;
-          _isLoading = false;
-        });
-      }
-    } catch (e) {
-      if (mounted) {
-        setState(() => _isLoading = false);
-      }
+      if (data == null) throw StateError('Empty response');
+      if (mounted) setState(() { _data = data; _loading = false; });
+    } catch (_) {
+      if (mounted) setState(() { _loading = false; _error = 'Unable to load notes. Please try again.'; });
     }
-  }
-
-  Future<void> _handleDownloadNote(StudyNoteModel note) async {
-    if (note.fileUrl == null || note.fileUrl!.isEmpty) {
-      context.showAppSnackBar('Download URL not available for this note');
-      return;
-    }
-
-    final noteId = note.id;
-    setState(() {
-      _downloadProgress[noteId] = 0.01;
-    });
-
-    try {
-      // Create Dio client for background downloading
-      final dio = Dio();
-      
-      // Target file name
-      final fileName = note.fileName ?? '${widget.topicTitle}_Note.pdf';
-      final downloadUrl = note.fileUrl!.startsWith('http') 
-          ? note.fileUrl! 
-          : 'http://10.103.237.107:8080${note.fileUrl!}';
-
-      // Simulate & perform real download tracking
-      await dio.get(
-        downloadUrl,
-        onReceiveProgress: (received, total) {
-          if (total != -1 && mounted) {
-            setState(() {
-              _downloadProgress[noteId] = received / total;
-            });
-          }
-        },
-        options: Options(
-          responseType: ResponseType.bytes,
-          followRedirects: true,
-        ),
-      );
-
-      if (mounted) {
-        setState(() {
-          _downloadProgress[noteId] = 1.0;
-          _downloadedNotes.add(noteId);
-        });
-        context.showAppSnackBar('✅ "$fileName" downloaded successfully!');
-      }
-    } catch (e) {
-      if (mounted) {
-        setState(() {
-          _downloadProgress.remove(noteId);
-        });
-        context.showAppSnackBar('Download completed or saved to cache.');
-      }
-    }
-  }
-
-  void _openInAppReader(StudyNoteModel note) {
-    final displayTitle = widget.topicTitle ?? widget.chapterTitle ?? 'Study Notes';
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => InAppNoteReaderScreen(
-          note: note,
-          topicTitle: displayTitle,
-          subjectName: widget.subjectName,
-        ),
-      ),
-    );
   }
 
   @override
   Widget build(BuildContext context) {
-    final notes = _topicData?.notes ?? [];
-    final displayTitle = widget.topicTitle ?? widget.chapterTitle ?? 'Study Notes';
-
+    final title = _data?.topicTitle ?? widget.topicTitle ?? widget.chapterTitle ?? 'Notes';
     return Scaffold(
-      backgroundColor: const Color(0xFFF8FAFC),
-      appBar: AppBar(
-        elevation: 0,
-        backgroundColor: Colors.white,
-        iconTheme: const IconThemeData(color: Color(0xFF1E293B)),
-        title: Text(
-          displayTitle,
-          style: TextStyle(
-            color: const Color(0xFF1E293B),
-            fontSize: 16.sp,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.refresh_rounded, color: Color(0xFF4F46E5)),
-            onPressed: _loadTopicNotes,
-          ),
-        ],
-      ),
-      body: _isLoading
-          ? const Center(
-              child: CircularProgressIndicator(
-                valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF4F46E5)),
-              ),
-            )
-          : RefreshIndicator(
-              onRefresh: _loadTopicNotes,
-              child: SingleChildScrollView(
-                physics: const AlwaysScrollableScrollPhysics(),
-                padding: EdgeInsets.all(16.w),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // 1. Topic Info Card
-                    _buildTopicOverviewCard(),
-
-                    SizedBox(height: 20.h),
-
-                    // 2. Section Header
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text(
-                          'Study Notes & Materials',
-                          style: TextStyle(
-                            fontSize: 16.sp,
-                            fontWeight: FontWeight.bold,
-                            color: const Color(0xFF1E293B),
-                          ),
-                        ),
-                        Container(
-                          padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 4.h),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFF4F46E5).withOpacity(0.1),
-                            borderRadius: BorderRadius.circular(12.r),
-                          ),
-                          child: Text(
-                            '${notes.length} Available',
-                            style: TextStyle(
-                              fontSize: 11.sp,
-                              fontWeight: FontWeight.bold,
-                              color: const Color(0xFF4F46E5),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-
-                    SizedBox(height: 12.h),
-
-                    // 3. Notes Cards List
-                    if (notes.isEmpty)
-                      _buildEmptyNotesState()
-                    else
-                      ListView.separated(
-                        shrinkWrap: true,
-                        physics: const NeverScrollableScrollPhysics(),
-                        itemCount: notes.length,
-                        separatorBuilder: (_, __) => SizedBox(height: 14.h),
-                        itemBuilder: (context, index) {
-                          final note = notes[index];
-                          return _buildNoteCard(note);
-                        },
-                      ),
-
-                    SizedBox(height: 40.h),
-                  ],
-                ),
-              ),
-            ),
-    );
-  }
-
-  Widget _buildTopicOverviewCard() {
-    final chapterTitle = _topicData?.chapterTitle ?? '';
-    final chapterNum = _topicData?.chapterNumber ?? '';
-    final difficulty = _topicData?.difficulty ?? 'Medium';
-    final minutes = _topicData?.estimatedMinutes ?? 30;
-    final desc = _topicData?.topicDescription;
-
-    Color diffColor = const Color(0xFF10B981);
-    if (difficulty.toLowerCase() == 'medium') diffColor = const Color(0xFFF59E0B);
-    if (difficulty.toLowerCase() == 'hard') diffColor = const Color(0xFFEF4444);
-
-    return Container(
-      padding: EdgeInsets.all(18.w),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(20.r),
-        border: Border.all(color: Colors.grey.shade200),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.03),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              if (chapterNum.isNotEmpty) ...[
-                Text(
-                  '$chapterNum • $chapterTitle',
-                  style: TextStyle(
-                    fontSize: 11.sp,
-                    fontWeight: FontWeight.w600,
-                    color: const Color(0xFF4F46E5),
-                  ),
-                ),
-              ],
-              const Spacer(),
-              Container(
-                padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 3.h),
-                decoration: BoxDecoration(
-                  color: diffColor.withOpacity(0.12),
-                  borderRadius: BorderRadius.circular(8.r),
-                ),
-                child: Text(
-                  difficulty,
-                  style: TextStyle(
-                    color: diffColor,
-                    fontSize: 10.sp,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ),
-              SizedBox(width: 6.w),
-              Container(
-                padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 3.h),
-                decoration: BoxDecoration(
-                  color: Colors.grey.shade100,
-                  borderRadius: BorderRadius.circular(8.r),
-                ),
-                child: Text(
-                  '$minutes mins',
-                  style: TextStyle(
-                    color: Colors.grey.shade600,
-                    fontSize: 10.sp,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ),
-            ],
-          ),
-          SizedBox(height: 10.h),
-          Text(
-            widget.topicTitle ?? widget.chapterTitle ?? 'Study Notes',
-            style: TextStyle(
-              fontSize: 17.sp,
-              fontWeight: FontWeight.bold,
-              color: const Color(0xFF0F172A),
-            ),
-          ),
-          if (desc != null && desc.isNotEmpty) ...[
-            SizedBox(height: 8.h),
-            Text(
-              desc,
-              style: TextStyle(
-                fontSize: 12.sp,
-                color: Colors.grey.shade600,
-                height: 1.4,
-              ),
-            ),
-          ],
-        ],
-      ),
-    );
-  }
-
-  Widget _buildEmptyNotesState() {
-    return Container(
-      padding: EdgeInsets.all(24.w),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(20.r),
-        border: Border.all(color: Colors.grey.shade200),
-      ),
-      child: Center(
-        child: Column(
+      appBar: AppBar(title: Text(title), actions: [IconButton(tooltip: 'Refresh notes', onPressed: _loading ? null : _load, icon: const Icon(Icons.refresh))]),
+      body: _loading ? const Center(child: CircularProgressIndicator())
+        : _error != null ? Center(child: Column(mainAxisSize: MainAxisSize.min, children: [Text(_error!), TextButton(onPressed: _load, child: const Text('Retry'))]))
+        : RefreshIndicator(onRefresh: _load, child: ListView(
+          physics: const AlwaysScrollableScrollPhysics(), padding: const EdgeInsets.all(16),
           children: [
-            Icon(Icons.description_outlined, size: 48.sp, color: Colors.grey.shade300),
-            SizedBox(height: 12.h),
-            Text(
-              'No study notes uploaded for this topic yet',
-              style: TextStyle(fontSize: 14.sp, fontWeight: FontWeight.w600, color: Colors.grey.shade600),
-            ),
-            SizedBox(height: 4.h),
-            Text(
-              'Your teacher will attach lecture PDFs and revision materials here.',
-              textAlign: TextAlign.center,
-              style: TextStyle(fontSize: 12.sp, color: Colors.grey.shade400),
-            ),
+            Text([_data?.subjectName.isNotEmpty == true ? _data!.subjectName : widget.subjectName, _data?.chapterTitle ?? widget.chapterTitle ?? ''].where((s) => s.isNotEmpty).join(' / '), style: Theme.of(context).textTheme.labelLarge),
+            const SizedBox(height: 12),
+            Text(title, style: Theme.of(context).textTheme.headlineSmall),
+            if (_data?.topicDescription?.isNotEmpty == true) Padding(padding: const EdgeInsets.symmetric(vertical: 12), child: Text(_data!.topicDescription!)),
+            const SizedBox(height: 16),
+            Text('Study notes (${_data?.notes.length ?? 0})', style: Theme.of(context).textTheme.titleMedium),
+            if (_data?.notes.isEmpty != false) const Padding(padding: EdgeInsets.symmetric(vertical: 48), child: Column(children: [Icon(Icons.menu_book_outlined, size: 48), SizedBox(height: 12), Text('No notes published for this topic yet.')]))
+            else ..._data!.notes.map((note) => Card(child: Padding(padding: const EdgeInsets.all(16), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text(note.title, style: Theme.of(context).textTheme.titleMedium),
+              if (note.description?.isNotEmpty == true) Padding(padding: const EdgeInsets.only(top: 8), child: Text(note.description!)),
+              const SizedBox(height: 8),
+              Text('By ${note.teacherName} • ${note.uploadedDate}'),
+              if (note.fileName?.isNotEmpty == true) Text('${note.fileName} • ${note.fileSizeFormatted}'),
+              const SizedBox(height: 12),
+              Wrap(spacing: 8, runSpacing: 8, children: [
+                if (note.isPreviewable) FilledButton.icon(onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => InAppNoteReaderScreen(note: note, topicTitle: title, subjectName: widget.subjectName))), icon: const Icon(Icons.menu_book), label: const Text('Read notes')),
+                if (note.isDownloadable && resolveNoteUrl(note.fileUrl) != null) OutlinedButton.icon(onPressed: () => openNoteAttachment(context, note.fileUrl, download: true), icon: const Icon(Icons.download), label: const Text('Download attachment')),
+              ]),
+            ]))))
           ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildNoteCard(StudyNoteModel note) {
-    final progress = _downloadProgress[note.id];
-    final isDownloading = progress != null && progress > 0.0 && progress < 1.0;
-    final isDownloaded = _downloadedNotes.contains(note.id) || progress == 1.0;
-
-    return Container(
-      padding: EdgeInsets.all(16.w),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(20.r),
-        border: Border.all(color: Colors.grey.shade200),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.02),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Row 1: Note File Icon & Metadata
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Container(
-                width: 44.w,
-                height: 44.w,
-                decoration: BoxDecoration(
-                  color: const Color(0xFFEF4444).withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(14.r),
-                ),
-                alignment: Alignment.center,
-                child: Icon(
-                  Icons.picture_as_pdf_rounded,
-                  color: const Color(0xFFEF4444),
-                  size: 24.sp,
-                ),
-              ),
-              SizedBox(width: 14.w),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      note.title,
-                      style: TextStyle(
-                        fontSize: 14.sp,
-                        fontWeight: FontWeight.bold,
-                        color: const Color(0xFF1E293B),
-                      ),
-                    ),
-                    SizedBox(height: 4.h),
-                    Row(
-                      children: [
-                        Text(
-                          note.fileType,
-                          style: TextStyle(
-                            fontSize: 11.sp,
-                            fontWeight: FontWeight.bold,
-                            color: const Color(0xFF4F46E5),
-                          ),
-                        ),
-                        Text(
-                          ' • ${note.fileSizeFormatted} • Uploaded by ${note.teacherName}',
-                          style: TextStyle(
-                            fontSize: 11.sp,
-                            color: Colors.grey.shade500,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-
-          if (note.description != null && note.description!.isNotEmpty) ...[
-            SizedBox(height: 10.h),
-            Text(
-              note.description!,
-              style: TextStyle(
-                fontSize: 12.sp,
-                color: Colors.grey.shade600,
-                height: 1.35,
-              ),
-            ),
-          ],
-
-          // Download Progress Bar
-          if (isDownloading) ...[
-            SizedBox(height: 12.h),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      'Downloading offline copy...',
-                      style: TextStyle(fontSize: 11.sp, color: const Color(0xFF4F46E5), fontWeight: FontWeight.w600),
-                    ),
-                    Text(
-                      '${(progress * 100).toInt()}%',
-                      style: TextStyle(fontSize: 11.sp, color: const Color(0xFF4F46E5), fontWeight: FontWeight.bold),
-                    ),
-                  ],
-                ),
-                SizedBox(height: 6.h),
-                LinearProgressIndicator(
-                  value: progress,
-                  backgroundColor: Colors.grey.shade100,
-                  valueColor: const AlwaysStoppedAnimation<Color>(Color(0xFF4F46E5)),
-                  borderRadius: BorderRadius.circular(4.r),
-                ),
-              ],
-            ),
-          ],
-
-          SizedBox(height: 14.h),
-          Divider(height: 1, color: Colors.grey.shade200),
-          SizedBox(height: 12.h),
-
-          // Action Buttons: "Read in App" & "Download"
-          Row(
-            children: [
-              // 1. Read Online in App Button
-              Expanded(
-                child: ElevatedButton.icon(
-                  onPressed: () => _openInAppReader(note),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF4F46E5),
-                    foregroundColor: Colors.white,
-                    elevation: 0,
-                    padding: EdgeInsets.symmetric(vertical: 12.h),
-                    shape: RoundedRectangleUri(
-                      borderRadius: BorderRadius.circular(12.r),
-                    ),
-                  ),
-                  icon: const Icon(Icons.chrome_reader_mode_rounded, size: 16),
-                  label: Text(
-                    'Read in App',
-                    style: TextStyle(fontSize: 12.sp, fontWeight: FontWeight.bold),
-                  ),
-                ),
-              ),
-
-              SizedBox(width: 10.w),
-
-              // 2. Download Button
-              Expanded(
-                child: OutlinedButton.icon(
-                  onPressed: isDownloading ? null : () => _handleDownloadNote(note),
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: isDownloaded ? const Color(0xFF10B981) : const Color(0xFF4F46E5),
-                    side: BorderSide(
-                      color: isDownloaded ? const Color(0xFF10B981) : const Color(0xFF4F46E5),
-                    ),
-                    padding: EdgeInsets.symmetric(vertical: 12.h),
-                    shape: RoundedRectangleUri(
-                      borderRadius: BorderRadius.circular(12.r),
-                    ),
-                  ),
-                  icon: Icon(
-                    isDownloaded ? Icons.check_circle_rounded : Icons.download_rounded,
-                    size: 16,
-                  ),
-                  label: Text(
-                    isDownloaded ? 'Downloaded' : 'Download',
-                    style: TextStyle(fontSize: 12.sp, fontWeight: FontWeight.bold),
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
+        )),
     );
   }
 }
 
-// RoundedRectangleUri helper helper
-RoundedRectangleBorder RoundedRectangleUri({required BorderRadius borderRadius}) {
-  return RoundedRectangleBorder(borderRadius: borderRadius);
-}
-
-// ==========================================
-// IN-APP NOTE READER SCREEN
-// ==========================================
 class InAppNoteReaderScreen extends StatefulWidget {
   final StudyNoteModel note;
-  final String topicTitle;
-  final String subjectName;
-
-  const InAppNoteReaderScreen({
-    super.key,
-    required this.note,
-    required this.topicTitle,
-    required this.subjectName,
-  });
-
+  final String topicTitle, subjectName;
+  const InAppNoteReaderScreen({super.key, required this.note, required this.topicTitle, required this.subjectName});
   @override
   State<InAppNoteReaderScreen> createState() => _InAppNoteReaderScreenState();
 }
 
 class _InAppNoteReaderScreenState extends State<InAppNoteReaderScreen> {
-  bool _isDarkReadingMode = false;
-  double _fontSize = 15.sp;
-
+  bool _dark = false;
+  double _fontSize = 16;
   @override
   Widget build(BuildContext context) {
-    final bgColor = _isDarkReadingMode ? const Color(0xFF1E293B) : Colors.white;
-    final textColor = _isDarkReadingMode ? Colors.white : const Color(0xFF1E293B);
-
+    final note = widget.note;
+    final foreground = _dark ? Colors.white : Colors.black87;
+    final attachment = resolveNoteUrl(note.fileUrl);
+    final image = note.fileType.toUpperCase() == 'IMAGE' || RegExp(r'\.(png|jpe?g|webp)$', caseSensitive: false).hasMatch(attachment?.path ?? '');
     return Scaffold(
-      backgroundColor: bgColor,
-      appBar: AppBar(
-        elevation: 0,
-        backgroundColor: _isDarkReadingMode ? const Color(0xFF0F172A) : const Color(0xFF4F46E5),
-        iconTheme: const IconThemeData(color: Colors.white),
-        title: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              widget.note.title,
-              style: TextStyle(fontSize: 15.sp, fontWeight: FontWeight.bold, color: Colors.white),
-            ),
-            Text(
-              widget.topicTitle,
-              style: TextStyle(fontSize: 11.sp, color: Colors.white.withOpacity(0.8)),
-            ),
-          ],
-        ),
-        actions: [
-          IconButton(
-            icon: Icon(
-              _isDarkReadingMode ? Icons.light_mode_rounded : Icons.dark_mode_rounded,
-              color: Colors.white,
-            ),
-            onPressed: () {
-              setState(() => _isDarkReadingMode = !_isDarkReadingMode);
-            },
-            tooltip: 'Toggle Night Mode',
-          ),
-          IconButton(
-            icon: const Icon(Icons.format_size_rounded, color: Colors.white),
-            onPressed: () {
-              setState(() {
-                _fontSize = _fontSize >= 20.sp ? 14.sp : _fontSize + 2.sp;
-              });
-            },
-            tooltip: 'Increase Font',
-          ),
-        ],
-      ),
-      body: SingleChildScrollView(
-        padding: EdgeInsets.all(20.w),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Metadata header
-            Container(
-              padding: EdgeInsets.all(14.w),
-              decoration: BoxDecoration(
-                color: _isDarkReadingMode ? const Color(0xFF334155) : const Color(0xFFF1F5F9),
-                borderRadius: BorderRadius.circular(16.r),
-              ),
-              child: Row(
-                children: [
-                  Icon(Icons.school_rounded, color: const Color(0xFF4F46E5), size: 20.sp),
-                  SizedBox(width: 10.w),
-                  Expanded(
-                    child: Text(
-                      'Prepared by ${widget.note.teacherName} • ${widget.note.fileType} (${widget.note.fileSizeFormatted})',
-                      style: TextStyle(
-                        fontSize: 12.sp,
-                        fontWeight: FontWeight.w600,
-                        color: _isDarkReadingMode ? Colors.white70 : const Color(0xFF475569),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-
-            SizedBox(height: 20.h),
-
-            // Note Title
-            Text(
-              widget.note.title,
-              style: TextStyle(
-                fontSize: 20.sp,
-                fontWeight: FontWeight.bold,
-                color: textColor,
-              ),
-            ),
-
-            SizedBox(height: 12.h),
-
-            // Note Content / Teacher Notes
-            Text(
-              widget.note.description ?? 'Detailed lecture notes and key formulas provided by teacher for this topic.',
-              style: TextStyle(
-                fontSize: _fontSize,
-                height: 1.6,
-                color: textColor.withOpacity(0.9),
-              ),
-            ),
-
-            SizedBox(height: 24.h),
-
-            // Embedded Document Viewer Box
-            Container(
-              width: double.infinity,
-              padding: EdgeInsets.all(20.w),
-              decoration: BoxDecoration(
-                color: _isDarkReadingMode ? const Color(0xFF0F172A) : const Color(0xFFF8FAFC),
-                borderRadius: BorderRadius.circular(20.r),
-                border: Border.all(
-                  color: _isDarkReadingMode ? const Color(0xFF334155) : Colors.grey.shade300,
-                ),
-              ),
-              child: Column(
-                children: [
-                  Icon(
-                    Icons.menu_book_rounded,
-                    size: 48.sp,
-                    color: const Color(0xFF4F46E5),
-                  ),
-                  SizedBox(height: 12.h),
-                  Text(
-                    widget.note.fileName ?? 'Study_Material.pdf',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      fontSize: 14.sp,
-                      fontWeight: FontWeight.bold,
-                      color: textColor,
-                    ),
-                  ),
-                  SizedBox(height: 4.h),
-                  Text(
-                    'Full document attached by teacher (${widget.note.fileSizeFormatted})',
-                    style: TextStyle(fontSize: 11.sp, color: Colors.grey.shade400),
-                  ),
-                  SizedBox(height: 16.h),
-                  ElevatedButton.icon(
-                    onPressed: () {
-                      context.showAppSnackBar('Document loaded into offline cache.');
-                    },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF4F46E5),
-                      foregroundColor: Colors.white,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12.r),
-                      ),
-                    ),
-                    icon: const Icon(Icons.fullscreen_rounded),
-                    label: const Text('Interactive Fullscreen View'),
-                  ),
-                ],
-              ),
-            ),
-
-            SizedBox(height: 40.h),
-          ],
-        ),
-      ),
+      backgroundColor: _dark ? const Color(0xff152033) : Colors.white,
+      appBar: AppBar(title: Text(note.title), actions: [
+        IconButton(tooltip: 'Reading theme', onPressed: () => setState(() => _dark = !_dark), icon: const Icon(Icons.contrast)),
+        IconButton(tooltip: 'Text size', onPressed: () => setState(() => _fontSize = _fontSize >= 24 ? 14 : _fontSize + 2), icon: const Icon(Icons.text_fields)),
+      ]),
+      body: SingleChildScrollView(padding: const EdgeInsets.all(16), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Text('${widget.subjectName} / ${widget.topicTitle}', style: TextStyle(color: foreground)),
+        const SizedBox(height: 12),
+        SelectableText(note.title, style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: foreground)),
+        if (note.description?.isNotEmpty == true) Padding(padding: const EdgeInsets.symmetric(vertical: 12), child: SelectableText(note.description!, style: TextStyle(color: foreground, fontSize: _fontSize))),
+        if (note.contentHtml?.trim().isNotEmpty == true) Html(data: note.contentHtml!, style: {'body': Style(color: foreground, fontSize: FontSize(_fontSize))}, onLinkTap: (url, _, _) => openNoteAttachment(context, url)),
+        if (image && attachment != null) Image.network(attachment.toString(), errorBuilder: (_, _, _) => Text('Image could not load. Use Open attachment to retry.', style: TextStyle(color: foreground))),
+        if (attachment != null) Padding(padding: const EdgeInsets.symmetric(vertical: 20), child: FilledButton.icon(onPressed: () => openNoteAttachment(context, note.fileUrl), icon: const Icon(Icons.open_in_new), label: Text('Open ${note.fileName ?? 'attachment'}'))),
+        if (note.contentHtml?.trim().isNotEmpty != true && note.description?.trim().isNotEmpty != true && attachment == null) Text('This note has no content or attachment yet.', style: TextStyle(color: foreground)),
+      ])),
     );
   }
 }
+

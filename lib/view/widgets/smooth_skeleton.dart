@@ -42,9 +42,9 @@ class _SmoothShimmerState extends State<SmoothShimmer>
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
               colors: [
-                Colors.white.withOpacity(0.06),
-                Colors.white.withOpacity(0.24),
-                Colors.white.withOpacity(0.06),
+                Colors.white.withValues(alpha: 0.06),
+                Colors.white.withValues(alpha: 0.24),
+                Colors.white.withValues(alpha: 0.06),
               ],
               stops: [
                 (_controller.value - 0.3).clamp(0.0, 1.0),
@@ -139,7 +139,7 @@ class SmoothSkeletonCardList extends StatelessWidget {
       decoration: BoxDecoration(
         color: AppColors.surface,
         borderRadius: BorderRadius.circular(16.r),
-        border: Border.all(color: AppColors.border.withOpacity(0.5)),
+        border: Border.all(color: AppColors.border.withValues(alpha: 0.5)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,

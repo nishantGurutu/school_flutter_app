@@ -89,8 +89,8 @@ class _ExpenseScreenState extends State<ExpenseScreen> {
                   GlassCard(
                     padding: EdgeInsets.all(20.w),
                     borderColor: totalPendingAmount > 0
-                        ? AppColors.warning.withOpacity(0.3)
-                        : AppColors.success.withOpacity(0.3),
+                        ? AppColors.warning.withValues(alpha: 0.3)
+                        : AppColors.success.withValues(alpha: 0.3),
                     child: Column(
                       children: [
                         Text(
@@ -154,7 +154,7 @@ class _ExpenseScreenState extends State<ExpenseScreen> {
                           color: AppColors.surface,
                           borderRadius: BorderRadius.circular(16.r),
                           border: Border.all(
-                            color: isPending ? AppColors.warning.withOpacity(0.2) : AppColors.border,
+                            color: isPending ? AppColors.warning.withValues(alpha: 0.2) : AppColors.border,
                           ),
                         ),
                         child: Column(
@@ -166,7 +166,7 @@ class _ExpenseScreenState extends State<ExpenseScreen> {
                                 Container(
                                   padding: EdgeInsets.all(8.w),
                                   decoration: BoxDecoration(
-                                    color: categoryColor.withOpacity(0.08),
+                                    color: categoryColor.withValues(alpha: 0.08),
                                     borderRadius: BorderRadius.circular(12.r),
                                   ),
                                   child: Icon(_categoryIcon(expense.category), color: categoryColor, size: 20.sp),
@@ -222,8 +222,8 @@ class _ExpenseScreenState extends State<ExpenseScreen> {
                                       padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 2.h),
                                       decoration: BoxDecoration(
                                         color: isPending
-                                            ? AppColors.warning.withOpacity(0.08)
-                                            : AppColors.success.withOpacity(0.08),
+                                            ? AppColors.warning.withValues(alpha: 0.08)
+                                            : AppColors.success.withValues(alpha: 0.08),
                                         borderRadius: BorderRadius.circular(8.r),
                                       ),
                                       child: Text(
@@ -343,7 +343,7 @@ class _ExpenseScreenState extends State<ExpenseScreen> {
                           width: 40.w,
                           height: 4.h,
                           decoration: BoxDecoration(
-                            color: AppColors.textMuted.withOpacity(0.3),
+                            color: AppColors.textMuted.withValues(alpha: 0.3),
                             borderRadius: BorderRadius.circular(2.r),
                           ),
                         ),
@@ -403,7 +403,7 @@ class _ExpenseScreenState extends State<ExpenseScreen> {
                       ),
                       12.h.height,
                       DropdownButtonFormField<ExpenseCategory>(
-                        value: selectedCategory,
+                        initialValue: selectedCategory,
                         dropdownColor: AppColors.surface,
                         decoration: const InputDecoration(
                           labelText: 'Category',

@@ -78,7 +78,7 @@ class _PayrollScreenState extends State<PayrollScreen> {
               children: [
                 GlassCard(
                   padding: EdgeInsets.all(20.w),
-                  borderColor: AppColors.warning.withOpacity(0.3),
+                  borderColor: AppColors.warning.withValues(alpha: 0.3),
                   child: Column(
                     children: [
                       Text(
@@ -99,7 +99,7 @@ class _PayrollScreenState extends State<PayrollScreen> {
                         Container(
                           padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 6.h),
                           decoration: BoxDecoration(
-                            color: AppColors.warning.withOpacity(0.08),
+                            color: AppColors.warning.withValues(alpha: 0.08),
                             borderRadius: BorderRadius.circular(10.r),
                           ),
                           child: Text(
@@ -134,7 +134,7 @@ class _PayrollScreenState extends State<PayrollScreen> {
                         color: AppColors.surface,
                         borderRadius: BorderRadius.circular(16.r),
                         border: Border.all(
-                          color: isPending ? AppColors.warning.withOpacity(0.2) : AppColors.border,
+                          color: isPending ? AppColors.warning.withValues(alpha: 0.2) : AppColors.border,
                         ),
                       ),
                       child: Column(
@@ -146,7 +146,7 @@ class _PayrollScreenState extends State<PayrollScreen> {
                                 width: 42.w,
                                 height: 42.w,
                                 decoration: BoxDecoration(
-                                  color: isPending ? AppColors.warning.withOpacity(0.1) : AppColors.primary.withOpacity(0.1),
+                                  color: isPending ? AppColors.warning.withValues(alpha: 0.1) : AppColors.primary.withValues(alpha: 0.1),
                                   borderRadius: BorderRadius.circular(12.r),
                                 ),
                                 child: Center(
@@ -210,8 +210,8 @@ class _PayrollScreenState extends State<PayrollScreen> {
                                 padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 3.h),
                                 decoration: BoxDecoration(
                                   color: isPending
-                                      ? AppColors.warning.withOpacity(0.08)
-                                      : AppColors.success.withOpacity(0.08),
+                                      ? AppColors.warning.withValues(alpha: 0.08)
+                                      : AppColors.success.withValues(alpha: 0.08),
                                   borderRadius: BorderRadius.circular(8.r),
                                 ),
                                 child: Text(

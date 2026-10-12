@@ -125,8 +125,8 @@ class _LeaveScreenState extends State<LeaveScreen> {
                   GlassCard(
                     padding: EdgeInsets.all(20.w),
                     borderColor: pending.isNotEmpty
-                        ? AppColors.primary.withOpacity(0.3)
-                        : AppColors.success.withOpacity(0.3),
+                        ? AppColors.primary.withValues(alpha: 0.3)
+                        : AppColors.success.withValues(alpha: 0.3),
                     child: Column(
                       children: [
                         Text(
@@ -200,7 +200,7 @@ class _LeaveScreenState extends State<LeaveScreen> {
                           color: AppColors.surface,
                           borderRadius: BorderRadius.circular(16.r),
                           border: Border.all(
-                            color: isPending ? AppColors.primary.withOpacity(0.2) : AppColors.border,
+                            color: isPending ? AppColors.primary.withValues(alpha: 0.2) : AppColors.border,
                           ),
                         ),
                         child: Column(
@@ -211,7 +211,7 @@ class _LeaveScreenState extends State<LeaveScreen> {
                                 Container(
                                   padding: EdgeInsets.all(8.w),
                                   decoration: BoxDecoration(
-                                    color: statusColor.withOpacity(0.08),
+                                    color: statusColor.withValues(alpha: 0.08),
                                     borderRadius: BorderRadius.circular(12.r),
                                   ),
                                   child: Icon(statusIcon, color: statusColor, size: 20.sp),
@@ -240,7 +240,7 @@ class _LeaveScreenState extends State<LeaveScreen> {
                                 Container(
                                   padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 3.h),
                                   decoration: BoxDecoration(
-                                    color: statusColor.withOpacity(0.08),
+                                    color: statusColor.withValues(alpha: 0.08),
                                     borderRadius: BorderRadius.circular(8.r),
                                   ),
                                   child: Text(
@@ -278,7 +278,7 @@ class _LeaveScreenState extends State<LeaveScreen> {
                                       label: Text('Reject', style: TextStyle(fontSize: 11.sp)),
                                       style: OutlinedButton.styleFrom(
                                         foregroundColor: AppColors.error,
-                                        side: BorderSide(color: AppColors.error.withOpacity(0.3)),
+                                        side: BorderSide(color: AppColors.error.withValues(alpha: 0.3)),
                                         padding: EdgeInsets.symmetric(horizontal: 14.w),
                                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10.r)),
                                       ),
@@ -350,7 +350,7 @@ class _LeaveScreenState extends State<LeaveScreen> {
                         child: Container(
                           width: 40.w, height: 4.h,
                           decoration: BoxDecoration(
-                            color: AppColors.textMuted.withOpacity(0.3),
+                            color: AppColors.textMuted.withValues(alpha: 0.3),
                             borderRadius: BorderRadius.circular(2.r),
                           ),
                         ),

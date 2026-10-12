@@ -158,13 +158,13 @@ class _AcademicCalendarScreenState extends State<AcademicCalendarScreen> {
             // Calendar Hero Banner
             GlassCard(
               padding: EdgeInsets.all(18.w),
-              borderColor: AppColors.primary.withOpacity(0.3),
+              borderColor: AppColors.primary.withValues(alpha: 0.3),
               child: Row(
                 children: [
                   Container(
                     padding: EdgeInsets.all(14.w),
                     decoration: BoxDecoration(
-                      color: AppColors.primary.withOpacity(0.1),
+                      color: AppColors.primary.withValues(alpha: 0.1),
                       shape: BoxShape.circle,
                     ),
                     child: Icon(Icons.calendar_month_rounded, color: AppColors.primary, size: 28.sp),
@@ -287,7 +287,7 @@ class _AcademicCalendarScreenState extends State<AcademicCalendarScreen> {
         border: Border.all(color: AppColors.border, width: 1.2),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.02),
+            color: Colors.black.withValues(alpha: 0.02),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
@@ -303,9 +303,9 @@ class _AcademicCalendarScreenState extends State<AcademicCalendarScreen> {
               width: 52.w,
               padding: EdgeInsets.symmetric(vertical: 8.h),
               decoration: BoxDecoration(
-                color: evt.color.withOpacity(0.1),
+                color: evt.color.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(12.r),
-                border: Border.all(color: evt.color.withOpacity(0.3), width: 1),
+                border: Border.all(color: evt.color.withValues(alpha: 0.3), width: 1),
               ),
               child: Column(
                 children: [
@@ -350,7 +350,7 @@ class _AcademicCalendarScreenState extends State<AcademicCalendarScreen> {
                       Container(
                         padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 3.h),
                         decoration: BoxDecoration(
-                          color: evt.color.withOpacity(0.1),
+                          color: evt.color.withValues(alpha: 0.1),
                           borderRadius: BorderRadius.circular(6.r),
                         ),
                         child: Text(

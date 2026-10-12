@@ -140,9 +140,9 @@ class TopicNotesResponseModel {
 
   factory TopicNotesResponseModel.fromJson(Map<String, dynamic> json) {
     return TopicNotesResponseModel(
-      topicId: json['topicId']?.toString() ?? '',
-      topicTitle: json['topicTitle']?.toString() ?? 'Topic Notes',
-      topicDescription: json['topicDescription']?.toString(),
+      topicId: (json['topicId'] ?? json['chapterId'])?.toString() ?? '',
+      topicTitle: (json['topicTitle'] ?? json['chapterTitle'])?.toString() ?? 'Topic Notes',
+      topicDescription: (json['topicDescription'] ?? json['description'])?.toString(),
       difficulty: json['difficulty']?.toString() ?? 'Medium',
       estimatedMinutes: json['estimatedMinutes'] is int ? json['estimatedMinutes'] : 30,
       chapterTitle: json['chapterTitle']?.toString() ?? '',
@@ -178,7 +178,7 @@ class StudyNoteModel {
     this.fileName,
     this.fileUrl,
     this.fileType = 'PDF',
-    this.fileSizeFormatted = '1.0 MB',
+    this.fileSizeFormatted = '',
     this.isDownloadable = true,
     this.isPreviewable = true,
     this.teacherName = 'Teacher',
@@ -194,7 +194,7 @@ class StudyNoteModel {
       fileName: json['fileName']?.toString(),
       fileUrl: json['fileUrl']?.toString(),
       fileType: json['fileType']?.toString() ?? 'PDF',
-      fileSizeFormatted: json['fileSizeFormatted']?.toString() ?? '1.0 MB',
+      fileSizeFormatted: json['fileSizeFormatted']?.toString() ?? '',
       isDownloadable: json['isDownloadable'] != false,
       isPreviewable: json['isPreviewable'] != false,
       teacherName: json['teacherName']?.toString() ?? 'Teacher',
@@ -202,3 +202,4 @@ class StudyNoteModel {
     );
   }
 }
+

@@ -342,7 +342,7 @@ class _StudentDashboardState extends State<StudentDashboard> {
         ),
         boxShadow: [
           BoxShadow(
-            color: const Color(0xFF1E3A5F).withOpacity(0.3),
+            color: const Color(0xFF1E3A5F).withValues(alpha: 0.3),
             blurRadius: 20,
             offset: const Offset(0, 8),
           ),
@@ -362,7 +362,7 @@ class _StudentDashboardState extends State<StudentDashboard> {
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
                   border: Border.all(
-                    color: Colors.white.withOpacity(0.08),
+                    color: Colors.white.withValues(alpha: 0.08),
                     width: 1.5,
                   ),
                 ),
@@ -377,7 +377,7 @@ class _StudentDashboardState extends State<StudentDashboard> {
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
                   border: Border.all(
-                    color: Colors.white.withOpacity(0.06),
+                    color: Colors.white.withValues(alpha: 0.06),
                     width: 1.5,
                   ),
                 ),
@@ -397,7 +397,7 @@ class _StudentDashboardState extends State<StudentDashboard> {
                         padding: EdgeInsets.all(8.w),
                         margin: EdgeInsets.only(right: 12.w),
                         decoration: BoxDecoration(
-                          color: Colors.white.withOpacity(0.15),
+                          color: Colors.white.withValues(alpha: 0.15),
                           shape: BoxShape.circle,
                         ),
                         child: Icon(
@@ -416,12 +416,12 @@ class _StudentDashboardState extends State<StudentDashboard> {
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
                       border: Border.all(
-                        color: Colors.white.withOpacity(0.9),
+                        color: Colors.white.withValues(alpha: 0.9),
                         width: 1.8,
                       ),
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.black.withOpacity(0.2),
+                          color: Colors.black.withValues(alpha: 0.2),
                           blurRadius: 8,
                           offset: const Offset(0, 3),
                         ),
@@ -465,7 +465,7 @@ class _StudentDashboardState extends State<StudentDashboard> {
                         Text(
                           subtitle,
                           style: TextStyle(
-                            color: Colors.white.withOpacity(0.85),
+                            color: Colors.white.withValues(alpha: 0.85),
                             fontSize: 12.sp,
                             fontWeight: FontWeight.w500,
                           ),
@@ -483,7 +483,7 @@ class _StudentDashboardState extends State<StudentDashboard> {
                       width: 42.w,
                       height: 42.w,
                       decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.12),
+                        color: Colors.white.withValues(alpha: 0.12),
                         borderRadius: BorderRadius.circular(14.r),
                       ),
                       child: Icon(
@@ -523,7 +523,7 @@ class _StudentDashboardState extends State<StudentDashboard> {
                   borderRadius: BorderRadius.circular(22.r),
                   boxShadow: [
                     BoxShadow(
-                      color: const Color(0xFFFBBF24).withOpacity(0.35),
+                      color: const Color(0xFFFBBF24).withValues(alpha: 0.35),
                       blurRadius: 16,
                       offset: const Offset(0, 6),
                     ),
@@ -542,7 +542,7 @@ class _StudentDashboardState extends State<StudentDashboard> {
                           height: 170.w,
                           decoration: BoxDecoration(
                             shape: BoxShape.circle,
-                            color: Colors.white.withOpacity(0.2),
+                            color: Colors.white.withValues(alpha: 0.2),
                           ),
                         ),
                       ),
@@ -606,7 +606,7 @@ class _StudentDashboardState extends State<StudentDashboard> {
                                           vertical: 3.h,
                                         ),
                                         decoration: BoxDecoration(
-                                          color: Colors.white.withOpacity(0.8),
+                                          color: Colors.white.withValues(alpha: 0.8),
                                           borderRadius: BorderRadius.circular(
                                             6.r,
                                           ),
@@ -652,12 +652,12 @@ class _StudentDashboardState extends State<StudentDashboard> {
                               child: Image.network(
                                 b.imageUrl,
                                 fit: BoxFit.contain,
-                                errorBuilder: (_, __, ___) => Icon(
+                                errorBuilder: (_, _, _) => Icon(
                                   Icons.menu_book_rounded,
                                   size: 60.sp,
                                   color: const Color(
                                     0xFF1E293B,
-                                  ).withOpacity(0.4),
+                                  ).withValues(alpha: 0.4),
                                 ),
                               ),
                             ),
@@ -765,7 +765,7 @@ class _StudentDashboardState extends State<StudentDashboard> {
               borderRadius: BorderRadius.circular(18.r),
               boxShadow: [
                 BoxShadow(
-                  color: gradient.colors.first.withOpacity(0.28),
+                  color: gradient.colors.first.withValues(alpha: 0.28),
                   blurRadius: 10,
                   offset: const Offset(0, 4),
                 ),
@@ -917,7 +917,7 @@ class _StudentDashboardState extends State<StudentDashboard> {
         border: Border.all(color: const Color(0xFFE2E8F0)),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.02),
+            color: Colors.black.withValues(alpha: 0.02),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
@@ -1009,7 +1009,7 @@ class _StudentDashboardState extends State<StudentDashboard> {
         scrollDirection: Axis.horizontal,
         physics: const BouncingScrollPhysics(),
         itemCount: albums.length,
-        separatorBuilder: (_, __) => 14.w.width,
+        separatorBuilder: (_, _) => 14.w.width,
         itemBuilder: (context, index) {
           final album = albums[index];
           return GestureDetector(
@@ -1028,7 +1028,7 @@ class _StudentDashboardState extends State<StudentDashboard> {
                         borderRadius: BorderRadius.circular(18.r),
                         boxShadow: [
                           BoxShadow(
-                            color: Colors.black.withOpacity(0.06),
+                            color: Colors.black.withValues(alpha: 0.06),
                             blurRadius: 10,
                             offset: const Offset(0, 4),
                           ),
@@ -1040,7 +1040,7 @@ class _StudentDashboardState extends State<StudentDashboard> {
                           album.coverImage,
                           fit: BoxFit.cover,
                           width: double.infinity,
-                          errorBuilder: (_, __, ___) => Container(
+                          errorBuilder: (_, _, _) => Container(
                             color: const Color(0xFFE2E8F0),
                             child: Icon(
                               Icons.image_outlined,
@@ -1095,7 +1095,7 @@ class _StudentDashboardState extends State<StudentDashboard> {
         borderRadius: BorderRadius.circular(30.r),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.08),
+            color: Colors.black.withValues(alpha: 0.08),
             blurRadius: 20,
             offset: const Offset(0, 6),
           ),

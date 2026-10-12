@@ -62,7 +62,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   height: 350.w,
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
-                    color: AppColors.primary.withOpacity(0.08),
+                    color: AppColors.primary.withValues(alpha: 0.08),
                   ),
                 ),
               ),
@@ -74,7 +74,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   height: 300.w,
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
-                    color: AppColors.secondary.withOpacity(0.06),
+                    color: AppColors.secondary.withValues(alpha: 0.06),
                   ),
                 ),
               ),
@@ -217,10 +217,10 @@ class _LoginScreenState extends State<LoginScreen> {
                                       vertical: 10.h,
                                     ),
                                     decoration: BoxDecoration(
-                                      color: AppColors.error.withOpacity(0.08),
+                                      color: AppColors.error.withValues(alpha: 0.08),
                                       borderRadius: BorderRadius.circular(8.r),
                                       border: Border.all(
-                                        color: AppColors.error.withOpacity(0.3),
+                                        color: AppColors.error.withValues(alpha: 0.3),
                                       ),
                                     ),
                                     child: Row(
@@ -345,7 +345,7 @@ class _VerificationOverlay extends StatelessWidget {
     final step3Active = status == AuthStatus.loadingModules;
 
     return Container(
-      color: Colors.black.withOpacity(0.75),
+      color: Colors.black.withValues(alpha: 0.75),
       child: GlassCard(
         blur: 16.0,
         color: Colors.transparent,

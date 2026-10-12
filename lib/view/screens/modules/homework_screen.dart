@@ -48,126 +48,23 @@ class _HomeworkScreenState extends State<HomeworkScreen> with SingleTickerProvid
   }
 
   void _showSubmitBottomSheet(BuildContext context, HomeworkItem hw) {
-    String mockFileName = '';
-    
-    showModalBottomSheet(
+    showDialog<void>(
       context: context,
-      backgroundColor: AppColors.surface,
-      isScrollControlled: true,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20.r)),
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Submit assignment'),
+        content: Text('Confirm that you have completed ${hw.title}. This records your submission; no file is uploaded.'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(dialogContext), child: const Text('Cancel')),
+          FilledButton(onPressed: () {
+            final userId = context.read<AuthBloc>().state.user?.id;
+            if (userId == null) return;
+            context.read<SchoolBloc>().add(SubmitHomeworkRequested(userId: userId, homeworkId: hw.id));
+            Navigator.pop(dialogContext);
+          }, child: const Text('Submit')),
+        ],
       ),
-      builder: (bottomSheetCtx) {
-        return StatefulBuilder(
-          builder: (statefulCtx, setModalState) {
-            return Padding(
-              padding: EdgeInsets.only(
-                top: 20.h,
-                left: 20.w,
-                right: 20.w,
-                bottom: MediaQuery.of(statefulCtx).viewInsets.bottom + 24.h,
-              ),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        'Submit Assignment',
-                        style: context.h2.copyWith(fontWeight: FontWeight.bold),
-                      ),
-                      IconButton(
-                        icon: const Icon(Icons.close_rounded, color: AppColors.textSecondary),
-                        onPressed: () => Navigator.pop(statefulCtx),
-                      ),
-                    ],
-                  ),
-                  14.h.height,
-                  Text(
-                    hw.subject,
-                    style: TextStyle(color: AppColors.primary, fontSize: 13.sp, fontWeight: FontWeight.bold),
-                  ),
-                  4.h.height,
-                  Text(
-                    hw.title,
-                    style: TextStyle(color: AppColors.textPrimary, fontSize: 16.sp, fontWeight: FontWeight.bold),
-                  ),
-                  16.h.height,
-
-                  // File upload card placeholder
-                  GestureDetector(
-                    onTap: () {
-                      setModalState(() {
-                        mockFileName = '${hw.subject.replaceAll(" ", "_")}_Solution.pdf';
-                      });
-                    },
-                    child: Container(
-                      padding: EdgeInsets.symmetric(vertical: 24.h),
-                      decoration: BoxDecoration(
-                        color: AppColors.background,
-                        borderRadius: BorderRadius.circular(14.r),
-                        border: Border.all(
-                          color: mockFileName.isEmpty ? AppColors.border : AppColors.primary,
-                          width: 1.5,
-                          style: mockFileName.isEmpty ? BorderStyle.solid : BorderStyle.solid,
-                        ),
-                      ),
-                      child: Column(
-                        children: [
-                          Icon(
-                            mockFileName.isEmpty ? Icons.cloud_upload_outlined : Icons.picture_as_pdf_rounded,
-                            color: mockFileName.isEmpty ? AppColors.textMuted : AppColors.primary,
-                            size: 44.sp,
-                          ),
-                          10.h.height,
-                          Text(
-                            mockFileName.isEmpty ? 'Tap to browse solution files' : mockFileName,
-                            style: TextStyle(
-                              color: mockFileName.isEmpty ? AppColors.textSecondary : AppColors.textPrimary,
-                              fontSize: 13.sp,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                          4.h.height,
-                          Text(
-                            mockFileName.isEmpty ? 'Supports PDF, JPEG (max 10MB)' : 'File selected successfully',
-                            style: TextStyle(color: AppColors.textMuted, fontSize: 11.sp),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                  24.h.height,
-
-                  // Submit CTA
-                  ElevatedButton(
-                    onPressed: mockFileName.isEmpty
-                        ? null
-                        : () {
-                            final userId = context.read<AuthBloc>().state.user?.id ?? 'student_1';
-                            context.read<SchoolBloc>().add(
-                                  SubmitHomeworkRequested(userId: userId, homeworkId: hw.id),
-                                );
-                            Navigator.pop(bottomSheetCtx);
-                            context.showAppSnackBar('Uploading solution files. Submitting assignment...');
-                          },
-                    style: ElevatedButton.styleFrom(
-                      disabledBackgroundColor: AppColors.border,
-                      disabledForegroundColor: AppColors.textMuted,
-                    ),
-                    child: const Text('Submit Assignment'),
-                  ),
-                ],
-              ),
-            );
-          },
-        );
-      },
     );
   }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -207,6 +104,7 @@ class _HomeworkScreenState extends State<HomeworkScreen> with SingleTickerProvid
       ),
       body: BlocListener<SchoolBloc, SchoolState>(
         listener: (context, state) {
+          if (state.errorMessage != null) context.showAppSnackBar(state.errorMessage!);
           if (state.actionSuccessMessage != null && state.actionSuccessMessage!.contains('Homework')) {
             context.showAppSnackBar(state.actionSuccessMessage!);
           }
@@ -327,7 +225,7 @@ class _HomeworkListBuilder extends StatelessWidget {
                   Container(
                     padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 4.h),
                     decoration: BoxDecoration(
-                      color: dateColor.withOpacity(0.08),
+                      color: dateColor.withValues(alpha: 0.08),
                       borderRadius: BorderRadius.circular(8.r),
                     ),
                     child: Text(
@@ -371,3 +269,5 @@ class _HomeworkListBuilder extends StatelessWidget {
     );
   }
 }
+
+

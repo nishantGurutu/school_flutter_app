@@ -266,7 +266,7 @@ class _QuickActionTile extends StatelessWidget {
               border: Border.all(color: AppColors.border),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withOpacity(0.25),
+                  color: Colors.black.withValues(alpha: 0.25),
                   blurRadius: 14,
                   offset: const Offset(0, 10),
                 ),
@@ -361,7 +361,7 @@ class _DiscoverCard extends StatelessWidget {
                   decoration: BoxDecoration(
                     gradient: LinearGradient(
                       colors: [
-                        Colors.white.withOpacity(0.05),
+                        Colors.white.withValues(alpha: 0.05),
                         Colors.transparent,
                       ],
                       begin: Alignment.topLeft,

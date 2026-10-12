@@ -109,7 +109,7 @@ class StaffDashboard extends StatelessWidget {
                                     width: 60.w,
                                     height: 60.w,
                                     decoration: BoxDecoration(
-                                      color: AppColors.success.withOpacity(0.12),
+                                      color: AppColors.success.withValues(alpha: 0.12),
                                       shape: BoxShape.circle,
                                       border: Border.all(color: AppColors.success, width: 2),
                                     ),
@@ -325,9 +325,9 @@ class _StatSubBox extends StatelessWidget {
     return Container(
       padding: EdgeInsets.all(12.w),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.08),
+        color: color.withValues(alpha: 0.08),
         borderRadius: BorderRadius.circular(14.r),
-        border: Border.all(color: color.withOpacity(0.2)),
+        border: Border.all(color: color.withValues(alpha: 0.2)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -373,7 +373,7 @@ class _QuickAccessTile extends StatelessWidget {
             Container(
               padding: EdgeInsets.all(10.w),
               decoration: BoxDecoration(
-                color: color.withOpacity(0.08),
+                color: color.withValues(alpha: 0.08),
                 borderRadius: BorderRadius.circular(12.r),
               ),
               child: Icon(icon, color: color, size: 22.sp),

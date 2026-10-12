@@ -278,7 +278,7 @@ class _TopicsScreenState extends State<TopicsScreen> {
                 Expanded(
                   child: GlassCard(
                     padding: EdgeInsets.all(16.w),
-                    borderColor: AppColors.success.withOpacity(0.3),
+                    borderColor: AppColors.success.withValues(alpha: 0.3),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
@@ -293,7 +293,7 @@ class _TopicsScreenState extends State<TopicsScreen> {
                 Expanded(
                   child: GlassCard(
                     padding: EdgeInsets.all(16.w),
-                    borderColor: AppColors.info.withOpacity(0.3),
+                    borderColor: AppColors.info.withValues(alpha: 0.3),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
@@ -404,7 +404,7 @@ class _TopicsScreenState extends State<TopicsScreen> {
                   Container(
                     padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 3.h),
                     decoration: BoxDecoration(
-                      color: AppColors.primary.withOpacity(0.08),
+                      color: AppColors.primary.withValues(alpha: 0.08),
                       borderRadius: BorderRadius.circular(6.r),
                     ),
                     child: Text(
@@ -420,7 +420,7 @@ class _TopicsScreenState extends State<TopicsScreen> {
                   Container(
                     padding: EdgeInsets.symmetric(horizontal: 6.w, vertical: 2.h),
                     decoration: BoxDecoration(
-                      color: diffColor.withOpacity(0.1),
+                      color: diffColor.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(4.r),
                     ),
                     child: Text(
@@ -446,7 +446,7 @@ class _TopicsScreenState extends State<TopicsScreen> {
                 child: Container(
                   padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 4.h),
                   decoration: BoxDecoration(
-                    color: statusColor.withOpacity(0.12),
+                    color: statusColor.withValues(alpha: 0.12),
                     borderRadius: BorderRadius.circular(8.r),
                   ),
                   child: Row(

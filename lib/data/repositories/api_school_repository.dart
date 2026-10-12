@@ -63,12 +63,15 @@ class ApiSchoolRepository implements SchoolRepository {
     try {
       String url = AppUrl.attendance;
       List<String> queryParams = [];
-      if (type != null && type.trim().isNotEmpty)
+      if (type != null && type.trim().isNotEmpty) {
         queryParams.add('type=${Uri.encodeComponent(type.trim())}');
-      if (date != null && date.trim().isNotEmpty)
+      }
+      if (date != null && date.trim().isNotEmpty) {
         queryParams.add('date=${Uri.encodeComponent(date.trim())}');
-      if (className != null && className.trim().isNotEmpty)
+      }
+      if (className != null && className.trim().isNotEmpty) {
         queryParams.add('className=${Uri.encodeComponent(className.trim())}');
+      }
       if (queryParams.isNotEmpty) {
         url += '?${queryParams.join('&')}';
       }
@@ -380,16 +383,9 @@ class ApiSchoolRepository implements SchoolRepository {
     String userId,
     String homeworkId,
   ) async {
-    try {
-      await _apiService.postApi(AppUrl.submitHomework(homeworkId), {});
-    } catch (e) {
-      if (kDebugMode) {
-        print('❌ Error submitting homework: $e');
-      }
-    }
+    await _apiService.postApi(AppUrl.submitHomework(homeworkId), {});
     return getHomework(userId);
   }
-
   @override
   Future<List<FeeRecord>> getFees(String userId) async {
     try {
@@ -852,46 +848,22 @@ class ApiSchoolRepository implements SchoolRepository {
 
   @override
   Future<SubjectCurriculumModel?> getSubjectCurriculum(String subjectId) async {
-    try {
-      final res = await _apiService.getApi(AppUrl.subjectCurriculum(subjectId));
-      if (res != null && res is Map) {
-        return SubjectCurriculumModel.fromJson(Map<String, dynamic>.from(res));
-      }
-    } catch (e) {
-      if (kDebugMode) {
-        print('❌ Error fetching subject curriculum from API: $e');
-      }
-    }
-    return null;
+    final res = await _apiService.getApi(AppUrl.subjectCurriculum(subjectId));
+    if (res is! Map) throw StateError('Invalid curriculum response');
+    return SubjectCurriculumModel.fromJson(Map<String, dynamic>.from(res));
   }
 
   @override
   Future<TopicNotesResponseModel?> getChapterNotes(String chapterId) async {
-    try {
-      final res = await _apiService.getApi(AppUrl.chapterNotes(chapterId));
-      if (res != null && res is Map) {
-        return TopicNotesResponseModel.fromJson(Map<String, dynamic>.from(res));
-      }
-    } catch (e) {
-      if (kDebugMode) {
-        print('❌ Error fetching chapter notes from API: $e');
-      }
-    }
-    return null;
+    final res = await _apiService.getApi(AppUrl.chapterNotes(chapterId));
+    if (res is! Map) throw StateError('Invalid chapter notes response');
+    return TopicNotesResponseModel.fromJson(Map<String, dynamic>.from(res));
   }
 
   @override
   Future<TopicNotesResponseModel?> getTopicNotes(String topicId) async {
-    try {
-      final res = await _apiService.getApi(AppUrl.topicNotes(topicId));
-      if (res != null && res is Map) {
-        return TopicNotesResponseModel.fromJson(Map<String, dynamic>.from(res));
-      }
-    } catch (e) {
-      if (kDebugMode) {
-        print('❌ Error fetching topic notes from API: $e');
-      }
-    }
-    return null;
+    final res = await _apiService.getApi(AppUrl.topicNotes(topicId));
+    if (res is! Map) throw StateError('Invalid topic notes response');
+    return TopicNotesResponseModel.fromJson(Map<String, dynamic>.from(res));
   }
 }

@@ -100,10 +100,12 @@ class _FeesScreenState extends State<FeesScreen> {
                           prefixIcon: Icon(Icons.credit_card_rounded),
                         ),
                         validator: (v) {
-                          if (v == null || v.trim().isEmpty)
+                          if (v == null || v.trim().isEmpty) {
                             return 'Enter card number';
-                          if (v.trim().replaceAll(" ", "").length < 16)
+                          }
+                          if (v.trim().replaceAll(" ", "").length < 16) {
                             return 'Enter valid 16-digit card';
+                          }
                           return null;
                         },
                       ),
@@ -122,8 +124,9 @@ class _FeesScreenState extends State<FeesScreen> {
                                 hintText: 'MM/YY',
                               ),
                               validator: (v) {
-                                if (v == null || v.trim().isEmpty)
+                                if (v == null || v.trim().isEmpty) {
                                   return 'Enter expiry';
+                                }
                                 return null;
                               },
                             ),
@@ -142,10 +145,12 @@ class _FeesScreenState extends State<FeesScreen> {
                                 hintText: '•••',
                               ),
                               validator: (v) {
-                                if (v == null || v.trim().isEmpty)
+                                if (v == null || v.trim().isEmpty) {
                                   return 'Enter CVV';
-                                if (v.trim().length < 3)
+                                }
+                                if (v.trim().length < 3) {
                                   return 'Enter 3-digit CVV';
+                                }
                                 return null;
                               },
                             ),
@@ -244,8 +249,8 @@ class _FeesScreenState extends State<FeesScreen> {
                   GlassCard(
                     padding: EdgeInsets.all(20.w),
                     borderColor: outstanding > 0
-                        ? AppColors.error.withOpacity(0.3)
-                        : AppColors.success.withOpacity(0.3),
+                        ? AppColors.error.withValues(alpha: 0.3)
+                        : AppColors.success.withValues(alpha: 0.3),
                     child: Column(
                       children: [
                         Text(
@@ -389,7 +394,7 @@ class _FeesScreenState extends State<FeesScreen> {
                                     vertical: 2.h,
                                   ),
                                   decoration: BoxDecoration(
-                                    color: statusColor.withOpacity(0.08),
+                                    color: statusColor.withValues(alpha: 0.08),
                                     borderRadius: BorderRadius.circular(8.r),
                                   ),
                                   child: Text(

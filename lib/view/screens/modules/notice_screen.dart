@@ -73,10 +73,10 @@ class _NoticeScreenState extends State<NoticeScreen> {
                       vertical: 4.h,
                     ),
                     decoration: BoxDecoration(
-                      color: AppColors.primary.withOpacity(0.1),
+                      color: AppColors.primary.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(8.r),
                       border: Border.all(
-                        color: AppColors.primary.withOpacity(0.3),
+                        color: AppColors.primary.withValues(alpha: 0.3),
                       ),
                     ),
                     child: Text(
@@ -237,12 +237,15 @@ class _NoticeScreenState extends State<NoticeScreen> {
                 final rawNotices = state.notices;
                 final notices = rawNotices.where((n) {
                   if (_selectedCategory == 'All') return true;
-                  if (_selectedCategory == 'Urgent')
+                  if (_selectedCategory == 'Urgent') {
                     return n.category == NoticeCategory.urgent;
-                  if (_selectedCategory == 'General')
+                  }
+                  if (_selectedCategory == 'General') {
                     return n.category == NoticeCategory.regular;
-                  if (_selectedCategory == 'Info')
+                  }
+                  if (_selectedCategory == 'Info') {
                     return n.category == NoticeCategory.informational;
+                  }
                   return true;
                 }).toList();
 
@@ -341,10 +344,10 @@ class _NoticeScreenState extends State<NoticeScreen> {
                                       vertical: 4.h,
                                     ),
                                     decoration: BoxDecoration(
-                                      color: catColor.withOpacity(0.08),
+                                      color: catColor.withValues(alpha: 0.08),
                                       borderRadius: BorderRadius.circular(8.r),
                                       border: Border.all(
-                                        color: catColor.withOpacity(0.25),
+                                        color: catColor.withValues(alpha: 0.25),
                                       ),
                                     ),
                                     child: Text(

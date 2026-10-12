@@ -17,24 +17,24 @@ class RoleBadge extends StatelessWidget {
     switch (role) {
       case UserRole.student:
         color = AppColors.primary;
-        bgColor = AppColors.primary.withOpacity(0.12);
+        bgColor = AppColors.primary.withValues(alpha: 0.12);
         label = 'Student';
         break;
       case UserRole.parent:
         color = AppColors.success;
-        bgColor = AppColors.success.withOpacity(0.12);
+        bgColor = AppColors.success.withValues(alpha: 0.12);
         label = 'Parent';
         break;
       case UserRole.teacher:
         color = AppColors.info;
-        bgColor = AppColors.info.withOpacity(0.12);
+        bgColor = AppColors.info.withValues(alpha: 0.12);
         label = 'Teacher';
         break;
       case UserRole.staff:
       case UserRole.admin:
       case UserRole.masterAdmin:
         color = AppColors.warning;
-        bgColor = AppColors.warning.withOpacity(0.12);
+        bgColor = AppColors.warning.withValues(alpha: 0.12);
         label = role == UserRole.masterAdmin
             ? 'Master Admin'
             : (role == UserRole.admin ? 'Admin' : 'Staff');
@@ -46,7 +46,7 @@ class RoleBadge extends StatelessWidget {
       decoration: BoxDecoration(
         color: bgColor,
         borderRadius: BorderRadius.circular(20.r),
-        border: Border.all(color: color.withOpacity(0.4), width: 1),
+        border: Border.all(color: color.withValues(alpha: 0.4), width: 1),
       ),
       child: Text(
         label,

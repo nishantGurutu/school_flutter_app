@@ -271,7 +271,7 @@ class _ChatBubble extends StatelessWidget {
               child: Text(
                 _formatTime(message.timestamp),
                 style: TextStyle(
-                  color: Colors.white.withOpacity(0.55),
+                  color: Colors.white.withValues(alpha: 0.55),
                   fontSize: 9.sp,
                 ),
               ),

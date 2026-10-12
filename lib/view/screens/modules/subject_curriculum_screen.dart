@@ -5,6 +5,7 @@ import '../../../data/repositories/api_school_repository.dart';
 import 'topic_notes_screen.dart';
 
 class SubjectCurriculumScreen extends StatefulWidget {
+  final ApiSchoolRepository? repository;
   final String subjectId;
   final String subjectName;
   final String? subjectCode;
@@ -13,6 +14,7 @@ class SubjectCurriculumScreen extends StatefulWidget {
 
   const SubjectCurriculumScreen({
     super.key,
+    this.repository,
     required this.subjectId,
     required this.subjectName,
     this.subjectCode,
@@ -25,20 +27,22 @@ class SubjectCurriculumScreen extends StatefulWidget {
 }
 
 class _SubjectCurriculumScreenState extends State<SubjectCurriculumScreen> {
-  final ApiSchoolRepository _repository = ApiSchoolRepository();
+  late final ApiSchoolRepository _repository;
   bool _isLoading = true;
   SubjectCurriculumModel? _curriculum;
   String _searchQuery = '';
+  String? _error;
   final Set<String> _expandedChapterIds = {};
 
   @override
   void initState() {
     super.initState();
+    _repository = widget.repository ?? ApiSchoolRepository();
     _loadCurriculum();
   }
 
   Future<void> _loadCurriculum() async {
-    setState(() => _isLoading = true);
+    setState(() { _isLoading = true; _error = null; });
     try {
       final res = await _repository.getSubjectCurriculum(widget.subjectId);
       if (mounted) {
@@ -55,7 +59,7 @@ class _SubjectCurriculumScreenState extends State<SubjectCurriculumScreen> {
       }
     } catch (e) {
       if (mounted) {
-        setState(() => _isLoading = false);
+        setState(() { _isLoading = false; _error = 'Unable to load topics. Please retry.'; });
       }
     }
   }
@@ -113,6 +117,8 @@ class _SubjectCurriculumScreenState extends State<SubjectCurriculumScreen> {
                 valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF4F46E5)),
               ),
             )
+          : _error != null
+          ? Center(child: Column(mainAxisSize: MainAxisSize.min, children: [Text(_error!), TextButton(onPressed: _loadCurriculum, child: const Text('Retry'))]))
           : RefreshIndicator(
               onRefresh: _loadCurriculum,
               child: CustomScrollView(
@@ -157,7 +163,7 @@ class _SubjectCurriculumScreenState extends State<SubjectCurriculumScreen> {
         borderRadius: BorderRadius.circular(24.r),
         boxShadow: [
           BoxShadow(
-            color: primaryColor.withOpacity(0.35),
+            color: primaryColor.withValues(alpha: 0.35),
             blurRadius: 18,
             offset: const Offset(0, 8),
           ),
@@ -172,7 +178,7 @@ class _SubjectCurriculumScreenState extends State<SubjectCurriculumScreen> {
               Container(
                 padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 4.h),
                 decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.2),
+                  color: Colors.white.withValues(alpha: 0.2),
                   borderRadius: BorderRadius.circular(12.r),
                 ),
                 child: Text(
@@ -188,7 +194,7 @@ class _SubjectCurriculumScreenState extends State<SubjectCurriculumScreen> {
               Container(
                 padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 4.h),
                 decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.2),
+                  color: Colors.white.withValues(alpha: 0.2),
                   borderRadius: BorderRadius.circular(12.r),
                 ),
                 child: Row(
@@ -222,12 +228,13 @@ class _SubjectCurriculumScreenState extends State<SubjectCurriculumScreen> {
           Text(
             'Complete Syllabus, Topics & Teacher Study Materials',
             style: TextStyle(
-              color: Colors.white.withOpacity(0.9),
+              color: Colors.white.withValues(alpha: 0.9),
               fontSize: 12.sp,
             ),
           ),
           SizedBox(height: 16.h),
-          Row(
+          Wrap(
+            spacing: 4, runSpacing: 8,
             children: [
               _buildStatChip(Icons.layers_rounded, '$totalChapters Chapters'),
               SizedBox(width: 8.w),
@@ -245,7 +252,7 @@ class _SubjectCurriculumScreenState extends State<SubjectCurriculumScreen> {
     return Container(
       padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 6.h),
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.18),
+        color: Colors.white.withValues(alpha: 0.18),
         borderRadius: BorderRadius.circular(12.r),
       ),
       child: Row(
@@ -338,7 +345,7 @@ class _SubjectCurriculumScreenState extends State<SubjectCurriculumScreen> {
             final chapter = filteredChapters[index];
             final isExpanded = _expandedChapterIds.contains(chapter.chapterId);
             final topics = chapter.topics.where((t) {
-              if (_searchQuery.isEmpty) return true;
+              if (_searchQuery.isEmpty || chapter.chapterTitle.toLowerCase().contains(_searchQuery) || chapter.chapterNumber.toLowerCase().contains(_searchQuery)) return true;
               return t.title.toLowerCase().contains(_searchQuery);
             }).toList();
 
@@ -350,7 +357,7 @@ class _SubjectCurriculumScreenState extends State<SubjectCurriculumScreen> {
                 border: Border.all(color: Colors.grey.shade100),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withOpacity(0.02),
+                    color: Colors.black.withValues(alpha: 0.02),
                     blurRadius: 10,
                     offset: const Offset(0, 4),
                   ),
@@ -377,7 +384,7 @@ class _SubjectCurriculumScreenState extends State<SubjectCurriculumScreen> {
                           Container(
                             padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 5.h),
                             decoration: BoxDecoration(
-                              color: primaryColor.withOpacity(0.1),
+                              color: primaryColor.withValues(alpha: 0.1),
                               borderRadius: BorderRadius.circular(10.r),
                             ),
                             child: Text(
@@ -420,7 +427,7 @@ class _SubjectCurriculumScreenState extends State<SubjectCurriculumScreen> {
                               margin: EdgeInsets.only(right: 6.w),
                               padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 3.h),
                               decoration: BoxDecoration(
-                                color: primaryColor.withOpacity(0.12),
+                                color: primaryColor.withValues(alpha: 0.12),
                                 borderRadius: BorderRadius.circular(8.r),
                               ),
                               child: Row(
@@ -477,11 +484,12 @@ class _SubjectCurriculumScreenState extends State<SubjectCurriculumScreen> {
                           context,
                           MaterialPageRoute(
                             builder: (context) => TopicNotesScreen(
+              repository: _repository,
                               chapterId: chapter.chapterId,
                               chapterTitle: chapter.chapterTitle,
                               chapterNumber: chapter.chapterNumber,
                               subjectName: widget.subjectName,
-                              preloadedNotes: chapter.notes.isNotEmpty ? chapter.notes : null,
+
                             ),
                           ),
                         );
@@ -491,10 +499,10 @@ class _SubjectCurriculumScreenState extends State<SubjectCurriculumScreen> {
                         margin: EdgeInsets.all(12.w),
                         decoration: BoxDecoration(
                           gradient: LinearGradient(
-                            colors: [primaryColor.withOpacity(0.08), primaryColor.withOpacity(0.03)],
+                            colors: [primaryColor.withValues(alpha: 0.08), primaryColor.withValues(alpha: 0.03)],
                           ),
                           borderRadius: BorderRadius.circular(14.r),
-                          border: Border.all(color: primaryColor.withOpacity(0.2)),
+                          border: Border.all(color: primaryColor.withValues(alpha: 0.2)),
                         ),
                         child: Row(
                           children: [
@@ -557,7 +565,7 @@ class _SubjectCurriculumScreenState extends State<SubjectCurriculumScreen> {
                         physics: const NeverScrollableScrollPhysics(),
                         padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 6.h),
                         itemCount: topics.length,
-                        separatorBuilder: (_, __) => SizedBox(height: 8.h),
+                        separatorBuilder: (_, _) => SizedBox(height: 8.h),
                         itemBuilder: (context, tIndex) {
                           final topic = topics[tIndex];
                           return _buildTopicTile(topic, tIndex + 1);
@@ -590,6 +598,7 @@ class _SubjectCurriculumScreenState extends State<SubjectCurriculumScreen> {
           context,
           MaterialPageRoute(
             builder: (context) => TopicNotesScreen(
+              repository: _repository,
               topicId: topic.topicId,
               topicTitle: topic.title,
               subjectName: widget.subjectName,
@@ -610,7 +619,7 @@ class _SubjectCurriculumScreenState extends State<SubjectCurriculumScreen> {
               width: 28.w,
               height: 28.w,
               decoration: BoxDecoration(
-                color: const Color(0xFF4F46E5).withOpacity(0.08),
+                color: const Color(0xFF4F46E5).withValues(alpha: 0.08),
                 shape: BoxShape.circle,
               ),
               alignment: Alignment.center,
@@ -642,7 +651,7 @@ class _SubjectCurriculumScreenState extends State<SubjectCurriculumScreen> {
                       Container(
                         padding: EdgeInsets.symmetric(horizontal: 6.w, vertical: 2.h),
                         decoration: BoxDecoration(
-                          color: difficultyColor.withOpacity(0.12),
+                          color: difficultyColor.withValues(alpha: 0.12),
                           borderRadius: BorderRadius.circular(6.r),
                         ),
                         child: Text(
@@ -667,7 +676,7 @@ class _SubjectCurriculumScreenState extends State<SubjectCurriculumScreen> {
                         Container(
                           padding: EdgeInsets.symmetric(horizontal: 6.w, vertical: 2.h),
                           decoration: BoxDecoration(
-                            color: const Color(0xFFEC4899).withOpacity(0.12),
+                            color: const Color(0xFFEC4899).withValues(alpha: 0.12),
                             borderRadius: BorderRadius.circular(6.r),
                           ),
                           child: Row(
@@ -699,3 +708,5 @@ class _SubjectCurriculumScreenState extends State<SubjectCurriculumScreen> {
     );
   }
 }
+
+

@@ -144,12 +144,12 @@ class _FloatingBottomNavBar extends StatelessWidget {
         margin: EdgeInsets.only(left: 16.w, right: 16.w, bottom: 16.h),
         height: 68.h,
         decoration: BoxDecoration(
-          color: AppColors.surface.withOpacity(0.95),
+          color: AppColors.surface.withValues(alpha: 0.95),
           borderRadius: BorderRadius.circular(24.r),
           border: Border.all(color: AppColors.border, width: 1.5),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.4),
+              color: Colors.black.withValues(alpha: 0.4),
               blurRadius: 20,
               offset: const Offset(0, 10),
             ),
