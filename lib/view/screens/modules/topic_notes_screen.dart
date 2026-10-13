@@ -28,10 +28,11 @@ Future<void> openNoteAttachment(
             queryParameters: {...uri.queryParameters, 'attachment': 'true'},
           )
         : uri;
-    if (!await launchUrl(target, mode: LaunchMode.externalApplication))
+    if (!await launchUrl(target, mode: LaunchMode.externalApplication)) {
       throw StateError('Unable to open attachment');
+    }
   } catch (_) {
-    if (context.mounted)
+    if (context.mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text(
@@ -39,6 +40,7 @@ Future<void> openNoteAttachment(
           ),
         ),
       );
+    }
   }
 }
 
@@ -91,17 +93,19 @@ class _TopicNotesScreenState extends State<TopicNotesScreen> {
         throw StateError('Topic is missing');
       }
       if (data == null) throw StateError('Empty response');
-      if (mounted)
+      if (mounted) {
         setState(() {
           _data = data;
           _loading = false;
         });
+      }
     } catch (_) {
-      if (mounted)
+      if (mounted) {
         setState(() {
           _loading = false;
           _error = 'Unable to load notes. Please try again.';
         });
+      }
     }
   }
 

@@ -1,5 +1,7 @@
 class AppUrl {
-  static const String baseUrl = 'http://10.47.97.61:8080/api';
+  static const String baseUrl =
+      'https://school-springboot-backend.onrender.com/api';
+  // static const String baseUrl = 'http://10.47.97.61:8080/api';
   // static const String baseUrl = 'http://localhost:8080/api';
 
   // Auth Endpoints
