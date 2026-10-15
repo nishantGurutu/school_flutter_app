@@ -195,8 +195,8 @@ class AttendanceStats {
   }
 }
 
-// Homework
-enum HomeworkStatus { pending, submitted }
+// Homework & Assignments
+enum HomeworkStatus { pending, submitted, overdue, accepted, rejected, graded }
 
 class HomeworkItem {
   final String id;
@@ -206,6 +206,25 @@ class HomeworkItem {
   final DateTime dueDate;
   final HomeworkStatus status;
   final String className;
+  final String? section;
+  final String? assignedDate;
+  final String? assignedBy;
+  final int points;
+  final int maxPoints;
+  final dynamic targetStudentId;
+  final String? targetStudentName;
+  final String? targetStudentAdmissionNo;
+  final bool isPersonalized;
+  final String? fileAttachmentUrl;
+  final int submissionCount;
+  final int evaluatedCount;
+  final int totalStudents;
+  final String? submissionStatus;
+  final int? scoredPoints;
+  final String? teacherFeedback;
+  final String? submittedAt;
+  final String? submissionText;
+  final String? submissionFileUrl;
 
   const HomeworkItem({
     required this.id,
@@ -215,7 +234,86 @@ class HomeworkItem {
     required this.dueDate,
     required this.status,
     required this.className,
+    this.section,
+    this.assignedDate,
+    this.assignedBy,
+    this.points = 100,
+    this.maxPoints = 100,
+    this.targetStudentId,
+    this.targetStudentName,
+    this.targetStudentAdmissionNo,
+    this.isPersonalized = false,
+    this.fileAttachmentUrl,
+    this.submissionCount = 0,
+    this.evaluatedCount = 0,
+    this.totalStudents = 0,
+    this.submissionStatus,
+    this.scoredPoints,
+    this.teacherFeedback,
+    this.submittedAt,
+    this.submissionText,
+    this.submissionFileUrl,
   });
+
+  factory HomeworkItem.fromJson(Map<String, dynamic> json) {
+    HomeworkStatus stat = HomeworkStatus.pending;
+    final rawStatus = (json['status'] ?? json['submissionStatus'] ?? 'pending').toString().toLowerCase();
+    if (rawStatus == 'submitted') {
+      stat = HomeworkStatus.submitted;
+    } else if (rawStatus == 'overdue') {
+      stat = HomeworkStatus.overdue;
+    } else if (rawStatus == 'accepted') {
+      stat = HomeworkStatus.accepted;
+    } else if (rawStatus == 'rejected') {
+      stat = HomeworkStatus.rejected;
+    } else if (rawStatus == 'graded') {
+      stat = HomeworkStatus.graded;
+    }
+
+    final pts = (json['points'] ?? json['maxPoints'] ?? 100) is int
+        ? (json['points'] ?? json['maxPoints'] ?? 100) as int
+        : int.tryParse((json['points'] ?? json['maxPoints'] ?? 100).toString()) ?? 100;
+
+    return HomeworkItem(
+      id: (json['id'] ?? json['dbId'] ?? '').toString(),
+      subject: json['subject'] ?? 'Subject',
+      title: json['title'] ?? 'Assignment',
+      description: json['description'] ?? '',
+      dueDate: DateTime.tryParse(json['dueDate'] ?? json['due_date'] ?? '') ??
+          DateTime.now().add(const Duration(days: 3)),
+      status: stat,
+      className: json['className'] ?? json['class_name'] ?? 'Class',
+      section: json['section'],
+      assignedDate: json['assignedDate'] ?? json['assigned_date'],
+      assignedBy: json['assignedBy'] ?? json['assigned_by'],
+      points: pts,
+      maxPoints: pts,
+      targetStudentId: json['targetStudentId'],
+      targetStudentName: json['targetStudentName'],
+      targetStudentAdmissionNo: json['targetStudentAdmissionNo'],
+      isPersonalized: json['isPersonalized'] == true ||
+          json['isTargetedToStudent'] == true ||
+          json['targetStudentId'] != null,
+      fileAttachmentUrl: json['fileAttachmentUrl'],
+      submissionCount: (json['submissionCount'] ?? 0) is int
+          ? json['submissionCount']
+          : int.tryParse(json['submissionCount'].toString()) ?? 0,
+      evaluatedCount: (json['evaluatedCount'] ?? 0) is int
+          ? json['evaluatedCount']
+          : int.tryParse(json['evaluatedCount'].toString()) ?? 0,
+      totalStudents: (json['totalStudents'] ?? 0) is int
+          ? json['totalStudents']
+          : int.tryParse(json['totalStudents'].toString()) ?? 0,
+      submissionStatus: json['submissionStatus'] ?? rawStatus,
+      scoredPoints: json['scoredPoints'] != null
+          ? int.tryParse(json['scoredPoints'].toString())
+          : null,
+      teacherFeedback: json['teacherFeedback'],
+      submittedAt: json['submittedAt'],
+      submissionText: json['submissionText'],
+      submissionFileUrl: json['submissionFileUrl'] ?? json['fileUrl'],
+    );
+  }
 
   HomeworkItem copyWith({
     String? id,
@@ -225,6 +323,25 @@ class HomeworkItem {
     DateTime? dueDate,
     HomeworkStatus? status,
     String? className,
+    String? section,
+    String? assignedDate,
+    String? assignedBy,
+    int? points,
+    int? maxPoints,
+    dynamic targetStudentId,
+    String? targetStudentName,
+    String? targetStudentAdmissionNo,
+    bool? isPersonalized,
+    String? fileAttachmentUrl,
+    int? submissionCount,
+    int? evaluatedCount,
+    int? totalStudents,
+    String? submissionStatus,
+    int? scoredPoints,
+    String? teacherFeedback,
+    String? submittedAt,
+    String? submissionText,
+    String? submissionFileUrl,
   }) {
     return HomeworkItem(
       id: id ?? this.id,
@@ -234,6 +351,240 @@ class HomeworkItem {
       dueDate: dueDate ?? this.dueDate,
       status: status ?? this.status,
       className: className ?? this.className,
+      section: section ?? this.section,
+      assignedDate: assignedDate ?? this.assignedDate,
+      assignedBy: assignedBy ?? this.assignedBy,
+      points: points ?? this.points,
+      maxPoints: maxPoints ?? this.maxPoints,
+      targetStudentId: targetStudentId ?? this.targetStudentId,
+      targetStudentName: targetStudentName ?? this.targetStudentName,
+      targetStudentAdmissionNo: targetStudentAdmissionNo ?? this.targetStudentAdmissionNo,
+      isPersonalized: isPersonalized ?? this.isPersonalized,
+      fileAttachmentUrl: fileAttachmentUrl ?? this.fileAttachmentUrl,
+      submissionCount: submissionCount ?? this.submissionCount,
+      evaluatedCount: evaluatedCount ?? this.evaluatedCount,
+      totalStudents: totalStudents ?? this.totalStudents,
+      submissionStatus: submissionStatus ?? this.submissionStatus,
+      scoredPoints: scoredPoints ?? this.scoredPoints,
+      teacherFeedback: teacherFeedback ?? this.teacherFeedback,
+      submittedAt: submittedAt ?? this.submittedAt,
+      submissionText: submissionText ?? this.submissionText,
+      submissionFileUrl: submissionFileUrl ?? this.submissionFileUrl,
+    );
+  }
+}
+
+class AssignmentSubmissionItem {
+  final dynamic submissionId;
+  final dynamic homeworkId;
+  final dynamic studentId;
+  final String studentName;
+  final String? studentRollNo;
+  final String? studentAdmissionNo;
+  final String? submittedAt;
+  final String? submissionText;
+  final String? fileUrl;
+  final String status;
+  final int? points;
+  final int maxPoints;
+  final String? teacherFeedback;
+  final String? reviewedAt;
+
+  const AssignmentSubmissionItem({
+    this.submissionId,
+    this.homeworkId,
+    this.studentId,
+    required this.studentName,
+    this.studentRollNo,
+    this.studentAdmissionNo,
+    this.submittedAt,
+    this.submissionText,
+    this.fileUrl,
+    required this.status,
+    this.points,
+    this.maxPoints = 100,
+    this.teacherFeedback,
+    this.reviewedAt,
+  });
+
+  factory AssignmentSubmissionItem.fromJson(Map<String, dynamic> json) {
+    return AssignmentSubmissionItem(
+      submissionId: json['submissionId'],
+      homeworkId: json['homeworkId'],
+      studentId: json['studentId'],
+      studentName: json['studentName'] ?? 'Student',
+      studentRollNo: json['studentRollNo']?.toString(),
+      studentAdmissionNo: json['studentAdmissionNo']?.toString(),
+      submittedAt: json['submittedAt']?.toString(),
+      submissionText: json['submissionText']?.toString(),
+      fileUrl: json['fileUrl']?.toString(),
+      status: (json['status'] ?? 'PENDING').toString().toUpperCase(),
+      points: json['points'] != null ? int.tryParse(json['points'].toString()) : null,
+      maxPoints: json['maxPoints'] != null ? int.tryParse(json['maxPoints'].toString()) ?? 100 : 100,
+      teacherFeedback: json['teacherFeedback']?.toString(),
+      reviewedAt: json['reviewedAt']?.toString(),
+    );
+  }
+}
+
+class TeacherClassModel {
+  final String id;
+  final String className;
+  final String section;
+  final String subject;
+  final int totalStudents;
+  final String room;
+  final bool isClassTeacher;
+  final String timing;
+  final double syllabusProgress;
+
+  const TeacherClassModel({
+    required this.id,
+    required this.className,
+    required this.section,
+    required this.subject,
+    required this.totalStudents,
+    required this.room,
+    this.isClassTeacher = false,
+    required this.timing,
+    required this.syllabusProgress,
+  });
+
+  factory TeacherClassModel.fromJson(Map<String, dynamic> json) {
+    return TeacherClassModel(
+      id: (json['id'] ?? '').toString(),
+      className: json['className'] ?? 'Class',
+      section: json['section'] ?? 'A',
+      subject: json['subject'] ?? 'General',
+      totalStudents: (json['totalStudents'] ?? 0) is int
+          ? json['totalStudents']
+          : int.tryParse(json['totalStudents'].toString()) ?? 0,
+      room: json['room'] ?? 'Room 101',
+      isClassTeacher: json['isClassTeacher'] == true,
+      timing: json['timing'] ?? '09:00 AM - 10:00 AM',
+      syllabusProgress: (json['syllabusProgress'] ?? 0.7).toDouble(),
+    );
+  }
+}
+
+class StudentInClassModel {
+  final dynamic id;
+  final String admissionNo;
+  final String? rollNo;
+  final String name;
+  final String className;
+  final String? section;
+  final String? gender;
+  final String? phone;
+  final String? email;
+  final String? studentPhoto;
+
+  const StudentInClassModel({
+    required this.id,
+    required this.admissionNo,
+    this.rollNo,
+    required this.name,
+    required this.className,
+    this.section,
+    this.gender,
+    this.phone,
+    this.email,
+    this.studentPhoto,
+  });
+
+  factory StudentInClassModel.fromJson(Map<String, dynamic> json) {
+    return StudentInClassModel(
+      id: json['id'],
+      admissionNo: json['admissionNo'] ?? '',
+      rollNo: json['rollNo']?.toString(),
+      name: json['name'] ?? 'Student',
+      className: json['className'] ?? '',
+      section: json['section'],
+      gender: json['gender'],
+      phone: json['phone'],
+      email: json['email'],
+      studentPhoto: json['studentPhoto'],
+    );
+  }
+}
+
+class TeacherTopicModel {
+  final dynamic id;
+  final String title;
+  final String description;
+  final String difficulty;
+  final int estimatedMinutes;
+  final String status;
+
+  const TeacherTopicModel({
+    required this.id,
+    required this.title,
+    required this.description,
+    required this.difficulty,
+    required this.estimatedMinutes,
+    required this.status,
+  });
+
+  factory TeacherTopicModel.fromJson(Map<String, dynamic> json) {
+    return TeacherTopicModel(
+      id: json['id'],
+      title: json['title'] ?? 'Topic',
+      description: json['description'] ?? '',
+      difficulty: json['difficulty'] ?? 'Medium',
+      estimatedMinutes: (json['estimatedMinutes'] ?? 30) is int
+          ? json['estimatedMinutes']
+          : int.tryParse(json['estimatedMinutes'].toString()) ?? 30,
+      status: json['status'] ?? 'Active',
+    );
+  }
+}
+
+class TeacherLessonModel {
+  final dynamic id;
+  final String chapterNumber;
+  final String chapterTitle;
+  final String title;
+  final String description;
+  final String className;
+  final dynamic subjectId;
+  final String subjectName;
+  final int topicsCount;
+  final List<TeacherTopicModel> topics;
+
+  const TeacherLessonModel({
+    required this.id,
+    required this.chapterNumber,
+    required this.chapterTitle,
+    required this.title,
+    required this.description,
+    required this.className,
+    this.subjectId,
+    required this.subjectName,
+    required this.topicsCount,
+    required this.topics,
+  });
+
+  factory TeacherLessonModel.fromJson(Map<String, dynamic> json) {
+    List<TeacherTopicModel> parsedTopics = [];
+    if (json['topics'] is List) {
+      parsedTopics = (json['topics'] as List)
+          .where((t) => t != null && t is Map)
+          .map((t) => TeacherTopicModel.fromJson(Map<String, dynamic>.from(t)))
+          .toList();
+    }
+
+    return TeacherLessonModel(
+      id: json['id'],
+      chapterNumber: json['chapterNumber'] ?? 'Chapter 1',
+      chapterTitle: json['chapterTitle'] ?? 'Lesson',
+      title: json['title'] ??
+          ('${json['chapterNumber'] ?? ''}: ${json['chapterTitle'] ?? ''}'),
+      description: json['description'] ?? '',
+      className: json['className'] ?? '',
+      subjectId: json['subjectId'],
+      subjectName: json['subjectName'] ?? 'General',
+      topicsCount: json['topicsCount'] ?? parsedTopics.length,
+      topics: parsedTopics,
     );
   }
 }

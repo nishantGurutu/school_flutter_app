@@ -36,4 +36,53 @@ abstract class SchoolRepository {
   
   Future<List<ChatChannel>> getChatChannels(String userId);
   Future<List<ChatChannel>> sendMessage(String userId, String channelId, String text);
+
+  // eSchool Teacher Flow (Classes, Lessons, Assignments ID-wise)
+  Future<List<TeacherClassModel>> getTeacherClasses();
+  Future<List<StudentInClassModel>> getClassStudents(String className, {String? section});
+  Future<List<TeacherLessonModel>> getTeacherLessons({String? className, int? subjectId});
+  Future<TeacherLessonModel?> createTeacherLesson({
+    required String className,
+    required String chapterNumber,
+    required String chapterTitle,
+    String? description,
+    int? subjectId,
+  });
+  Future<TeacherTopicModel?> addLessonTopic({
+    required String lessonId,
+    required String title,
+    String? description,
+    String? difficulty,
+    int? estimatedMinutes,
+  });
+  Future<bool> deleteLesson(String lessonId);
+  Future<List<HomeworkItem>> getTeacherAssignments({String? className, String? subject});
+  Future<HomeworkItem?> createTeacherAssignment({
+    required String title,
+    required String description,
+    required String subject,
+    required String className,
+    String? section,
+    required String dueDate,
+    int points = 100,
+    dynamic targetStudentId,
+    String? fileAttachmentUrl,
+  });
+  Future<List<AssignmentSubmissionItem>> getAssignmentSubmissions(String assignmentId);
+  Future<bool> reviewSubmission({
+    required String assignmentId,
+    required dynamic submissionId,
+    required String status,
+    int? points,
+    String? feedback,
+  });
+
+  // eSchool Student & Parent Assignments
+  Future<List<HomeworkItem>> getStudentAssignments({String? admissionNo});
+  Future<bool> submitStudentAssignmentWork({
+    required String assignmentId,
+    String? submissionText,
+    String? fileUrl,
+  });
 }
+

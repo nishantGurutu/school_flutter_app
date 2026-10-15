@@ -16,6 +16,8 @@ class UserModel {
   final dynamic entityId;
   final String? phone;
   final String? department;
+  final String? admissionNo;
+  final String? rollNo;
 
   const UserModel({
     required this.id,
@@ -33,6 +35,8 @@ class UserModel {
     this.entityId,
     this.phone,
     this.department,
+    this.admissionNo,
+    this.rollNo,
   });
 
   factory UserModel.fromJson(Map<String, dynamic> json, {String? token, String? refreshToken}) {
@@ -63,6 +67,8 @@ class UserModel {
       entityId: json['entityId'],
       phone: json['phone'],
       department: json['department'],
+      admissionNo: json['admissionNo'] ?? json['admission_no'],
+      rollNo: json['rollNo'] ?? json['roll_no'],
     );
   }
 
@@ -83,6 +89,8 @@ class UserModel {
       'entityId': entityId,
       'phone': phone,
       'department': department,
+      'admissionNo': admissionNo,
+      'rollNo': rollNo,
     };
   }
 

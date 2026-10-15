@@ -352,22 +352,10 @@ class ApiSchoolRepository implements SchoolRepository {
       final res = await _apiService.getApi(url);
       final rawList = _extractList(res);
       if (rawList.isNotEmpty) {
-        return rawList.map((item) {
-          return HomeworkItem(
-            id: (item['id'] ?? item['dbId'] ?? '').toString(),
-            subject: item['subject'] ?? 'Subject',
-            title: item['title'] ?? 'Title',
-            description: item['description'] ?? '',
-            dueDate:
-                DateTime.tryParse(item['dueDate'] ?? item['due_date'] ?? '') ??
-                DateTime.now(),
-            status: item['status'] == 'submitted'
-                ? HomeworkStatus.submitted
-                : HomeworkStatus.pending,
-            className:
-                item['className'] ?? item['class_name'] ?? (className ?? ''),
-          );
-        }).toList();
+        return rawList
+            .where((item) => item != null && item is Map)
+            .map((item) => HomeworkItem.fromJson(Map<String, dynamic>.from(item)))
+            .toList();
       }
       return [];
     } catch (e) {
@@ -866,4 +854,272 @@ class ApiSchoolRepository implements SchoolRepository {
     if (res is! Map) throw StateError('Invalid topic notes response');
     return TopicNotesResponseModel.fromJson(Map<String, dynamic>.from(res));
   }
+
+  // ============================================================
+  // eSchool Teacher Flow (Classes, Lessons, Assignments ID-wise)
+  // ============================================================
+
+  @override
+  Future<List<TeacherClassModel>> getTeacherClasses() async {
+    try {
+      final res = await _apiService.getApi(AppUrl.teacherClasses);
+      final rawList = _extractList(res);
+      return rawList
+          .where((item) => item != null && item is Map)
+          .map((item) => TeacherClassModel.fromJson(Map<String, dynamic>.from(item)))
+          .toList();
+    } catch (e) {
+      if (kDebugMode) {
+        print('❌ Error fetching teacher classes: $e');
+      }
+      return [];
+    }
+  }
+
+  @override
+  Future<List<StudentInClassModel>> getClassStudents(String className, {String? section}) async {
+    try {
+      final url = AppUrl.classStudents(className, section: section);
+      final res = await _apiService.getApi(url);
+      final rawList = _extractList(res);
+      return rawList
+          .where((item) => item != null && item is Map)
+          .map((item) => StudentInClassModel.fromJson(Map<String, dynamic>.from(item)))
+          .toList();
+    } catch (e) {
+      if (kDebugMode) {
+        print('❌ Error fetching class students: $e');
+      }
+      return [];
+    }
+  }
+
+  @override
+  Future<List<TeacherLessonModel>> getTeacherLessons({String? className, int? subjectId}) async {
+    try {
+      final url = AppUrl.teacherLessons(className: className, subjectId: subjectId);
+      final res = await _apiService.getApi(url);
+      final rawList = _extractList(res);
+      return rawList
+          .where((item) => item != null && item is Map)
+          .map((item) => TeacherLessonModel.fromJson(Map<String, dynamic>.from(item)))
+          .toList();
+    } catch (e) {
+      if (kDebugMode) {
+        print('❌ Error fetching teacher lessons: $e');
+      }
+      return [];
+    }
+  }
+
+  @override
+  Future<TeacherLessonModel?> createTeacherLesson({
+    required String className,
+    required String chapterNumber,
+    required String chapterTitle,
+    String? description,
+    int? subjectId,
+  }) async {
+    try {
+      final payload = {
+        'className': className,
+        'chapterNumber': chapterNumber,
+        'chapterTitle': chapterTitle,
+        'description': description ?? '',
+        if (subjectId != null) 'subjectId': subjectId,
+      };
+      final res = await _apiService.postApi(AppUrl.createTeacherLesson, payload);
+      if (res is Map) {
+        return TeacherLessonModel.fromJson(Map<String, dynamic>.from(res));
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        print('❌ Error creating teacher lesson: $e');
+      }
+    }
+    return null;
+  }
+
+  @override
+  Future<TeacherTopicModel?> addLessonTopic({
+    required String lessonId,
+    required String title,
+    String? description,
+    String? difficulty,
+    int? estimatedMinutes,
+  }) async {
+    try {
+      final payload = {
+        'title': title,
+        'description': description ?? '',
+        'difficulty': difficulty ?? 'Medium',
+        'estimatedMinutes': estimatedMinutes ?? 30,
+      };
+      final res = await _apiService.postApi(AppUrl.addLessonTopic(lessonId), payload);
+      if (res is Map) {
+        return TeacherTopicModel.fromJson(Map<String, dynamic>.from(res));
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        print('❌ Error adding lesson topic: $e');
+      }
+    }
+    return null;
+  }
+
+  @override
+  Future<bool> deleteLesson(String lessonId) async {
+    try {
+      await _apiService.deleteApi(AppUrl.deleteLesson(lessonId));
+      return true;
+    } catch (e) {
+      if (kDebugMode) {
+        print('❌ Error deleting lesson: $e');
+      }
+      return false;
+    }
+  }
+
+  @override
+  Future<List<HomeworkItem>> getTeacherAssignments({String? className, String? subject}) async {
+    try {
+      final url = AppUrl.teacherAssignments(className: className, subject: subject);
+      final res = await _apiService.getApi(url);
+      final rawList = _extractList(res);
+      return rawList
+          .where((item) => item != null && item is Map)
+          .map((item) => HomeworkItem.fromJson(Map<String, dynamic>.from(item)))
+          .toList();
+    } catch (e) {
+      if (kDebugMode) {
+        print('❌ Error fetching teacher assignments: $e');
+      }
+      return [];
+    }
+  }
+
+  @override
+  Future<HomeworkItem?> createTeacherAssignment({
+    required String title,
+    required String description,
+    required String subject,
+    required String className,
+    String? section,
+    required String dueDate,
+    int points = 100,
+    dynamic targetStudentId,
+    String? fileAttachmentUrl,
+  }) async {
+    try {
+      final payload = {
+        'title': title,
+        'description': description,
+        'subject': subject,
+        'className': className,
+        'section': section ?? 'A',
+        'dueDate': dueDate,
+        'points': points,
+        if (targetStudentId != null) 'targetStudentId': targetStudentId,
+        if (fileAttachmentUrl != null && fileAttachmentUrl.isNotEmpty)
+          'fileAttachmentUrl': fileAttachmentUrl,
+      };
+      final res = await _apiService.postApi(AppUrl.createTeacherAssignment, payload);
+      if (res is Map) {
+        return HomeworkItem.fromJson(Map<String, dynamic>.from(res));
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        print('❌ Error creating teacher assignment: $e');
+      }
+    }
+    return null;
+  }
+
+  @override
+  Future<List<AssignmentSubmissionItem>> getAssignmentSubmissions(String assignmentId) async {
+    try {
+      final url = AppUrl.assignmentSubmissions(assignmentId);
+      final res = await _apiService.getApi(url);
+      final rawList = _extractList(res);
+      return rawList
+          .where((item) => item != null && item is Map)
+          .map((item) => AssignmentSubmissionItem.fromJson(Map<String, dynamic>.from(item)))
+          .toList();
+    } catch (e) {
+      if (kDebugMode) {
+        print('❌ Error fetching assignment submissions: $e');
+      }
+      return [];
+    }
+  }
+
+  @override
+  Future<bool> reviewSubmission({
+    required String assignmentId,
+    required dynamic submissionId,
+    required String status,
+    int? points,
+    String? feedback,
+  }) async {
+    try {
+      final url = AppUrl.reviewSubmission(assignmentId, submissionId.toString());
+      final payload = {
+        'status': status,
+        if (points != null) 'points': points,
+        if (feedback != null && feedback.isNotEmpty) 'feedback': feedback,
+      };
+      await _apiService.postApi(url, payload);
+      return true;
+    } catch (e) {
+      if (kDebugMode) {
+        print('❌ Error reviewing submission: $e');
+      }
+      return false;
+    }
+  }
+
+  // ============================================================
+  // eSchool Student & Parent Flow (Assignments ID-wise & Submissions)
+  // ============================================================
+
+  @override
+  Future<List<HomeworkItem>> getStudentAssignments({String? admissionNo}) async {
+    try {
+      final url = AppUrl.studentAssignments(admissionNo: admissionNo);
+      final res = await _apiService.getApi(url);
+      final rawList = _extractList(res);
+      return rawList
+          .where((item) => item != null && item is Map)
+          .map((item) => HomeworkItem.fromJson(Map<String, dynamic>.from(item)))
+          .toList();
+    } catch (e) {
+      if (kDebugMode) {
+        print('❌ Error fetching student assignments: $e');
+      }
+      return [];
+    }
+  }
+
+  @override
+  Future<bool> submitStudentAssignmentWork({
+    required String assignmentId,
+    String? submissionText,
+    String? fileUrl,
+  }) async {
+    try {
+      final url = AppUrl.submitStudentAssignment(assignmentId);
+      final payload = {
+        'submissionText': submissionText ?? '',
+        'fileUrl': fileUrl ?? '',
+      };
+      await _apiService.postApi(url, payload);
+      return true;
+    } catch (e) {
+      if (kDebugMode) {
+        print('❌ Error submitting student assignment: $e');
+      }
+      return false;
+    }
+  }
 }
+

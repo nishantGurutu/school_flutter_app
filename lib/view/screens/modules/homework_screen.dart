@@ -3,11 +3,11 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/extensions/context_extensions.dart';
-import '../../../logic/school/school_bloc.dart';
-import '../../../logic/school/school_event.dart';
-import '../../../logic/school/school_state.dart';
-import '../../../logic/auth/auth_bloc.dart';
+import '../../../data/models/user_model.dart';
 import '../../../data/models/school_models.dart';
+import '../../../data/repositories/api_school_repository.dart';
+import '../../../logic/auth/auth_bloc.dart';
+import '../../widgets/glass_card.dart';
 import '../../widgets/smooth_skeleton.dart';
 
 class HomeworkScreen extends StatefulWidget {
@@ -19,26 +19,38 @@ class HomeworkScreen extends StatefulWidget {
 }
 
 class _HomeworkScreenState extends State<HomeworkScreen> with SingleTickerProviderStateMixin {
+  final ApiSchoolRepository _repository = ApiSchoolRepository();
   late TabController _tabController;
+  List<HomeworkItem> _homeworkList = [];
+  bool _isLoading = true;
+  bool _hasCheckedArgs = false;
 
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      _loadHomework();
+      _loadData();
     });
   }
 
-  void _loadHomework() {
-    final authState = context.read<AuthBloc>().state;
-    final currentUser = authState.user;
-    context.read<SchoolBloc>().add(
-      FetchHomeworkRequested(
-        userId: currentUser?.id ?? '1',
-        className: currentUser?.className,
-      ),
-    );
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (!_hasCheckedArgs) {
+      _hasCheckedArgs = true;
+      final args = ModalRoute.of(context)?.settings.arguments;
+      if (args is Map) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          _showCreateAssignmentSheet(
+            prefilledStudentId: args['targetStudentId'],
+            prefilledStudentName: args['targetStudentName']?.toString(),
+            prefilledClass: args['className']?.toString(),
+            prefilledSection: args['section']?.toString(),
+          );
+        });
+      }
+    }
   }
 
   @override
@@ -47,26 +59,493 @@ class _HomeworkScreenState extends State<HomeworkScreen> with SingleTickerProvid
     super.dispose();
   }
 
-  void _showSubmitBottomSheet(BuildContext context, HomeworkItem hw) {
-    showDialog<void>(
+  Future<void> _loadData() async {
+    setState(() => _isLoading = true);
+    final authState = context.read<AuthBloc>().state;
+    final currentUser = authState.user;
+
+    List<HomeworkItem> list = [];
+    if (currentUser?.role == UserRole.teacher) {
+      list = await _repository.getTeacherAssignments();
+    } else {
+      String? childAdm = (currentUser?.role == UserRole.parent)
+          ? currentUser?.admissionNo
+          : null;
+      list = await _repository.getStudentAssignments(admissionNo: childAdm);
+      if (list.isEmpty) {
+        list = await _repository.getHomework(currentUser?.id ?? '1', className: currentUser?.className);
+      }
+    }
+
+    if (mounted) {
+      setState(() {
+        _homeworkList = list;
+        _isLoading = false;
+      });
+    }
+  }
+
+  void _showCreateAssignmentSheet({
+    dynamic prefilledStudentId,
+    String? prefilledStudentName,
+    String? prefilledClass,
+    String? prefilledSection,
+  }) {
+    final titleCtrl = TextEditingController();
+    final descCtrl = TextEditingController();
+    final subjectCtrl = TextEditingController(text: 'Science');
+    final pointsCtrl = TextEditingController(text: '100');
+    final fileUrlCtrl = TextEditingController();
+    DateTime chosenDueDate = DateTime.now().add(const Duration(days: 3));
+    String selectedClass = prefilledClass ?? 'Class 10';
+    String selectedSection = prefilledSection ?? 'A';
+
+    bool isTargeted = prefilledStudentId != null;
+    dynamic selectedStudentId = prefilledStudentId;
+    String? selectedStudentName = prefilledStudentName;
+    List<StudentInClassModel> classStudents = [];
+    bool loadingStudents = false;
+
+    showModalBottomSheet(
       context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: const Text('Submit assignment'),
-        content: Text('Confirm that you have completed ${hw.title}. This records your submission; no file is uploaded.'),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(dialogContext), child: const Text('Cancel')),
-          FilledButton(onPressed: () {
-            final userId = context.read<AuthBloc>().state.user?.id;
-            if (userId == null) return;
-            context.read<SchoolBloc>().add(SubmitHomeworkRequested(userId: userId, homeworkId: hw.id));
-            Navigator.pop(dialogContext);
-          }, child: const Text('Submit')),
-        ],
+      isScrollControlled: true,
+      backgroundColor: AppColors.surface,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(22.r)),
       ),
+      builder: (ctx) {
+        return StatefulBuilder(
+          builder: (ctx, setSheetState) {
+            void fetchClassStudents(String cls, String sec) async {
+              setSheetState(() => loadingStudents = true);
+              final stList = await _repository.getClassStudents(cls, section: sec);
+              setSheetState(() {
+                classStudents = stList;
+                loadingStudents = false;
+              });
+            }
+
+            return Padding(
+              padding: EdgeInsets.only(
+                left: 20.w,
+                right: 20.w,
+                top: 20.h,
+                bottom: MediaQuery.of(ctx).viewInsets.bottom + 20.h,
+              ),
+              child: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          'Create New Assignment',
+                          style: TextStyle(fontSize: 18.sp, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.close_rounded),
+                          onPressed: () => Navigator.pop(ctx),
+                        ),
+                      ],
+                    ),
+                    12.h.height,
+
+                    // Target Type: Whole Class vs Specific Student (ID-wise)
+                    Container(
+                      padding: EdgeInsets.all(12.w),
+                      decoration: BoxDecoration(
+                        color: AppColors.background,
+                        borderRadius: BorderRadius.circular(14.r),
+                        border: Border.all(color: AppColors.border),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text('Assignment Scope', style: TextStyle(fontSize: 12.sp, fontWeight: FontWeight.bold, color: AppColors.textSecondary)),
+                          8.h.height,
+                          Row(
+                            children: [
+                              Expanded(
+                                child: InkWell(
+                                  onTap: () => setSheetState(() {
+                                    isTargeted = false;
+                                    selectedStudentId = null;
+                                    selectedStudentName = null;
+                                  }),
+                                  borderRadius: BorderRadius.circular(10.r),
+                                  child: Container(
+                                    padding: EdgeInsets.symmetric(vertical: 10.h),
+                                    decoration: BoxDecoration(
+                                      color: !isTargeted ? const Color(0xFF0284C7) : AppColors.surface,
+                                      borderRadius: BorderRadius.circular(10.r),
+                                      border: Border.all(color: !isTargeted ? const Color(0xFF0284C7) : AppColors.border),
+                                    ),
+                                    child: Center(
+                                      child: Text(
+                                        '👥 Whole Class',
+                                        style: TextStyle(
+                                          color: !isTargeted ? Colors.white : AppColors.textPrimary,
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 12.sp,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                              10.w.width,
+                              Expanded(
+                                child: InkWell(
+                                  onTap: () {
+                                    setSheetState(() => isTargeted = true);
+                                    if (classStudents.isEmpty) {
+                                      fetchClassStudents(selectedClass, selectedSection);
+                                    }
+                                  },
+                                  borderRadius: BorderRadius.circular(10.r),
+                                  child: Container(
+                                    padding: EdgeInsets.symmetric(vertical: 10.h),
+                                    decoration: BoxDecoration(
+                                      color: isTargeted ? const Color(0xFF0284C7) : AppColors.surface,
+                                      borderRadius: BorderRadius.circular(10.r),
+                                      border: Border.all(color: isTargeted ? const Color(0xFF0284C7) : AppColors.border),
+                                    ),
+                                    child: Center(
+                                      child: Text(
+                                        '👤 Specific Student (ID-Wise)',
+                                        style: TextStyle(
+                                          color: isTargeted ? Colors.white : AppColors.textPrimary,
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 12.sp,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                          if (isTargeted) ...[
+                            12.h.height,
+                            if (loadingStudents)
+                              const Center(child: Padding(padding: EdgeInsets.all(8.0), child: CircularProgressIndicator()))
+                            else ...[
+                              DropdownButtonFormField<dynamic>(
+                                value: selectedStudentId,
+                                isExpanded: true,
+                                decoration: InputDecoration(
+                                  labelText: 'Select Student by ID / Name',
+                                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(10.r)),
+                                  filled: true,
+                                  fillColor: AppColors.surface,
+                                ),
+                                hint: const Text('Choose student to assign'),
+                                items: classStudents.map((st) {
+                                  return DropdownMenuItem<dynamic>(
+                                    value: st.id,
+                                    child: Text(
+                                      'ID: #${st.id} • ${st.name} (Roll: ${st.rollNo ?? 'N/A'})',
+                                      overflow: TextOverflow.ellipsis,
+                                      style: TextStyle(fontSize: 13.sp),
+                                    ),
+                                  );
+                                }).toList(),
+                                onChanged: (val) {
+                                  final match = classStudents.firstWhere((s) => s.id == val, orElse: () => classStudents.first);
+                                  setSheetState(() {
+                                    selectedStudentId = val;
+                                    selectedStudentName = match.name;
+                                  });
+                                },
+                              ),
+                              if (selectedStudentName != null) ...[
+                                6.h.height,
+                                Text(
+                                  'Task will be targeted directly to: $selectedStudentName (ID: #$selectedStudentId)',
+                                  style: TextStyle(color: const Color(0xFF0284C7), fontSize: 11.5.sp, fontWeight: FontWeight.bold),
+                                ),
+                              ],
+                            ],
+                          ],
+                        ],
+                      ),
+                    ),
+                    12.h.height,
+
+                    TextField(
+                      controller: titleCtrl,
+                      decoration: InputDecoration(
+                        labelText: 'Assignment Title',
+                        hintText: 'e.g. Science Chapter 3 Questions',
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12.r)),
+                        filled: true,
+                        fillColor: AppColors.background,
+                      ),
+                    ),
+                    10.h.height,
+
+                    Row(
+                      children: [
+                        Expanded(
+                          child: DropdownButtonFormField<String>(
+                            value: ['Class 8', 'Class 9', 'Class 10'].contains(selectedClass) ? selectedClass : 'Class 10',
+                            decoration: InputDecoration(
+                              labelText: 'Class',
+                              border: OutlineInputBorder(borderRadius: BorderRadius.circular(12.r)),
+                              filled: true,
+                              fillColor: AppColors.background,
+                            ),
+                            items: ['Class 8', 'Class 9', 'Class 10'].map((c) => DropdownMenuItem(value: c, child: Text(c))).toList(),
+                            onChanged: (val) {
+                              if (val != null) {
+                                setSheetState(() => selectedClass = val);
+                                if (isTargeted) fetchClassStudents(val, selectedSection);
+                              }
+                            },
+                          ),
+                        ),
+                        10.w.width,
+                        Expanded(
+                          child: DropdownButtonFormField<String>(
+                            value: selectedSection,
+                            decoration: InputDecoration(
+                              labelText: 'Section',
+                              border: OutlineInputBorder(borderRadius: BorderRadius.circular(12.r)),
+                              filled: true,
+                              fillColor: AppColors.background,
+                            ),
+                            items: ['A', 'B', 'C'].map((s) => DropdownMenuItem(value: s, child: Text(s))).toList(),
+                            onChanged: (val) {
+                              if (val != null) {
+                                setSheetState(() => selectedSection = val);
+                                if (isTargeted) fetchClassStudents(selectedClass, val);
+                              }
+                            },
+                          ),
+                        ),
+                      ],
+                    ),
+                    10.h.height,
+
+                    Row(
+                      children: [
+                        Expanded(
+                          child: TextField(
+                            controller: subjectCtrl,
+                            decoration: InputDecoration(
+                              labelText: 'Subject',
+                              border: OutlineInputBorder(borderRadius: BorderRadius.circular(12.r)),
+                              filled: true,
+                              fillColor: AppColors.background,
+                            ),
+                          ),
+                        ),
+                        10.w.width,
+                        Expanded(
+                          child: TextField(
+                            controller: pointsCtrl,
+                            keyboardType: TextInputType.number,
+                            decoration: InputDecoration(
+                              labelText: 'Max Points',
+                              border: OutlineInputBorder(borderRadius: BorderRadius.circular(12.r)),
+                              filled: true,
+                              fillColor: AppColors.background,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    10.h.height,
+
+                    TextField(
+                      controller: descCtrl,
+                      maxLines: 3,
+                      decoration: InputDecoration(
+                        labelText: 'Instructions / Assignment Details',
+                        hintText: 'Detailed requirements, exercises, or questions...',
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12.r)),
+                        filled: true,
+                        fillColor: AppColors.background,
+                      ),
+                    ),
+                    10.h.height,
+
+                    TextField(
+                      controller: fileUrlCtrl,
+                      decoration: InputDecoration(
+                        labelText: 'Resource / Attachment Link (Optional)',
+                        hintText: 'https://...',
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12.r)),
+                        filled: true,
+                        fillColor: AppColors.background,
+                      ),
+                    ),
+                    14.h.height,
+
+                    ElevatedButton(
+                      onPressed: () async {
+                        if (titleCtrl.text.trim().isEmpty) return;
+                        Navigator.pop(ctx);
+                        setState(() => _isLoading = true);
+                        await _repository.createTeacherAssignment(
+                          title: titleCtrl.text.trim(),
+                          description: descCtrl.text.trim(),
+                          subject: subjectCtrl.text.trim(),
+                          className: selectedClass,
+                          section: selectedSection,
+                          dueDate: '${chosenDueDate.year}-${chosenDueDate.month.toString().padLeft(2, '0')}-${chosenDueDate.day.toString().padLeft(2, '0')}',
+                          points: int.tryParse(pointsCtrl.text.trim()) ?? 100,
+                          targetStudentId: isTargeted ? selectedStudentId : null,
+                          fileAttachmentUrl: fileUrlCtrl.text.trim(),
+                        );
+                        _loadData();
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF0284C7),
+                        padding: EdgeInsets.symmetric(vertical: 14.h),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.r)),
+                      ),
+                      child: Text(
+                        isTargeted ? 'Assign to Student ID: #$selectedStudentId' : 'Publish to Class $selectedClass',
+                        style: TextStyle(color: Colors.white, fontSize: 14.sp, fontWeight: FontWeight.bold),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
     );
   }
+
+  void _showSubmissionsSheet(HomeworkItem hw) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: AppColors.surface,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(22.r)),
+      ),
+      builder: (ctx) {
+        return _SubmissionsReviewSheet(
+          assignment: hw,
+          repository: _repository,
+          onReviewDone: _loadData,
+        );
+      },
+    );
+  }
+
+  void _showStudentSubmitSheet(HomeworkItem hw) {
+    final textCtrl = TextEditingController();
+    final linkCtrl = TextEditingController();
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: AppColors.surface,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(22.r)),
+      ),
+      builder: (ctx) {
+        return Padding(
+          padding: EdgeInsets.only(
+            left: 20.w,
+            right: 20.w,
+            top: 20.h,
+            bottom: MediaQuery.of(ctx).viewInsets.bottom + 20.h,
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Expanded(
+                    child: Text(
+                      'Submit: ${hw.title}',
+                      style: TextStyle(fontSize: 16.sp, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.close_rounded),
+                    onPressed: () => Navigator.pop(ctx),
+                  ),
+                ],
+              ),
+              12.h.height,
+              TextField(
+                controller: textCtrl,
+                maxLines: 4,
+                decoration: InputDecoration(
+                  labelText: 'Your Solution / Answer Notes',
+                  hintText: 'Write your answers or summary of completed assignment...',
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12.r)),
+                  filled: true,
+                  fillColor: AppColors.background,
+                ),
+              ),
+              12.h.height,
+              TextField(
+                controller: linkCtrl,
+                decoration: InputDecoration(
+                  labelText: 'Attachment / Google Drive File Link',
+                  hintText: 'https://drive.google.com/...',
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12.r)),
+                  filled: true,
+                  fillColor: AppColors.background,
+                ),
+              ),
+              16.h.height,
+              ElevatedButton(
+                onPressed: () async {
+                  Navigator.pop(ctx);
+                  setState(() => _isLoading = true);
+                  await _repository.submitStudentAssignmentWork(
+                    assignmentId: hw.id,
+                    submissionText: textCtrl.text.trim(),
+                    fileUrl: linkCtrl.text.trim(),
+                  );
+                  _loadData();
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.primary,
+                  padding: EdgeInsets.symmetric(vertical: 13.h),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.r)),
+                ),
+                child: Text(
+                  'Submit Assignment',
+                  style: TextStyle(color: Colors.white, fontSize: 14.sp, fontWeight: FontWeight.bold),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
+    final user = context.watch<AuthBloc>().state.user;
+    final isTeacher = user?.role == UserRole.teacher;
+
+    final pendingList = _homeworkList.where((h) {
+      final s = (h.submissionStatus ?? '').toLowerCase();
+      return s == 'pending' || s == 'overdue' || s == 'rejected';
+    }).toList();
+
+    final completedList = _homeworkList.where((h) {
+      final s = (h.submissionStatus ?? '').toLowerCase();
+      return s == 'submitted' || s == 'accepted' || s == 'graded';
+    }).toList();
+
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
@@ -79,195 +558,546 @@ class _HomeworkScreenState extends State<HomeworkScreen> with SingleTickerProvid
                 onPressed: () => Navigator.pop(context),
               ),
         title: Text(
-          'Homework & Tasks',
+          isTeacher ? 'Assignment Manager' : 'Assignments & Tasks',
           style: context.h2.copyWith(color: AppColors.textPrimary),
         ),
         centerTitle: true,
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh_rounded, color: AppColors.textPrimary),
-            tooltip: 'Sync Homework',
-            onPressed: _loadHomework,
+            tooltip: 'Reload',
+            onPressed: _loadData,
           ),
         ],
         bottom: TabBar(
           controller: _tabController,
-          indicatorColor: AppColors.primary,
-          labelColor: AppColors.primary,
+          indicatorColor: isTeacher ? const Color(0xFF0284C7) : AppColors.primary,
+          labelColor: isTeacher ? const Color(0xFF0284C7) : AppColors.primary,
           unselectedLabelColor: AppColors.textMuted,
-          labelStyle: TextStyle(fontSize: 14.sp, fontWeight: FontWeight.bold),
-          tabs: const [
-            Tab(text: 'Pending Tasks'),
-            Tab(text: 'Submitted'),
+          labelStyle: TextStyle(fontSize: 13.5.sp, fontWeight: FontWeight.bold),
+          tabs: [
+            Tab(text: isTeacher ? 'All Assignments (${_homeworkList.length})' : 'Pending (${pendingList.length})'),
+            Tab(text: isTeacher ? 'Active Tasks' : 'Submitted & Graded (${completedList.length})'),
           ],
         ),
       ),
-      body: BlocListener<SchoolBloc, SchoolState>(
-        listener: (context, state) {
-          if (state.errorMessage != null) context.showAppSnackBar(state.errorMessage!);
-          if (state.actionSuccessMessage != null && state.actionSuccessMessage!.contains('Homework')) {
-            context.showAppSnackBar(state.actionSuccessMessage!);
-          }
-        },
-        child: BlocBuilder<SchoolBloc, SchoolState>(
-          builder: (context, state) {
-            if (state.isLoading && state.homework.isEmpty) {
-              return const SmoothSkeletonCardList(count: 3);
-            }
-
-            final pendingList = state.homework.where((h) => h.status == HomeworkStatus.pending).toList();
-            final submittedList = state.homework.where((h) => h.status == HomeworkStatus.submitted).toList();
-
-            return TabBarView(
+      floatingActionButton: isTeacher
+          ? FloatingActionButton.extended(
+              onPressed: () => _showCreateAssignmentSheet(),
+              backgroundColor: const Color(0xFF0284C7),
+              icon: const Icon(Icons.add_rounded, color: Colors.white),
+              label: Text('New Assignment', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13.sp)),
+            )
+          : null,
+      body: _isLoading
+          ? const SmoothSkeletonCardList(count: 3)
+          : TabBarView(
               controller: _tabController,
               children: [
-                _HomeworkListBuilder(
-                  homeworkList: pendingList,
+                _buildListView(
+                  isTeacher ? _homeworkList : pendingList,
+                  isTeacher: isTeacher,
                   isPending: true,
-                  onAction: (hw) => _showSubmitBottomSheet(context, hw),
                 ),
-                _HomeworkListBuilder(
-                  homeworkList: submittedList,
+                _buildListView(
+                  isTeacher ? _homeworkList.where((h) => h.status != HomeworkStatus.overdue).toList() : completedList,
+                  isTeacher: isTeacher,
                   isPending: false,
-                  onAction: (hw) {},
                 ),
               ],
-            );
-          },
-        ),
-      ),
+            ),
     );
   }
-}
 
-class _HomeworkListBuilder extends StatelessWidget {
-  final List<HomeworkItem> homeworkList;
-  final bool isPending;
-  final Function(HomeworkItem) onAction;
-
-  const _HomeworkListBuilder({
-    required this.homeworkList,
-    required this.isPending,
-    required this.onAction,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    if (homeworkList.isEmpty) {
+  Widget _buildListView(List<HomeworkItem> list, {required bool isTeacher, required bool isPending}) {
+    if (list.isEmpty) {
       return Center(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(
-              isPending ? Icons.check_circle_outline_rounded : Icons.assignment_late_outlined,
-              size: 48.sp,
-              color: AppColors.textMuted,
-            ),
+            Icon(Icons.assignment_outlined, size: 48.sp, color: AppColors.textMuted),
             12.h.height,
             Text(
-              isPending ? 'No pending homework!' : 'No submitted tasks found.',
+              isTeacher ? 'No assignments created yet' : (isPending ? 'No pending assignments!' : 'No submitted tasks.'),
               style: TextStyle(color: AppColors.textSecondary, fontSize: 14.sp, fontWeight: FontWeight.bold),
             ),
+            if (isTeacher) ...[
+              6.h.height,
+              Text('Tap "+ New Assignment" to create and assign ID-wise.', style: TextStyle(color: AppColors.textMuted, fontSize: 12.sp)),
+            ],
           ],
         ),
       );
     }
 
-    return ListView.builder(
+    return ListView.separated(
       physics: const BouncingScrollPhysics(),
-      padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 16.h),
-      itemCount: homeworkList.length,
+      padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 14.h),
+      itemCount: list.length,
+      separatorBuilder: (_, __) => 12.h.height,
       itemBuilder: (context, i) {
-        final hw = homeworkList[i];
-        final remainingDays = hw.dueDate.difference(DateTime.now()).inDays;
-        String dueText;
-        Color dateColor;
+        final hw = list[i];
+        return _buildAssignmentCard(hw, isTeacher: isTeacher);
+      },
+    );
+  }
 
-        if (isPending) {
-          if (remainingDays < 0) {
-            dueText = 'Overdue by ${remainingDays.abs()} days';
-            dateColor = AppColors.error;
-          } else if (remainingDays == 0) {
-            dueText = 'Due Today';
-            dateColor = AppColors.warning;
-          } else {
-            dueText = 'Due in $remainingDays days';
-            dateColor = AppColors.info;
-          }
-        } else {
-          dueText = 'Submitted';
-          dateColor = AppColors.success;
-        }
+  Widget _buildAssignmentCard(HomeworkItem hw, {required bool isTeacher}) {
+    final statusStr = (hw.submissionStatus ?? hw.status.name).toLowerCase();
+    Color statusColor = AppColors.info;
+    String statusLabel = 'Pending';
 
-        return Container(
-          margin: EdgeInsets.only(bottom: 14.h),
-          padding: EdgeInsets.all(16.w),
-          decoration: BoxDecoration(
-            color: AppColors.surface,
-            borderRadius: BorderRadius.circular(16.r),
-            border: Border.all(color: AppColors.border),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+    if (statusStr == 'submitted') {
+      statusColor = const Color(0xFF0284C7);
+      statusLabel = 'Submitted';
+    } else if (statusStr == 'accepted' || statusStr == 'graded') {
+      statusColor = AppColors.success;
+      statusLabel = hw.scoredPoints != null ? 'Graded: ${hw.scoredPoints}/${hw.maxPoints}' : 'Accepted';
+    } else if (statusStr == 'rejected') {
+      statusColor = AppColors.error;
+      statusLabel = 'Needs Resubmission';
+    } else if (statusStr == 'overdue') {
+      statusColor = AppColors.error;
+      statusLabel = 'Overdue';
+    }
+
+    return GlassCard(
+      padding: EdgeInsets.all(16.w),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              Container(
+                padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 4.h),
+                decoration: BoxDecoration(
+                  color: AppColors.primary.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(6.r),
+                ),
+                child: Text(
+                  hw.subject,
+                  style: TextStyle(color: AppColors.primary, fontSize: 11.5.sp, fontWeight: FontWeight.bold),
+                ),
+              ),
+              Container(
+                padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 4.h),
+                decoration: BoxDecoration(
+                  color: statusColor.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(6.r),
+                ),
+                child: Text(
+                  statusLabel,
+                  style: TextStyle(color: statusColor, fontSize: 11.sp, fontWeight: FontWeight.bold),
+                ),
+              ),
+            ],
+          ),
+          8.h.height,
+
+          // Title & Description
+          Text(
+            hw.title,
+            style: TextStyle(fontSize: 15.sp, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
+          ),
+          if (hw.description.isNotEmpty) ...[
+            4.h.height,
+            Text(
+              hw.description,
+              style: TextStyle(fontSize: 12.5.sp, color: AppColors.textSecondary, height: 1.3),
+            ),
+          ],
+          10.h.height,
+
+          // Target Badges: ID-Wise student vs Whole Class
+          if (hw.isPersonalized)
+            Container(
+              padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 6.h),
+              margin: EdgeInsets.only(bottom: 8.h),
+              decoration: BoxDecoration(
+                color: const Color(0xFFEFF6FF),
+                borderRadius: BorderRadius.circular(8.r),
+                border: Border.all(color: const Color(0xFFBFDBFE)),
+              ),
+              child: Row(
                 children: [
-                  Text(
-                    hw.subject,
-                    style: TextStyle(
-                      color: AppColors.primary,
-                      fontSize: 12.sp,
-                      fontWeight: FontWeight.bold,
-                      letterSpacing: 0.3,
-                    ),
-                  ),
-                  Container(
-                    padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 4.h),
-                    decoration: BoxDecoration(
-                      color: dateColor.withValues(alpha: 0.08),
-                      borderRadius: BorderRadius.circular(8.r),
-                    ),
+                  Icon(Icons.person_pin_rounded, size: 16.sp, color: const Color(0xFF2563EB)),
+                  6.w.width,
+                  Expanded(
                     child: Text(
-                      dueText,
-                      style: TextStyle(color: dateColor, fontSize: 11.sp, fontWeight: FontWeight.w700),
+                      isTeacher
+                          ? 'Targeted Student: ${hw.targetStudentName ?? 'Student'} (ID: #${hw.targetStudentId})'
+                          : 'Personalized Task assigned directly to Your Student ID',
+                      style: TextStyle(
+                        color: const Color(0xFF1D4ED8),
+                        fontSize: 11.5.sp,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                   ),
                 ],
               ),
-              6.h.height,
-              Text(
-                hw.title,
-                style: TextStyle(color: AppColors.textPrimary, fontSize: 15.sp, fontWeight: FontWeight.bold),
+            )
+          else
+            Container(
+              padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 4.h),
+              margin: EdgeInsets.only(bottom: 8.h),
+              decoration: BoxDecoration(
+                color: AppColors.background,
+                borderRadius: BorderRadius.circular(6.r),
               ),
-              8.h.height,
-              Text(
-                hw.description,
-                style: TextStyle(color: AppColors.textSecondary, fontSize: 13.sp, height: 1.35),
+              child: Text(
+                'Class: ${hw.className}${hw.section != null ? ' - ${hw.section}' : ''} • Whole Class',
+                style: TextStyle(color: AppColors.textMuted, fontSize: 11.sp, fontWeight: FontWeight.w600),
               ),
-              if (isPending) ...[
-                14.h.height,
-                Align(
-                  alignment: Alignment.centerRight,
-                  child: ElevatedButton.icon(
-                    onPressed: () => onAction(hw),
-                    icon: Icon(Icons.upload_file_outlined, size: 16.sp, color: Colors.white),
-                    label: const Text('Upload Solution'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.primary,
-                      padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 8.h),
-                      minimumSize: Size.zero,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10.r)),
+            ),
+
+          // Evaluation details for student
+          if (!isTeacher && hw.teacherFeedback != null && hw.teacherFeedback!.isNotEmpty)
+            Container(
+              padding: EdgeInsets.all(10.w),
+              margin: EdgeInsets.only(bottom: 8.h),
+              decoration: BoxDecoration(
+                color: const Color(0xFFF0FDF4),
+                borderRadius: BorderRadius.circular(8.r),
+                border: Border.all(color: const Color(0xFFBBF7D0)),
+              ),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Icon(Icons.comment_rounded, size: 16.sp, color: AppColors.success),
+                  8.w.width,
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text('Teacher Remarks:', style: TextStyle(fontSize: 11.sp, fontWeight: FontWeight.bold, color: AppColors.success)),
+                        2.h.height,
+                        Text(hw.teacherFeedback!, style: TextStyle(fontSize: 12.sp, color: const Color(0xFF166534))),
+                      ],
                     ),
                   ),
+                ],
+              ),
+            ),
+
+          // Footer info: Due date, Points, and Actions
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Row(
+                children: [
+                  Icon(Icons.calendar_today_rounded, size: 13.sp, color: AppColors.textMuted),
+                  4.w.width,
+                  Text(
+                    'Due: ${hw.dueDate.day}/${hw.dueDate.month}/${hw.dueDate.year}',
+                    style: TextStyle(color: AppColors.textMuted, fontSize: 11.5.sp),
+                  ),
+                  12.w.width,
+                  Icon(Icons.star_outline_rounded, size: 14.sp, color: AppColors.textMuted),
+                  4.w.width,
+                  Text(
+                    '${hw.points} pts',
+                    style: TextStyle(color: AppColors.textMuted, fontSize: 11.5.sp),
+                  ),
+                ],
+              ),
+
+              if (isTeacher)
+                ElevatedButton.icon(
+                  onPressed: () => _showSubmissionsSheet(hw),
+                  icon: Icon(Icons.people_alt_outlined, size: 14.sp, color: Colors.white),
+                  label: Text(
+                    'Submissions (${hw.submissionCount})',
+                    style: TextStyle(color: Colors.white, fontSize: 11.sp, fontWeight: FontWeight.bold),
+                  ),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF0284C7),
+                    padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 6.h),
+                    minimumSize: Size.zero,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8.r)),
+                  ),
+                )
+              else if (statusStr == 'pending' || statusStr == 'rejected')
+                ElevatedButton.icon(
+                  onPressed: () => _showStudentSubmitSheet(hw),
+                  icon: Icon(Icons.upload_file_rounded, size: 14.sp, color: Colors.white),
+                  label: Text('Submit Work', style: TextStyle(color: Colors.white, fontSize: 11.5.sp, fontWeight: FontWeight.bold)),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.primary,
+                    padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 6.h),
+                    minimumSize: Size.zero,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8.r)),
+                  ),
                 ),
-              ],
             ],
           ),
-        );
-      },
+        ],
+      ),
     );
   }
 }
 
+class _SubmissionsReviewSheet extends StatefulWidget {
+  final HomeworkItem assignment;
+  final ApiSchoolRepository repository;
+  final VoidCallback onReviewDone;
 
+  const _SubmissionsReviewSheet({
+    required this.assignment,
+    required this.repository,
+    required this.onReviewDone,
+  });
+
+  @override
+  State<_SubmissionsReviewSheet> createState() => _SubmissionsReviewSheetState();
+}
+
+class _SubmissionsReviewSheetState extends State<_SubmissionsReviewSheet> {
+  List<AssignmentSubmissionItem> _submissions = [];
+  bool _loading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchSubmissions();
+  }
+
+  Future<void> _fetchSubmissions() async {
+    final list = await widget.repository.getAssignmentSubmissions(widget.assignment.id);
+    if (mounted) {
+      setState(() {
+        _submissions = list;
+        _loading = false;
+      });
+    }
+  }
+
+  void _showGradeDialog(AssignmentSubmissionItem sub) {
+    final pointsCtrl = TextEditingController(text: sub.points != null ? sub.points.toString() : '${widget.assignment.points}');
+    final feedbackCtrl = TextEditingController(text: sub.teacherFeedback ?? '');
+    String chosenStatus = sub.status == 'PENDING' ? 'ACCEPTED' : sub.status;
+
+    showDialog(
+      context: context,
+      builder: (ctx) {
+        return StatefulBuilder(
+          builder: (ctx, setDialogState) {
+            return AlertDialog(
+              title: Text('Grade Submission • ID: #${sub.studentId}', style: TextStyle(fontSize: 16.sp, fontWeight: FontWeight.bold)),
+              content: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Text('Student: ${sub.studentName}', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13.sp)),
+                    if (sub.submissionText != null && sub.submissionText!.isNotEmpty) ...[
+                      8.h.height,
+                      Container(
+                        padding: EdgeInsets.all(10.w),
+                        decoration: BoxDecoration(color: AppColors.background, borderRadius: BorderRadius.circular(8.r)),
+                        child: Text('Submitted Work:\n${sub.submissionText}', style: TextStyle(fontSize: 12.sp)),
+                      ),
+                    ],
+                    12.h.height,
+                    TextField(
+                      controller: pointsCtrl,
+                      keyboardType: TextInputType.number,
+                      decoration: InputDecoration(
+                        labelText: 'Marks Scored (Max: ${sub.maxPoints})',
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(10.r)),
+                      ),
+                    ),
+                    10.h.height,
+                    DropdownButtonFormField<String>(
+                      value: chosenStatus,
+                      decoration: InputDecoration(
+                        labelText: 'Status',
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(10.r)),
+                      ),
+                      items: ['ACCEPTED', 'GRADED', 'REJECTED'].map((s) => DropdownMenuItem(value: s, child: Text(s))).toList(),
+                      onChanged: (val) {
+                        if (val != null) setDialogState(() => chosenStatus = val);
+                      },
+                    ),
+                    10.h.height,
+                    TextField(
+                      controller: feedbackCtrl,
+                      maxLines: 2,
+                      decoration: InputDecoration(
+                        labelText: 'Teacher Remarks / Feedback',
+                        hintText: 'e.g. Well answered, keep it up!',
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(10.r)),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              actions: [
+                TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
+                FilledButton(
+                  onPressed: () async {
+                    Navigator.pop(ctx);
+                    if (sub.submissionId != null) {
+                      await widget.repository.reviewSubmission(
+                        assignmentId: widget.assignment.id,
+                        submissionId: sub.submissionId,
+                        status: chosenStatus,
+                        points: int.tryParse(pointsCtrl.text.trim()),
+                        feedback: feedbackCtrl.text.trim(),
+                      );
+                      _fetchSubmissions();
+                      widget.onReviewDone();
+                    }
+                  },
+                  child: const Text('Save Grade'),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      constraints: BoxConstraints(maxHeight: MediaQuery.of(context).size.height * 0.8),
+      padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 16.h),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      widget.assignment.title,
+                      style: TextStyle(fontSize: 17.sp, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    Text(
+                      'Submissions & ID-Wise Evaluation (${_submissions.length})',
+                      style: TextStyle(fontSize: 12.sp, color: AppColors.textMuted),
+                    ),
+                  ],
+                ),
+              ),
+              IconButton(icon: const Icon(Icons.close_rounded), onPressed: () => Navigator.pop(context)),
+            ],
+          ),
+          12.h.height,
+          const Divider(color: AppColors.border),
+          8.h.height,
+          if (_loading)
+            const Expanded(child: Center(child: CircularProgressIndicator()))
+          else if (_submissions.isEmpty)
+            Expanded(
+              child: Center(
+                child: Text('No student records found.', style: TextStyle(color: AppColors.textMuted, fontSize: 13.sp)),
+              ),
+            )
+          else
+            Expanded(
+              child: ListView.separated(
+                physics: const BouncingScrollPhysics(),
+                itemCount: _submissions.length,
+                separatorBuilder: (_, __) => 8.h.height,
+                itemBuilder: (context, i) {
+                  final sub = _submissions[i];
+                  Color statusColor = AppColors.textMuted;
+                  if (sub.status == 'SUBMITTED') statusColor = const Color(0xFF0284C7);
+                  if (sub.status == 'ACCEPTED' || sub.status == 'GRADED') statusColor = AppColors.success;
+                  if (sub.status == 'REJECTED') statusColor = AppColors.error;
+
+                  return Container(
+                    padding: EdgeInsets.all(12.w),
+                    decoration: BoxDecoration(
+                      color: AppColors.surface,
+                      borderRadius: BorderRadius.circular(14.r),
+                      border: Border.all(color: AppColors.border),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Row(
+                              children: [
+                                Text(
+                                  sub.studentName,
+                                  style: TextStyle(fontSize: 13.5.sp, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
+                                ),
+                                6.w.width,
+                                Container(
+                                  padding: EdgeInsets.symmetric(horizontal: 6.w, vertical: 2.h),
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFFE0E7FF),
+                                    borderRadius: BorderRadius.circular(4.r),
+                                  ),
+                                  child: Text(
+                                    'ID: #${sub.studentId}',
+                                    style: TextStyle(color: const Color(0xFF4338CA), fontSize: 10.sp, fontWeight: FontWeight.bold),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            Container(
+                              padding: EdgeInsets.symmetric(horizontal: 6.w, vertical: 2.h),
+                              decoration: BoxDecoration(
+                                color: statusColor.withValues(alpha: 0.1),
+                                borderRadius: BorderRadius.circular(4.r),
+                              ),
+                              child: Text(
+                                sub.status,
+                                style: TextStyle(color: statusColor, fontSize: 10.sp, fontWeight: FontWeight.bold),
+                              ),
+                            ),
+                          ],
+                        ),
+                        4.h.height,
+                        Text(
+                          'Roll: ${sub.studentRollNo ?? 'N/A'} • Adm: ${sub.studentAdmissionNo ?? 'N/A'}',
+                          style: TextStyle(fontSize: 11.5.sp, color: AppColors.textSecondary),
+                        ),
+                        if (sub.submissionText != null && sub.submissionText!.isNotEmpty) ...[
+                          6.h.height,
+                          Text('Answer: "${sub.submissionText}"', style: TextStyle(fontSize: 11.5.sp, color: AppColors.textPrimary)),
+                        ],
+                        if (sub.points != null) ...[
+                          4.h.height,
+                          Text('Marks Scored: ${sub.points} / ${sub.maxPoints}', style: TextStyle(fontSize: 11.5.sp, fontWeight: FontWeight.bold, color: AppColors.success)),
+                        ],
+                        8.h.height,
+                        Align(
+                          alignment: Alignment.centerRight,
+                          child: ElevatedButton(
+                            onPressed: () => _showGradeDialog(sub),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: const Color(0xFF0284C7),
+                              padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 6.h),
+                              minimumSize: Size.zero,
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6.r)),
+                            ),
+                            child: Text(
+                              sub.points != null ? 'Edit Grade' : 'Grade / Review',
+                              style: TextStyle(color: Colors.white, fontSize: 11.sp, fontWeight: FontWeight.bold),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
+                },
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+}

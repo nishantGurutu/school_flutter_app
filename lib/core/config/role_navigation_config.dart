@@ -313,67 +313,22 @@ class RoleNavigationConfig {
       case UserRole.teacher:
         return const [
           QuickAccessAction(
-            label: 'Classes',
-            icon: Icons.class_rounded,
-            color: Color(0xFF4F46E5),
-            route: RoutesName.classes,
-          ),
-          QuickAccessAction(
             label: 'Assignment',
             icon: Icons.assignment_rounded,
             color: Color(0xFF0284C7),
             route: RoutesName.homework,
           ),
           QuickAccessAction(
-            label: 'Announcement',
-            icon: Icons.campaign_rounded,
-            color: Color(0xFFD97706),
-            route: RoutesName.notice,
+            label: 'Classes',
+            icon: Icons.class_rounded,
+            color: Color(0xFF4F46E5),
+            route: RoutesName.classes,
           ),
           QuickAccessAction(
             label: 'Lesson',
             icon: Icons.menu_book_rounded,
             color: Color(0xFF059669),
             route: RoutesName.lesson,
-          ),
-          QuickAccessAction(
-            label: 'Topics',
-            icon: Icons.format_list_bulleted_rounded,
-            color: Color(0xFF7C3AED),
-            route: RoutesName.topics,
-          ),
-          QuickAccessAction(
-            label: 'Attendance',
-            icon: Icons.fact_check_rounded,
-            color: Color(0xFF16A34A),
-            route: RoutesName.attendance,
-          ),
-          QuickAccessAction(
-            label: 'Student Leaves',
-            icon: Icons.approval_rounded,
-            color: Color(0xFFDB2777),
-            route: RoutesName.leave,
-            arguments: 'student_leaves',
-          ),
-          QuickAccessAction(
-            label: 'Add Result',
-            icon: Icons.post_add_rounded,
-            color: Color(0xFFEA580C),
-            route: RoutesName.exam,
-            arguments: 1,
-          ),
-          QuickAccessAction(
-            label: 'Manage Leave',
-            icon: Icons.time_to_leave_rounded,
-            color: Color(0xFFDC2626),
-            route: RoutesName.leave,
-            arguments: 'manage_leave',
-          ),
-          QuickAccessAction(
-            label: 'Academic Calendar',
-            icon: Icons.calendar_month_rounded,
-            color: Color(0xFF2563EB),
-            route: RoutesName.academicCalendar,
           ),
         ];
 
@@ -471,18 +426,11 @@ class RoleNavigationConfig {
 
       case UserRole.teacher:
         return const [
-          DrawerMenuItem(icon: Icons.class_rounded, label: 'Classes', route: RoutesName.classes),
           DrawerMenuItem(icon: Icons.assignment_outlined, label: 'Assignment', route: RoutesName.homework),
-          DrawerMenuItem(icon: Icons.campaign_outlined, label: 'Announcement', route: RoutesName.notice),
+          DrawerMenuItem(icon: Icons.class_rounded, label: 'Classes', route: RoutesName.classes),
           DrawerMenuItem(icon: Icons.menu_book_rounded, label: 'Lesson', route: RoutesName.lesson),
-          DrawerMenuItem(icon: Icons.format_list_bulleted_rounded, label: 'Topics', route: RoutesName.topics),
-          DrawerMenuItem(icon: Icons.fact_check_rounded, label: 'Attendance', route: RoutesName.attendance),
-          DrawerMenuItem(icon: Icons.approval_rounded, label: 'Student Leaves', route: RoutesName.leave, arguments: 'student_leaves'),
-          DrawerMenuItem(icon: Icons.post_add_rounded, label: 'Add Result', route: RoutesName.exam, arguments: 1),
-          DrawerMenuItem(icon: Icons.time_to_leave_rounded, label: 'Manage Leave', route: RoutesName.leave, arguments: 'manage_leave'),
-          DrawerMenuItem(icon: Icons.calendar_month_rounded, label: 'Academic Calendar', route: RoutesName.academicCalendar),
           DrawerMenuItem(icon: Icons.schedule_rounded, label: 'Schedule / Timetable', route: RoutesName.timetable),
-          DrawerMenuItem(icon: Icons.chat_bubble_outline_rounded, label: 'Student Messages', route: RoutesName.chat),
+          DrawerMenuItem(icon: Icons.campaign_outlined, label: 'School Notices', route: RoutesName.notice),
         ];
 
       case UserRole.staff:

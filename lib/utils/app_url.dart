@@ -45,4 +45,52 @@ class AppUrl {
       '$baseUrl/mobile/chapters/$chapterId/notes';
   static String topicNotes(String topicId) =>
       '$baseUrl/mobile/topics/$topicId/notes';
+
+  // eSchool Teacher Flow (Classes, Lessons, Assignments ID-wise)
+  static const String teacherClasses = '$baseUrl/mobile/teacher/classes';
+  static String classStudents(String className, {String? section}) {
+    String url = '$baseUrl/mobile/classes/${Uri.encodeComponent(className)}/students';
+    if (section != null && section.isNotEmpty) {
+      url += '?section=${Uri.encodeComponent(section)}';
+    }
+    return url;
+  }
+  static String teacherLessons({String? className, int? subjectId}) {
+    List<String> q = [];
+    if (className != null && className.isNotEmpty) {
+      q.add('className=${Uri.encodeComponent(className)}');
+    }
+    if (subjectId != null) {
+      q.add('subjectId=$subjectId');
+    }
+    return '$baseUrl/mobile/teacher/lessons${q.isNotEmpty ? '?${q.join('&')}' : ''}';
+  }
+  static const String createTeacherLesson = '$baseUrl/mobile/teacher/lessons';
+  static String addLessonTopic(String lessonId) =>
+      '$baseUrl/mobile/teacher/lessons/$lessonId/topics';
+  static String deleteLesson(String lessonId) =>
+      '$baseUrl/mobile/teacher/lessons/$lessonId';
+  static String teacherAssignments({String? className, String? subject}) {
+    List<String> q = [];
+    if (className != null && className.isNotEmpty) {
+      q.add('className=${Uri.encodeComponent(className)}');
+    }
+    if (subject != null && subject.isNotEmpty) {
+      q.add('subject=${Uri.encodeComponent(subject)}');
+    }
+    return '$baseUrl/mobile/teacher/assignments${q.isNotEmpty ? '?${q.join('&')}' : ''}';
+  }
+  static const String createTeacherAssignment = '$baseUrl/mobile/teacher/assignments';
+  static String assignmentSubmissions(String assignmentId) =>
+      '$baseUrl/mobile/teacher/assignments/$assignmentId/submissions';
+  static String reviewSubmission(String assignmentId, String submissionId) =>
+      '$baseUrl/mobile/teacher/assignments/$assignmentId/submissions/$submissionId/review';
+
+  // eSchool Student & Parent Flow (Assignments ID-wise & Submissions)
+  static String studentAssignments({String? admissionNo}) =>
+      admissionNo != null && admissionNo.isNotEmpty
+          ? '$baseUrl/mobile/student/assignments?admissionNo=${Uri.encodeComponent(admissionNo)}'
+          : '$baseUrl/mobile/student/assignments';
+  static String submitStudentAssignment(String assignmentId) =>
+      '$baseUrl/mobile/student/assignments/$assignmentId/submit';
 }
