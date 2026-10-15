@@ -19,4 +19,9 @@ class RoutesName {
   static const String lesson = 'lesson_screen';
   static const String topics = 'topics_screen';
   static const String academicCalendar = 'academic_calendar_screen';
+  
+  // Transport Module
+  static const String activeTrip = 'active_trip_screen';
+  static const String parentTransport = 'parent_transport_screen';
+  static const String studentTransport = 'student_transport_screen';
 }

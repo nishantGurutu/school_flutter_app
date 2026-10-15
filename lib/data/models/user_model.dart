@@ -1,4 +1,4 @@
-enum UserRole { student, parent, teacher, staff, admin, masterAdmin }
+enum UserRole { student, parent, teacher, staff, admin, masterAdmin, driver }
 
 class UserModel {
   final String id;
@@ -45,6 +45,7 @@ class UserModel {
     if (roleStr == 'STAFF' || roleStr == 'PRINCIPAL') roleVal = UserRole.staff;
     if (roleStr == 'ADMIN') roleVal = UserRole.admin;
     if (roleStr == 'MASTER_ADMIN' || roleStr == 'MASTERADMIN') roleVal = UserRole.masterAdmin;
+    if (roleStr == 'DRIVER') roleVal = UserRole.driver;
 
     return UserModel(
       id: (json['userId'] ?? json['id'] ?? '1').toString(),
@@ -102,6 +103,8 @@ class UserModel {
         return 'Admin';
       case UserRole.masterAdmin:
         return 'Master Admin';
+      case UserRole.driver:
+        return 'Driver';
     }
   }
 }

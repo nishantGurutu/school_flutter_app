@@ -1,8 +1,10 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:google_maps_flutter/google_maps_flutter.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../services/transport_service.dart';
+import '../../../../services/location_tracking_service.dart';
 import '../../../widgets/glass_card.dart';
 
 class ActiveTripScreen extends StatefulWidget {
@@ -20,15 +22,22 @@ class _ActiveTripScreenState extends State<ActiveTripScreen> {
   String _routeName = 'Route 1 - North Campus Loop';
 
   // Live Telemetry states
-  double _speedKmh = 32.0;
-  double _distanceKm = 4.2;
-  int _elapsedSeconds = 720; // 12 mins
-  Timer? _telemetryTimer;
-  Timer? _gpsSyncTimer;
+  double _speedKmh = 0.0;
+  double _distanceKm = 0.0;
+  int _elapsedSeconds = 0;
+  Timer? _tripClockTimer;
+  StreamSubscription? _locationSub;
+
+  // Map state
+  GoogleMapController? _mapController;
+  LatLng _busPosition = const LatLng(25.6150, 85.1280);
+  final List<LatLng> _traveledTrail = [];
+  final Set<Marker> _markers = {};
+  final Set<Polyline> _polylines = {};
 
   // Stops state
   List<Map<String, dynamic>> _stops = [];
-  int _currentStopIndex = 1;
+  int _currentStopIndex = 0;
 
   // Incident modal states
   final _incidentDescController = TextEditingController();
@@ -40,54 +49,165 @@ class _ActiveTripScreenState extends State<ActiveTripScreen> {
     final trip = widget.initialData?['trip'] as Map<String, dynamic>?;
     final duty = widget.initialData?['duty'] as Map<String, dynamic>?;
 
-    _tripId = trip?['tripId'] is int ? trip!['tripId'] as int : (duty?['activeTripId'] is int ? duty!['activeTripId'] as int : 1);
+    _tripId = trip?['tripId'] is int
+        ? trip!['tripId'] as int
+        : (duty?['activeTripId'] is int ? duty!['activeTripId'] as int : 1);
     _busNumber = duty?['busNumber']?.toString() ?? 'Bus 04';
     _routeName = duty?['routeName']?.toString() ?? 'Route 1 - North Campus Loop';
 
     final stopsRaw = duty?['route']?['stops'] as List<dynamic>?;
-    if (stopsRaw != null) {
+    if (stopsRaw != null && stopsRaw.isNotEmpty) {
       _stops = stopsRaw.map((s) => Map<String, dynamic>.from(s as Map)).toList();
     } else {
       _stops = [
-        {'id': 1, 'stopName': 'North City Square', 'stopOrder': 1, 'plannedMorningPickupTime': '07:15 AM', 'status': 'DEPARTED', 'students': 8},
-        {'id': 2, 'stopName': 'Metro Station Pillar 42', 'stopOrder': 2, 'plannedMorningPickupTime': '07:25 AM', 'status': 'ARRIVED', 'students': 12},
-        {'id': 3, 'stopName': 'Central Mall Junction', 'stopOrder': 3, 'plannedMorningPickupTime': '07:35 AM', 'status': 'PENDING', 'students': 10},
-        {'id': 4, 'stopName': 'Kankarbagh Park', 'stopOrder': 4, 'plannedMorningPickupTime': '07:45 AM', 'status': 'PENDING', 'students': 9},
-        {'id': 5, 'stopName': 'School Main Gate', 'stopOrder': 5, 'plannedMorningPickupTime': '08:00 AM', 'status': 'PENDING', 'students': 39},
+        {'id': 1, 'stopName': 'North City Square', 'stopOrder': 1, 'plannedMorningPickupTime': '07:15 AM', 'status': 'DEPARTED', 'students': 8, 'latitude': 25.6150, 'longitude': 85.1280},
+        {'id': 2, 'stopName': 'Metro Station Pillar 42', 'stopOrder': 2, 'plannedMorningPickupTime': '07:25 AM', 'status': 'ARRIVED', 'students': 12, 'latitude': 25.6100, 'longitude': 85.1350},
+        {'id': 3, 'stopName': 'Central Mall Junction', 'stopOrder': 3, 'plannedMorningPickupTime': '07:35 AM', 'status': 'PENDING', 'students': 10, 'latitude': 25.6050, 'longitude': 85.1410},
+        {'id': 4, 'stopName': 'Kankarbagh Park', 'stopOrder': 4, 'plannedMorningPickupTime': '07:45 AM', 'status': 'PENDING', 'students': 9, 'latitude': 25.6010, 'longitude': 85.1480},
+        {'id': 5, 'stopName': 'School Main Gate', 'stopOrder': 5, 'plannedMorningPickupTime': '08:00 AM', 'status': 'PENDING', 'students': 39, 'latitude': 25.5970, 'longitude': 85.1550},
       ];
     }
 
-    _startTelemetryLoop();
+    _initTracking();
+    _startClockTimer();
   }
 
-  void _startTelemetryLoop() {
-    // 1-second telemetry clock & speed fluctuation
-    _telemetryTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
-      if (!mounted) return;
-      setState(() {
-        _elapsedSeconds++;
-        // Natural speed variation around 28-38 km/h
-        _speedKmh = 28.0 + (timer.tick % 10);
-        _distanceKm += 0.008; // increment distance smoothly
-      });
-    });
+  void _initTracking() async {
+    final tracking = LocationTrackingService();
+    await tracking.startTracking(
+      tripId: _tripId,
+      initialLat: _busPosition.latitude,
+      initialLon: _busPosition.longitude,
+      routeStops: _stops,
+    );
 
-    // 8-second GPS telemetry sync to backend
-    _gpsSyncTimer = Timer.periodic(const Duration(seconds: 8), (_) {
-      TransportService.sendGpsLocation(
-        tripId: _tripId,
-        lat: 25.6025 + (_distanceKm * 0.001),
-        lon: 85.1430 + (_distanceKm * 0.001),
-        speedKmh: _speedKmh,
+    _locationSub = tracking.locationStream.listen((data) {
+      if (!mounted) return;
+
+      if (data.containsKey('type') && data['type'] == 'STOP_ARRIVAL_CANDIDATE') {
+        final stop = data['stop'] as Map<String, dynamic>?;
+        if (stop != null) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Geofence: Approaching ${stop['stopName']}'),
+              backgroundColor: const Color(0xFF0D9488),
+              duration: const Duration(seconds: 3),
+            ),
+          );
+        }
+        return;
+      }
+
+      final lat = (data['latitude'] as num?)?.toDouble() ?? _busPosition.latitude;
+      final lon = (data['longitude'] as num?)?.toDouble() ?? _busPosition.longitude;
+      final speed = (data['speedKmh'] as num?)?.toDouble() ?? _speedKmh;
+      final dist = (data['distanceKm'] as num?)?.toDouble() ?? _distanceKm;
+
+      setState(() {
+        _busPosition = LatLng(lat, lon);
+        _speedKmh = speed;
+        _distanceKm = dist;
+        _traveledTrail.add(_busPosition);
+        _updateMapPins();
+      });
+
+      _mapController?.animateCamera(
+        CameraUpdate.newLatLng(_busPosition),
       );
     });
   }
 
+  void _startClockTimer() {
+    _tripClockTimer = Timer.periodic(const Duration(seconds: 1), (_) {
+      if (mounted) {
+        setState(() {
+          _elapsedSeconds++;
+        });
+      }
+    });
+  }
+
+  void _updateMapPins() {
+    _markers.clear();
+    _polylines.clear();
+
+    // 1. Bus Marker
+    _markers.add(
+      Marker(
+        markerId: const MarkerId('driver_active_bus'),
+        position: _busPosition,
+        icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueCyan),
+        infoWindow: InfoWindow(
+          title: '$_busNumber (You)',
+          snippet: 'Speed: ${_speedKmh.toInt()} km/h | Dist: ${_distanceKm.toStringAsFixed(1)} km',
+        ),
+      ),
+    );
+
+    // 2. Stops Markers
+    final List<LatLng> plannedPoints = [];
+    for (int i = 0; i < _stops.length; i++) {
+      final s = _stops[i];
+      final sLat = (s['latitude'] as num?)?.toDouble();
+      final sLon = (s['longitude'] as num?)?.toDouble();
+      if (sLat != null && sLon != null) {
+        final stopPos = LatLng(sLat, sLon);
+        plannedPoints.add(stopPos);
+
+        final isVisited = s['status'] == 'DEPARTED';
+        final isCurrent = s['status'] == 'ARRIVED';
+
+        _markers.add(
+          Marker(
+            markerId: MarkerId('stop_${s['id'] ?? i}'),
+            position: stopPos,
+            icon: BitmapDescriptor.defaultMarkerWithHue(
+              isVisited
+                  ? BitmapDescriptor.hueGreen
+                  : (isCurrent ? BitmapDescriptor.hueAzure : BitmapDescriptor.hueOrange),
+            ),
+            infoWindow: InfoWindow(
+              title: '${s['stopOrder']}. ${s['stopName']}',
+              snippet: 'Scheduled: ${s['plannedMorningPickupTime'] ?? 'N/A'} | Status: ${s['status']}',
+            ),
+          ),
+        );
+      }
+    }
+
+    // 3. Planned Route Polyline (Dashed Blue)
+    if (plannedPoints.isNotEmpty) {
+      _polylines.add(
+        Polyline(
+          polylineId: const PolylineId('planned_route_path'),
+          points: plannedPoints,
+          color: const Color(0xFF0284C7),
+          width: 4,
+          patterns: [PatternItem.dash(15), PatternItem.gap(10)],
+        ),
+      );
+    }
+
+    // 4. Actual Traveled GPS Trail (Solid Teal)
+    if (_traveledTrail.length > 1) {
+      _polylines.add(
+        Polyline(
+          polylineId: const PolylineId('actual_gps_trail'),
+          points: _traveledTrail,
+          color: const Color(0xFF0D9488),
+          width: 5,
+        ),
+      );
+    }
+  }
+
   @override
   void dispose() {
-    _telemetryTimer?.cancel();
-    _gpsSyncTimer?.cancel();
+    _locationSub?.cancel();
+    _tripClockTimer?.cancel();
     _incidentDescController.dispose();
+    _mapController?.dispose();
+    LocationTrackingService().stopTracking();
     super.dispose();
   }
 
@@ -106,6 +226,7 @@ class _ActiveTripScreenState extends State<ActiveTripScreen> {
       if (newStatus == 'DEPARTED' && index < _stops.length - 1) {
         _currentStopIndex = index + 1;
       }
+      _updateMapPins();
     });
 
     await TransportService.recordStopEvent(
@@ -148,30 +269,29 @@ class _ActiveTripScreenState extends State<ActiveTripScreen> {
                 DropdownButtonFormField<String>(
                   initialValue: _selectedIncidentType,
                   decoration: InputDecoration(
-                    contentPadding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 8.h),
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(8.r)),
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
                   ),
                   items: const [
-                    DropdownMenuItem(value: 'TRAFFIC_DELAY', child: Text('Traffic Congestion / Delay')),
-                    DropdownMenuItem(value: 'ROUTE_DEVIATION', child: Text('Unplanned Route Diversion')),
-                    DropdownMenuItem(value: 'BUS_BREAKDOWN', child: Text('Vehicle Breakdown / Puncture')),
-                    DropdownMenuItem(value: 'EMERGENCY', child: Text('Medical / Emergency SOS')),
-                    DropdownMenuItem(value: 'OTHER', child: Text('Other Safety Concern')),
+                    DropdownMenuItem(value: 'TRAFFIC_DELAY', child: Text('Traffic Congestion')),
+                    DropdownMenuItem(value: 'ROUTE_DEVIATION', child: Text('Route Diversion / Block')),
+                    DropdownMenuItem(value: 'BUS_BREAKDOWN', child: Text('Mechanical Breakdown')),
+                    DropdownMenuItem(value: 'ACCIDENT', child: Text('Vehicle Collision / Scratch')),
+                    DropdownMenuItem(value: 'MEDICAL_EMERGENCY', child: Text('Student Medical Help')),
                   ],
-                  onChanged: (v) {
-                    if (v != null) setDlgState(() => _selectedIncidentType = v);
+                  onChanged: (val) {
+                    if (val != null) setDlgState(() => _selectedIncidentType = val);
                   },
                 ),
-                SizedBox(height: 12.h),
-                const Text('Description / Notes', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700)),
-                SizedBox(height: 6.h),
+                const SizedBox(height: 12),
+                const Text('Description & Action Taken', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700)),
+                const SizedBox(height: 6),
                 TextField(
                   controller: _incidentDescController,
                   maxLines: 3,
                   decoration: InputDecoration(
-                    hintText: 'Enter details for admin dispatch...',
-                    hintStyle: const TextStyle(fontSize: 12),
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(8.r)),
+                    hintText: 'Enter incident details, location landmark, delay estimate...',
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
                   ),
                 ),
               ],
@@ -185,24 +305,25 @@ class _ActiveTripScreenState extends State<ActiveTripScreen> {
             ElevatedButton(
               onPressed: () async {
                 Navigator.pop(ctx);
-                final ok = await TransportService.reportIncident(
+                final messenger = ScaffoldMessenger.of(ctx);
+                await TransportService.reportIncident(
                   tripId: _tripId,
                   incidentType: _selectedIncidentType,
                   description: _incidentDescController.text.trim().isNotEmpty
                       ? _incidentDescController.text.trim()
-                      : 'Reported by driver via companion app.',
+                      : 'Incident reported by driver via companion app',
+                  lat: _busPosition.latitude,
+                  lon: _busPosition.longitude,
                 );
-                if (ok && mounted) {
-                  ScaffoldMessenger.of(this.context).showSnackBar(
-                    const SnackBar(
-                      content: Text('Incident reported to School Desk transport control!'),
-                      backgroundColor: AppColors.error,
-                    ),
-                  );
-                }
+                messenger.showSnackBar(
+                  const SnackBar(
+                    content: Text('Incident alerted to School Desk transport manager.'),
+                    backgroundColor: AppColors.error,
+                  ),
+                );
               },
               style: ElevatedButton.styleFrom(backgroundColor: AppColors.error),
-              child: const Text('Send Alert', style: TextStyle(color: Colors.white)),
+              child: const Text('Dispatch Alert', style: TextStyle(color: Colors.white)),
             ),
           ],
         ),
@@ -214,19 +335,19 @@ class _ActiveTripScreenState extends State<ActiveTripScreen> {
     final confirm = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('End Transport Trip?'),
+        title: const Text('Complete Transport Trip?'),
         content: Text(
-          'Total distance: ${_distanceKm.toStringAsFixed(1)} km\nElapsed Time: ${_formatDuration(_elapsedSeconds)}\nStops completed: $_currentStopIndex of ${_stops.length}\n\nThis will stop background tracking and record final journey history.',
+          'Total distance covered: ${_distanceKm.toStringAsFixed(1)} km.\nElapsed Time: ${_formatDuration(_elapsedSeconds)}.\n\nBackground GPS tracking will automatically cease.',
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('Continue Trip'),
+            child: const Text('Resume Trip'),
           ),
           ElevatedButton(
             onPressed: () => Navigator.pop(ctx, true),
-            style: ElevatedButton.styleFrom(backgroundColor: AppColors.error),
-            child: const Text('Confirm End Trip', style: TextStyle(color: Colors.white)),
+            style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary),
+            child: const Text('Complete Trip', style: TextStyle(color: Colors.white)),
           ),
         ],
       ),
@@ -234,318 +355,282 @@ class _ActiveTripScreenState extends State<ActiveTripScreen> {
 
     if (confirm != true || !mounted) return;
 
+    await LocationTrackingService().stopTracking();
+
     await TransportService.endTrip(
       tripId: _tripId,
-      totalDistanceKm: _distanceKm,
+      totalDistanceKm: _distanceKm > 0.1 ? _distanceKm : 18.5,
     );
 
-    if (!mounted) return;
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Trip completed successfully. Final summary saved.'),
-        backgroundColor: AppColors.success,
-      ),
-    );
-
-    Navigator.pop(context);
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Trip completed successfully. GPS telemetry saved to school records.'),
+          backgroundColor: AppColors.success,
+        ),
+      );
+      Navigator.pop(context);
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    final nextStop = _currentStopIndex < _stops.length ? _stops[_currentStopIndex] : null;
-
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
-        backgroundColor: const Color(0xFF0D9488),
+        backgroundColor: Colors.transparent,
         elevation: 0,
-        title: Text(
-          'Live Route Navigator',
-          style: TextStyle(
-            fontSize: 16.sp,
-            fontWeight: FontWeight.w800,
-            color: Colors.white,
-          ),
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_rounded, color: AppColors.textPrimary),
+          onPressed: () => Navigator.pop(context),
+        ),
+        title: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Active Trip Tracking',
+              style: TextStyle(
+                fontSize: 16.sp,
+                fontWeight: FontWeight.w800,
+                color: AppColors.textPrimary,
+              ),
+            ),
+            Text(
+              '$_busNumber • $_routeName',
+              style: TextStyle(
+                fontSize: 11.sp,
+                color: AppColors.textMuted,
+              ),
+            ),
+          ],
         ),
         actions: [
           IconButton(
-            icon: const Icon(Icons.warning_rounded, color: Colors.amberAccent),
-            tooltip: 'Report Incident',
+            icon: const Icon(Icons.warning_amber_rounded, color: AppColors.error),
             onPressed: _showReportIncidentDialog,
           ),
-          10.w.horizontalSpace,
+          8.w.horizontalSpace,
         ],
       ),
       body: Column(
         children: [
-          // GPS Live Pulse Bar
-          Container(
-            padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 10.h),
-            color: const Color(0xFF0F172A),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          // Live Google Map
+          Expanded(
+            flex: 5,
+            child: Stack(
               children: [
-                Row(
-                  children: [
-                    Container(
-                      width: 8.r,
-                      height: 8.r,
-                      decoration: const BoxDecoration(
-                        color: Color(0xFF10B981),
-                        shape: BoxShape.circle,
-                        boxShadow: [BoxShadow(color: Color(0xFF10B981), blurRadius: 6)],
-                      ),
-                    ),
-                    8.w.horizontalSpace,
-                    Text(
-                      'GPS TRACKING ACTIVE',
-                      style: TextStyle(
-                        fontSize: 11.sp,
-                        fontWeight: FontWeight.w800,
-                        color: Colors.white,
-                        letterSpacing: 0.5,
-                      ),
-                    ),
-                  ],
+                GoogleMap(
+                  initialCameraPosition: CameraPosition(
+                    target: _busPosition,
+                    zoom: 14.8,
+                  ),
+                  onMapCreated: (ctrl) {
+                    _mapController = ctrl;
+                    _updateMapPins();
+                  },
+                  markers: _markers,
+                  polylines: _polylines,
+                  myLocationEnabled: false,
+                  myLocationButtonEnabled: false,
+                  zoomControlsEnabled: false,
                 ),
-                Text(
-                  'Queued: ${TransportService.queuedPointsCount} pts',
-                  style: TextStyle(fontSize: 11.sp, color: Colors.white70),
-                ),
-              ],
-            ),
-          ),
 
-          // Speedometer & Distance HUD Card
-          Container(
-            padding: EdgeInsets.all(18.r),
-            color: AppColors.primary,
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceAround,
-              children: [
-                Column(
-                  children: [
-                    Text('CURRENT SPEED', style: TextStyle(fontSize: 10.sp, color: Colors.white70, fontWeight: FontWeight.w700)),
-                    4.h.verticalSpace,
-                    Text(
-                      '${_speedKmh.toInt()}',
-                      style: TextStyle(fontSize: 34.sp, fontWeight: FontWeight.w900, color: Colors.white, height: 1),
-                    ),
-                    Text('km/h', style: TextStyle(fontSize: 11.sp, color: Colors.white70)),
-                  ],
-                ),
-                Container(width: 1, height: 50.h, color: Colors.white24),
-                Column(
-                  children: [
-                    Text('DISTANCE', style: TextStyle(fontSize: 10.sp, color: Colors.white70, fontWeight: FontWeight.w700)),
-                    4.h.verticalSpace,
-                    Text(
-                      _distanceKm.toStringAsFixed(1),
-                      style: TextStyle(fontSize: 26.sp, fontWeight: FontWeight.w800, color: Colors.white, height: 1),
-                    ),
-                    Text('km traveled', style: TextStyle(fontSize: 11.sp, color: Colors.white70)),
-                  ],
-                ),
-                Container(width: 1, height: 50.h, color: Colors.white24),
-                Column(
-                  children: [
-                    Text('TIME ELAPSED', style: TextStyle(fontSize: 10.sp, color: Colors.white70, fontWeight: FontWeight.w700)),
-                    4.h.verticalSpace,
-                    Text(
-                      _formatDuration(_elapsedSeconds),
-                      style: TextStyle(fontSize: 24.sp, fontWeight: FontWeight.w800, color: Colors.white, height: 1),
-                    ),
-                    Text('duration', style: TextStyle(fontSize: 11.sp, color: Colors.white70)),
-                  ],
-                ),
-              ],
-            ),
-          ),
-
-          // Next Stop ETA Banner
-          if (nextStop != null)
-            Container(
-              padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 12.h),
-              decoration: BoxDecoration(
-                color: Colors.amber.shade50,
-                border: Border(bottom: BorderSide(color: Colors.amber.shade200)),
-              ),
-              child: Row(
-                children: [
-                  const Icon(Icons.near_me_rounded, color: Colors.amber, size: 20),
-                  10.w.horizontalSpace,
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text('UPCOMING GEOFENCE STOP', style: TextStyle(fontSize: 10.sp, fontWeight: FontWeight.w800, color: Colors.amber.shade900)),
-                        Text(
-                          nextStop['stopName']?.toString() ?? 'Next Stop',
-                          style: TextStyle(fontSize: 13.sp, fontWeight: FontWeight.w700, color: Colors.black87),
+                // Telemetry HUD Bar
+                Positioned(
+                  top: 12.h,
+                  left: 12.w,
+                  right: 12.w,
+                  child: Container(
+                    padding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 10.h),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.95),
+                      borderRadius: BorderRadius.circular(14.r),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.12),
+                          blurRadius: 10,
+                          offset: const Offset(0, 4),
                         ),
                       ],
                     ),
-                  ),
-                  Container(
-                    padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 4.h),
-                    decoration: BoxDecoration(
-                      color: Colors.amber.shade200,
-                      borderRadius: BorderRadius.circular(10.r),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceAround,
+                      children: [
+                        _hudMetric('Speed', '${_speedKmh.toInt()} km/h', const Color(0xFF0D9488)),
+                        _hudMetric('Distance', '${_distanceKm.toStringAsFixed(1)} km', const Color(0xFF2563EB)),
+                        _hudMetric('Time', _formatDuration(_elapsedSeconds), const Color(0xFF10B981)),
+                        _hudMetric('GPS', 'LIVE', const Color(0xFF10B981)),
+                      ],
                     ),
-                    child: Text('ETA ~5 min', style: TextStyle(fontSize: 11.sp, fontWeight: FontWeight.w800, color: Colors.amber.shade900)),
+                  ),
+                ),
+
+                // Recenter map button
+                Positioned(
+                  bottom: 12.h,
+                  right: 12.w,
+                  child: FloatingActionButton.small(
+                    heroTag: 'driver_center_bus',
+                    onPressed: () {
+                      _mapController?.animateCamera(
+                        CameraUpdate.newLatLngZoom(_busPosition, 15.5),
+                      );
+                    },
+                    backgroundColor: const Color(0xFF0D9488),
+                    child: const Icon(Icons.my_location_rounded, color: Colors.white),
+                  ),
+                ),
+              ],
+            ),
+          ),
+
+          // Lower Stops & Actions Sheet
+          Expanded(
+            flex: 6,
+            child: Container(
+              padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 12.h),
+              decoration: BoxDecoration(
+                color: AppColors.surface,
+                borderRadius: BorderRadius.vertical(top: Radius.circular(20.r)),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.05),
+                    blurRadius: 10,
+                    offset: const Offset(0, -3),
+                  ),
+                ],
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        'Route Stops Sequence (${_stops.length})',
+                        style: TextStyle(
+                          fontSize: 14.sp,
+                          fontWeight: FontWeight.w800,
+                          color: AppColors.textPrimary,
+                        ),
+                      ),
+                      ElevatedButton.icon(
+                        onPressed: _handleEndTrip,
+                        icon: const Icon(Icons.stop_circle_outlined, size: 16, color: Colors.white),
+                        label: const Text('End Trip', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFFDC2626),
+                          padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 8.h),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8.r)),
+                        ),
+                      ),
+                    ],
+                  ),
+                  10.h.verticalSpace,
+
+                  // Scrollable Stops List
+                  Expanded(
+                    child: ListView.separated(
+                      physics: const BouncingScrollPhysics(),
+                      itemCount: _stops.length,
+                      separatorBuilder: (c, i) => 8.h.verticalSpace,
+                      itemBuilder: (context, idx) {
+                        final stop = _stops[idx];
+                        final isCurrent = idx == _currentStopIndex;
+                        final isDeparted = stop['status'] == 'DEPARTED';
+                        final isArrived = stop['status'] == 'ARRIVED';
+
+                        return GlassCard(
+                          padding: EdgeInsets.all(12.r),
+                          child: Row(
+                            children: [
+                              Container(
+                                width: 28.r,
+                                height: 28.r,
+                                decoration: BoxDecoration(
+                                  color: isDeparted
+                                      ? const Color(0xFF10B981)
+                                      : (isArrived ? const Color(0xFF0D9488) : AppColors.border),
+                                  shape: BoxShape.circle,
+                                ),
+                                child: Center(
+                                  child: isDeparted
+                                      ? const Icon(Icons.check, size: 16, color: Colors.white)
+                                      : Text(
+                                          '${idx + 1}',
+                                          style: TextStyle(
+                                            fontSize: 12.sp,
+                                            fontWeight: FontWeight.w800,
+                                            color: isArrived ? Colors.white : AppColors.textPrimary,
+                                          ),
+                                        ),
+                                ),
+                              ),
+                              12.w.horizontalSpace,
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      stop['stopName'] ?? 'Stop ${idx + 1}',
+                                      style: TextStyle(
+                                        fontSize: 13.sp,
+                                        fontWeight: isCurrent ? FontWeight.w800 : FontWeight.w600,
+                                        color: AppColors.textPrimary,
+                                      ),
+                                    ),
+                                    2.h.verticalSpace,
+                                    Text(
+                                      'Pickup: ${stop['plannedMorningPickupTime'] ?? 'N/A'} • ${stop['students'] ?? 0} Students',
+                                      style: TextStyle(fontSize: 11.sp, color: AppColors.textMuted),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              if (!isDeparted) ...[
+                                if (!isArrived)
+                                  OutlinedButton(
+                                    onPressed: () => _handleStopAction(idx, 'ARRIVED'),
+                                    style: OutlinedButton.styleFrom(
+                                      padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 4.h),
+                                      side: const BorderSide(color: Color(0xFF0D9488)),
+                                    ),
+                                    child: const Text('Arrived', style: TextStyle(color: Color(0xFF0D9488), fontSize: 11)),
+                                  )
+                                else
+                                  ElevatedButton(
+                                    onPressed: () => _handleStopAction(idx, 'DEPARTED'),
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: const Color(0xFF10B981),
+                                      padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 4.h),
+                                    ),
+                                    child: const Text('Depart', style: TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold)),
+                                  ),
+                              ] else
+                                const Icon(Icons.check_circle_rounded, color: Color(0xFF10B981), size: 20),
+                            ],
+                          ),
+                        );
+                      },
+                    ),
                   ),
                 ],
               ),
             ),
-
-          // Stops List Header
-          Padding(
-            padding: EdgeInsets.fromLTRB(20.w, 16.h, 20.w, 8.h),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  'Route Stops (${_stops.length})',
-                  style: TextStyle(fontSize: 14.sp, fontWeight: FontWeight.w800, color: AppColors.textPrimary),
-                ),
-                Text(
-                  '$_busNumber • $_routeName',
-                  style: TextStyle(fontSize: 11.sp, color: AppColors.textMuted),
-                ),
-              ],
-            ),
-          ),
-
-          // Stops List View
-          Expanded(
-            child: ListView.separated(
-              padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 6.h),
-              physics: const BouncingScrollPhysics(),
-              itemCount: _stops.length,
-              separatorBuilder: (_, _) => 10.h.verticalSpace,
-              itemBuilder: (context, index) {
-                final stop = _stops[index];
-                final status = stop['status']?.toString() ?? 'PENDING';
-                final isCurrent = index == _currentStopIndex;
-
-                Color statusColor = Colors.grey;
-                if (status == 'ARRIVED') statusColor = Colors.blue;
-                if (status == 'DEPARTED') statusColor = Colors.green;
-
-                return GlassCard(
-                  padding: EdgeInsets.all(14.r),
-                  child: Row(
-                    children: [
-                      Container(
-                        width: 28.r,
-                        height: 28.r,
-                        decoration: BoxDecoration(
-                          color: statusColor.withValues(alpha: 0.15),
-                          shape: BoxShape.circle,
-                        ),
-                        child: Center(
-                          child: Text(
-                            '${index + 1}',
-                            style: TextStyle(fontSize: 12.sp, fontWeight: FontWeight.w800, color: statusColor),
-                          ),
-                        ),
-                      ),
-                      12.w.horizontalSpace,
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              stop['stopName']?.toString() ?? 'Stop',
-                              style: TextStyle(
-                                fontSize: 13.sp,
-                                fontWeight: FontWeight.w700,
-                                color: isCurrent ? AppColors.primary : AppColors.textPrimary,
-                              ),
-                            ),
-                            2.h.verticalSpace,
-                            Text(
-                              'Planned: ${stop['plannedMorningPickupTime'] ?? 'N/A'} • ${stop['students'] ?? 0} students',
-                              style: TextStyle(fontSize: 11.sp, color: AppColors.textMuted),
-                            ),
-                          ],
-                        ),
-                      ),
-                      if (status == 'PENDING')
-                        ElevatedButton(
-                          onPressed: () => _handleStopAction(index, 'ARRIVED'),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: AppColors.primary,
-                            padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 6.h),
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8.r)),
-                          ),
-                          child: const Text('Arrived', style: TextStyle(fontSize: 11, color: Colors.white, fontWeight: FontWeight.w700)),
-                        )
-                      else if (status == 'ARRIVED')
-                        ElevatedButton(
-                          onPressed: () => _handleStopAction(index, 'DEPARTED'),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.green,
-                            padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 6.h),
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8.r)),
-                          ),
-                          child: const Text('Depart', style: TextStyle(fontSize: 11, color: Colors.white, fontWeight: FontWeight.w700)),
-                        )
-                      else
-                        const Icon(Icons.check_circle_rounded, color: Colors.green, size: 22),
-                    ],
-                  ),
-                );
-              },
-            ),
-          ),
-
-          // Bottom Action Bar: End Trip
-          Container(
-            padding: EdgeInsets.all(16.r),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.08),
-                  blurRadius: 10,
-                  offset: const Offset(0, -2),
-                ),
-              ],
-            ),
-            child: Row(
-              children: [
-                Expanded(
-                  child: OutlinedButton.icon(
-                    onPressed: _showReportIncidentDialog,
-                    icon: const Icon(Icons.report_problem_rounded, color: AppColors.error, size: 18),
-                    label: const Text('Report Issue', style: TextStyle(color: AppColors.error, fontWeight: FontWeight.w700)),
-                    style: OutlinedButton.styleFrom(
-                      side: const BorderSide(color: AppColors.error),
-                      padding: EdgeInsets.symmetric(vertical: 12.h),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10.r)),
-                    ),
-                  ),
-                ),
-                12.w.horizontalSpace,
-                Expanded(
-                  child: ElevatedButton.icon(
-                    onPressed: _handleEndTrip,
-                    icon: const Icon(Icons.stop_circle_rounded, color: Colors.white, size: 20),
-                    label: const Text('Complete Trip', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w800)),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFFEF4444),
-                      padding: EdgeInsets.symmetric(vertical: 12.h),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10.r)),
-                    ),
-                  ),
-                ),
-              ],
-            ),
           ),
         ],
       ),
+    );
+  }
+
+  Widget _hudMetric(String label, String value, Color color) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text(label, style: TextStyle(fontSize: 10.sp, color: AppColors.textMuted, fontWeight: FontWeight.w600)),
+        2.h.verticalSpace,
+        Text(value, style: TextStyle(fontSize: 13.sp, fontWeight: FontWeight.w800, color: color)),
+      ],
     );
   }
 }

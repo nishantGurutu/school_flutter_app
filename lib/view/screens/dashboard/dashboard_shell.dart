@@ -11,6 +11,7 @@ import 'student_dashboard.dart';
 import 'parent_dashboard.dart';
 import 'teacher_dashboard.dart';
 import 'staff_dashboard.dart';
+import 'driver_dashboard.dart';
 import '../modules/notice_screen.dart';
 import '../modules/chat_screen.dart';
 import '../modules/homework_screen.dart';
@@ -67,6 +68,12 @@ class _DashboardShellState extends State<DashboardShell> {
           case UserRole.admin:
           case UserRole.masterAdmin:
             homeDashboard = StaffDashboard(
+              user: user,
+              onOpenDrawer: () => _scaffoldKey.currentState?.openDrawer(),
+            );
+            break;
+          case UserRole.driver:
+            homeDashboard = DriverDashboard(
               user: user,
               onOpenDrawer: () => _scaffoldKey.currentState?.openDrawer(),
             );

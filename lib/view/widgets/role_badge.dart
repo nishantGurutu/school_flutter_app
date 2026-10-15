@@ -39,6 +39,11 @@ class RoleBadge extends StatelessWidget {
             ? 'Master Admin'
             : (role == UserRole.admin ? 'Admin' : 'Staff');
         break;
+      case UserRole.driver:
+        color = const Color(0xFF0D9488);
+        bgColor = const Color(0xFF0D9488).withValues(alpha: 0.12);
+        label = 'Driver';
+        break;
     }
 
     return Container(

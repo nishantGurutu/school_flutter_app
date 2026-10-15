@@ -189,6 +189,28 @@ class RoleNavigationConfig {
             key: 'profile',
           ),
         ];
+
+      case UserRole.driver:
+        return const [
+          RoleNavItem(
+            icon: Icons.directions_bus_outlined,
+            activeIcon: Icons.directions_bus_rounded,
+            label: 'Duty',
+            key: 'home',
+          ),
+          RoleNavItem(
+            icon: Icons.campaign_outlined,
+            activeIcon: Icons.campaign_rounded,
+            label: 'Notices',
+            key: 'notices',
+          ),
+          RoleNavItem(
+            icon: Icons.person_outline_rounded,
+            activeIcon: Icons.person_rounded,
+            label: 'Profile',
+            key: 'profile',
+          ),
+        ];
     }
   }
 
@@ -234,15 +256,21 @@ class RoleNavigationConfig {
             route: RoutesName.fees,
           ),
           QuickAccessAction(
-            label: 'Notices',
-            icon: Icons.campaign_outlined,
-            color: AppColors.secondary,
-            route: RoutesName.notice,
+            label: 'School Bus',
+            icon: Icons.directions_bus_rounded,
+            color: Color(0xFF0D9488),
+            route: RoutesName.studentTransport,
           ),
         ];
 
       case UserRole.parent:
         return const [
+          QuickAccessAction(
+            label: 'Live Bus',
+            icon: Icons.directions_bus_rounded,
+            color: Color(0xFF0D9488),
+            route: RoutesName.parentTransport,
+          ),
           QuickAccessAction(
             label: 'Attendance',
             icon: Icons.calendar_month_rounded,
@@ -390,6 +418,28 @@ class RoleNavigationConfig {
             route: RoutesName.timetable,
           ),
         ];
+
+      case UserRole.driver:
+        return const [
+          QuickAccessAction(
+            label: 'My Duty',
+            icon: Icons.directions_bus_rounded,
+            color: Color(0xFF0D9488),
+            route: RoutesName.dashboard,
+          ),
+          QuickAccessAction(
+            label: 'Active GPS Trip',
+            icon: Icons.navigation_rounded,
+            color: Color(0xFF10B981),
+            route: RoutesName.activeTrip,
+          ),
+          QuickAccessAction(
+            label: 'Notices',
+            icon: Icons.campaign_outlined,
+            color: AppColors.secondary,
+            route: RoutesName.notice,
+          ),
+        ];
     }
   }
 
@@ -397,6 +447,7 @@ class RoleNavigationConfig {
     switch (role) {
       case UserRole.student:
         return const [
+          DrawerMenuItem(icon: Icons.directions_bus_rounded, label: 'My School Bus', route: RoutesName.studentTransport),
           DrawerMenuItem(icon: Icons.calendar_month_rounded, label: 'My Attendance', route: RoutesName.attendance),
           DrawerMenuItem(icon: Icons.assignment_outlined, label: 'Homework & Tasks', route: RoutesName.homework),
           DrawerMenuItem(icon: Icons.quiz_outlined, label: 'Exam Schedule & Marks', route: RoutesName.exam),
@@ -408,6 +459,7 @@ class RoleNavigationConfig {
 
       case UserRole.parent:
         return const [
+          DrawerMenuItem(icon: Icons.directions_bus_rounded, label: 'Live Bus Tracking', route: RoutesName.parentTransport),
           DrawerMenuItem(icon: Icons.calendar_month_rounded, label: 'Child Attendance', route: RoutesName.attendance),
           DrawerMenuItem(icon: Icons.account_balance_wallet_outlined, label: 'School Fees Payment', route: RoutesName.fees),
           DrawerMenuItem(icon: Icons.assignment_outlined, label: 'Child Homework', route: RoutesName.homework),
@@ -443,6 +495,13 @@ class RoleNavigationConfig {
           DrawerMenuItem(icon: Icons.receipt_long_outlined, label: 'Salary & Payroll', route: RoutesName.payroll),
           DrawerMenuItem(icon: Icons.campaign_outlined, label: 'Publish & View Notices', route: RoutesName.notice),
           DrawerMenuItem(icon: Icons.schedule_rounded, label: 'Timetable Overview', route: RoutesName.timetable),
+        ];
+
+      case UserRole.driver:
+        return const [
+          DrawerMenuItem(icon: Icons.directions_bus_rounded, label: 'My Duty Schedule', route: RoutesName.dashboard),
+          DrawerMenuItem(icon: Icons.navigation_rounded, label: 'Active GPS Tracking Trip', route: RoutesName.activeTrip),
+          DrawerMenuItem(icon: Icons.campaign_outlined, label: 'School Notices', route: RoutesName.notice),
         ];
     }
   }

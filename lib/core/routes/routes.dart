@@ -18,6 +18,9 @@ import '../../view/screens/modules/classes_screen.dart';
 import '../../view/screens/modules/lesson_screen.dart';
 import '../../view/screens/modules/topics_screen.dart';
 import '../../view/screens/modules/academic_calendar_screen.dart';
+import '../../view/screens/modules/transport/active_trip_screen.dart';
+import '../../view/screens/modules/transport/parent_transport_screen.dart';
+import '../../view/screens/modules/transport/student_transport_screen.dart';
 import '../../data/models/chat_models.dart';
 
 class Routes {
@@ -79,6 +82,17 @@ class Routes {
 
       case RoutesName.academicCalendar:
         return _slideLeftRoute(const AcademicCalendarScreen());
+
+      case RoutesName.activeTrip:
+        final args = settings.arguments as Map<String, dynamic>?;
+        return _slideLeftRoute(ActiveTripScreen(initialData: args));
+
+      case RoutesName.parentTransport:
+        final studentId = settings.arguments is int ? settings.arguments as int : null;
+        return _slideLeftRoute(ParentTransportScreen(studentId: studentId));
+
+      case RoutesName.studentTransport:
+        return _slideLeftRoute(const StudentTransportScreen());
 
       default:
         return MaterialPageRoute(
