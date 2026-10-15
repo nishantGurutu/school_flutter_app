@@ -29,9 +29,6 @@ class StorageHelper {
   static const String _keyDepartment = "department";
 
   // Backward compatibility keys
-  static const String _keyJwtToken = _keyAccessToken;
-
-  /// Save full login response map into secure storage
   static Future<void> saveLoginResponse(Map<String, dynamic> json) async {
     if (json.containsKey('accessToken') && json['accessToken'] != null) {
       await setAccessToken(json['accessToken'].toString());
@@ -40,9 +37,11 @@ class StorageHelper {
       await setRefreshToken(json['refreshToken'].toString());
     }
     if (json.containsKey('expiresAt') && json['expiresAt'] != null) {
-      await setExpiresAt(json['expiresAt'] is int
-          ? json['expiresAt']
-          : int.tryParse(json['expiresAt'].toString()) ?? 0);
+      await setExpiresAt(
+        json['expiresAt'] is int
+            ? json['expiresAt']
+            : int.tryParse(json['expiresAt'].toString()) ?? 0,
+      );
     }
     if (json.containsKey('tokenType') && json['tokenType'] != null) {
       await setTokenType(json['tokenType'].toString());
@@ -90,8 +89,8 @@ class StorageHelper {
   static Future<void> setRefreshToken(String refreshToken) async =>
       await _secureStorage.write(key: _keyRefreshToken, value: refreshToken);
 
-  static Future<void> setExpiresAt(int expiresAt) async =>
-      await _secureStorage.write(key: _keyExpiresAt, value: expiresAt.toString());
+  static Future<void> setExpiresAt(int expiresAt) async => await _secureStorage
+      .write(key: _keyExpiresAt, value: expiresAt.toString());
 
   static Future<void> setTokenType(String tokenType) async =>
       await _secureStorage.write(key: _keyTokenType, value: tokenType);
@@ -160,8 +159,7 @@ class StorageHelper {
   static Future<String?> getAccessToken() async =>
       await _secureStorage.read(key: _keyAccessToken);
 
-  static Future<String?> getJwtToken() async =>
-      await getAccessToken();
+  static Future<String?> getJwtToken() async => await getAccessToken();
 
   static Future<String?> getRefreshToken() async =>
       await _secureStorage.read(key: _keyRefreshToken);
@@ -249,4 +247,3 @@ class StorageHelper {
     return UserModel.fromJson(json, token: token, refreshToken: refreshToken);
   }
 }
-

@@ -1,12 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
-import '../../../core/routes/routes_name.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/extensions/context_extensions.dart';
 import '../../../data/models/user_model.dart';
 import '../../../core/config/role_navigation_config.dart';
 import '../../widgets/attendance_check_in_banner.dart';
-import '../../widgets/glass_card.dart';
 
 class TeacherDashboard extends StatelessWidget {
   final UserModel user;
@@ -99,7 +97,10 @@ class TeacherDashboard extends StatelessWidget {
                     // Quick Access Grid (Dynamic)
                     Builder(
                       builder: (context) {
-                        final actions = RoleNavigationConfig.getQuickAccessActions(user.role);
+                        final actions =
+                            RoleNavigationConfig.getQuickAccessActions(
+                              user.role,
+                            );
                         return GridView.count(
                           shrinkWrap: true,
                           physics: const NeverScrollableScrollPhysics(),
@@ -107,16 +108,20 @@ class TeacherDashboard extends StatelessWidget {
                           crossAxisSpacing: 12.w,
                           mainAxisSpacing: 12.h,
                           childAspectRatio: 0.88,
-                          children: actions.map((act) => _QuickAccessTile(
-                            label: act.label,
-                            icon: act.icon,
-                            color: act.color,
-                            onTap: () => Navigator.pushNamed(
-                              context,
-                              act.route,
-                              arguments: act.arguments,
-                            ),
-                          )).toList(),
+                          children: actions
+                              .map(
+                                (act) => _QuickAccessTile(
+                                  label: act.label,
+                                  icon: act.icon,
+                                  color: act.color,
+                                  onTap: () => Navigator.pushNamed(
+                                    context,
+                                    act.route,
+                                    arguments: act.arguments,
+                                  ),
+                                ),
+                              )
+                              .toList(),
                         );
                       },
                     ),

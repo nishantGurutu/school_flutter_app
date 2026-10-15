@@ -42,7 +42,10 @@ class _ExpenseScreenState extends State<ExpenseScreen> {
         backgroundColor: Colors.transparent,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new_rounded, color: AppColors.textPrimary),
+          icon: const Icon(
+            Icons.arrow_back_ios_new_rounded,
+            color: AppColors.textPrimary,
+          ),
           onPressed: () => Navigator.pop(context),
         ),
         title: Text(
@@ -52,7 +55,10 @@ class _ExpenseScreenState extends State<ExpenseScreen> {
         centerTitle: true,
         actions: [
           IconButton(
-            icon: const Icon(Icons.refresh_rounded, color: AppColors.textPrimary),
+            icon: const Icon(
+              Icons.refresh_rounded,
+              color: AppColors.textPrimary,
+            ),
             tooltip: 'Sync Expenses',
             onPressed: _loadExpenses,
           ),
@@ -62,11 +68,19 @@ class _ExpenseScreenState extends State<ExpenseScreen> {
         onPressed: () => _showAddExpenseDialog(context),
         backgroundColor: AppColors.primary,
         icon: const Icon(Icons.add_rounded, color: Colors.white),
-        label: Text('Add Expense', style: TextStyle(color: Colors.white, fontSize: 13.sp, fontWeight: FontWeight.w700)),
+        label: Text(
+          'Add Expense',
+          style: TextStyle(
+            color: Colors.white,
+            fontSize: 13.sp,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
       ),
       body: BlocListener<SchoolBloc, SchoolState>(
         listener: (context, state) {
-          if (state.actionSuccessMessage != null && state.actionSuccessMessage!.contains('Expense')) {
+          if (state.actionSuccessMessage != null &&
+              state.actionSuccessMessage!.contains('Expense')) {
             context.showAppSnackBar(state.actionSuccessMessage!);
           }
         },
@@ -76,9 +90,13 @@ class _ExpenseScreenState extends State<ExpenseScreen> {
               return const Center(child: CircularProgressIndicator());
             }
 
-            final pending = state.expenses.where((e) => e.status == ExpenseStatus.pending).toList();
-            final approved = state.expenses.where((e) => e.status == ExpenseStatus.approved).toList();
-            final totalPendingAmount = pending.fold<double>(0, (sum, e) => sum + e.amount);
+            final pending = state.expenses
+                .where((e) => e.status == ExpenseStatus.pending)
+                .toList();
+            final totalPendingAmount = pending.fold<double>(
+              0,
+              (sum, e) => sum + e.amount,
+            );
 
             return SingleChildScrollView(
               physics: const BouncingScrollPhysics(),
@@ -95,13 +113,19 @@ class _ExpenseScreenState extends State<ExpenseScreen> {
                       children: [
                         Text(
                           'Pending Approval Total',
-                          style: TextStyle(color: AppColors.textSecondary, fontSize: 13.sp, fontWeight: FontWeight.w500),
+                          style: TextStyle(
+                            color: AppColors.textSecondary,
+                            fontSize: 13.sp,
+                            fontWeight: FontWeight.w500,
+                          ),
                         ),
                         10.h.height,
                         Text(
                           '₹${totalPendingAmount.toStringAsFixed(0)}',
                           style: TextStyle(
-                            color: totalPendingAmount > 0 ? AppColors.warning : AppColors.success,
+                            color: totalPendingAmount > 0
+                                ? AppColors.warning
+                                : AppColors.success,
                             fontSize: 32.sp,
                             fontWeight: FontWeight.w900,
                           ),
@@ -110,18 +134,29 @@ class _ExpenseScreenState extends State<ExpenseScreen> {
                           16.h.height,
                           Text(
                             '${pending.length} expense${pending.length > 1 ? 's' : ''} awaiting approval',
-                            style: TextStyle(color: AppColors.textMuted, fontSize: 12.sp),
+                            style: TextStyle(
+                              color: AppColors.textMuted,
+                              fontSize: 12.sp,
+                            ),
                           ),
                         ] else ...[
                           14.h.height,
                           Row(
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
-                              const Icon(Icons.check_circle_outline_rounded, color: AppColors.success, size: 20),
+                              const Icon(
+                                Icons.check_circle_outline_rounded,
+                                color: AppColors.success,
+                                size: 20,
+                              ),
                               8.w.width,
                               Text(
                                 'All expenses approved!',
-                                style: TextStyle(color: AppColors.success, fontSize: 13.sp, fontWeight: FontWeight.bold),
+                                style: TextStyle(
+                                  color: AppColors.success,
+                                  fontSize: 13.sp,
+                                  fontWeight: FontWeight.bold,
+                                ),
                               ),
                             ],
                           ),
@@ -145,7 +180,10 @@ class _ExpenseScreenState extends State<ExpenseScreen> {
                       final expense = state.expenses[i];
                       final isPending = expense.status == ExpenseStatus.pending;
                       final categoryColor = _categoryColor(expense.category);
-                      final statusLabel = expense.status == ExpenseStatus.approved ? 'Approved' : 'Pending';
+                      final statusLabel =
+                          expense.status == ExpenseStatus.approved
+                          ? 'Approved'
+                          : 'Pending';
 
                       return Container(
                         margin: EdgeInsets.only(bottom: 12.h),
@@ -154,7 +192,9 @@ class _ExpenseScreenState extends State<ExpenseScreen> {
                           color: AppColors.surface,
                           borderRadius: BorderRadius.circular(16.r),
                           border: Border.all(
-                            color: isPending ? AppColors.warning.withValues(alpha: 0.2) : AppColors.border,
+                            color: isPending
+                                ? AppColors.warning.withValues(alpha: 0.2)
+                                : AppColors.border,
                           ),
                         ),
                         child: Column(
@@ -166,15 +206,22 @@ class _ExpenseScreenState extends State<ExpenseScreen> {
                                 Container(
                                   padding: EdgeInsets.all(8.w),
                                   decoration: BoxDecoration(
-                                    color: categoryColor.withValues(alpha: 0.08),
+                                    color: categoryColor.withValues(
+                                      alpha: 0.08,
+                                    ),
                                     borderRadius: BorderRadius.circular(12.r),
                                   ),
-                                  child: Icon(_categoryIcon(expense.category), color: categoryColor, size: 20.sp),
+                                  child: Icon(
+                                    _categoryIcon(expense.category),
+                                    color: categoryColor,
+                                    size: 20.sp,
+                                  ),
                                 ),
                                 12.w.width,
                                 Expanded(
                                   child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
                                     children: [
                                       Text(
                                         expense.title,
@@ -187,7 +234,10 @@ class _ExpenseScreenState extends State<ExpenseScreen> {
                                       4.h.height,
                                       Text(
                                         expense.description,
-                                        style: TextStyle(color: AppColors.textMuted, fontSize: 11.sp),
+                                        style: TextStyle(
+                                          color: AppColors.textMuted,
+                                          fontSize: 11.sp,
+                                        ),
                                         maxLines: 2,
                                         overflow: TextOverflow.ellipsis,
                                       ),
@@ -199,9 +249,15 @@ class _ExpenseScreenState extends State<ExpenseScreen> {
                             12.h.height,
                             Row(
                               children: [
-                                _infoChip(Icons.person_outline, expense.submittedBy),
+                                _infoChip(
+                                  Icons.person_outline,
+                                  expense.submittedBy,
+                                ),
                                 8.w.width,
-                                _infoChip(Icons.calendar_today_outlined, _formatDate(expense.date)),
+                                _infoChip(
+                                  Icons.calendar_today_outlined,
+                                  _formatDate(expense.date),
+                                ),
                               ],
                             ),
                             12.h.height,
@@ -219,17 +275,28 @@ class _ExpenseScreenState extends State<ExpenseScreen> {
                                 Row(
                                   children: [
                                     Container(
-                                      padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 2.h),
+                                      padding: EdgeInsets.symmetric(
+                                        horizontal: 8.w,
+                                        vertical: 2.h,
+                                      ),
                                       decoration: BoxDecoration(
                                         color: isPending
-                                            ? AppColors.warning.withValues(alpha: 0.08)
-                                            : AppColors.success.withValues(alpha: 0.08),
-                                        borderRadius: BorderRadius.circular(8.r),
+                                            ? AppColors.warning.withValues(
+                                                alpha: 0.08,
+                                              )
+                                            : AppColors.success.withValues(
+                                                alpha: 0.08,
+                                              ),
+                                        borderRadius: BorderRadius.circular(
+                                          8.r,
+                                        ),
                                       ),
                                       child: Text(
                                         statusLabel,
                                         style: TextStyle(
-                                          color: isPending ? AppColors.warning : AppColors.success,
+                                          color: isPending
+                                              ? AppColors.warning
+                                              : AppColors.success,
                                           fontSize: 10.sp,
                                           fontWeight: FontWeight.bold,
                                         ),
@@ -240,16 +307,26 @@ class _ExpenseScreenState extends State<ExpenseScreen> {
                                       SizedBox(
                                         height: 30.h,
                                         child: ElevatedButton(
-                                          onPressed: () => _confirmApprove(context, expense),
+                                          onPressed: () =>
+                                              _confirmApprove(context, expense),
                                           style: ElevatedButton.styleFrom(
                                             backgroundColor: AppColors.success,
-                                            padding: EdgeInsets.symmetric(horizontal: 12.w),
+                                            padding: EdgeInsets.symmetric(
+                                              horizontal: 12.w,
+                                            ),
                                             minimumSize: Size.zero,
-                                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10.r)),
+                                            shape: RoundedRectangleBorder(
+                                              borderRadius:
+                                                  BorderRadius.circular(10.r),
+                                            ),
                                           ),
                                           child: Text(
                                             'Approve',
-                                            style: TextStyle(fontSize: 10.sp, fontWeight: FontWeight.w700, color: Colors.white),
+                                            style: TextStyle(
+                                              fontSize: 10.sp,
+                                              fontWeight: FontWeight.w700,
+                                              color: Colors.white,
+                                            ),
                                           ),
                                         ),
                                       ),
@@ -257,7 +334,10 @@ class _ExpenseScreenState extends State<ExpenseScreen> {
                                       8.w.width,
                                       Text(
                                         'by ${expense.approvedBy ?? "-"}',
-                                        style: TextStyle(color: AppColors.textMuted, fontSize: 9.sp),
+                                        style: TextStyle(
+                                          color: AppColors.textMuted,
+                                          fontSize: 9.sp,
+                                        ),
                                       ),
                                     ],
                                   ],
@@ -285,9 +365,13 @@ class _ExpenseScreenState extends State<ExpenseScreen> {
       context: context,
       builder: (dialogCtx) => AlertDialog(
         backgroundColor: AppColors.surface,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20.r)),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20.r),
+        ),
         title: const Text('Approve Expense'),
-        content: Text('Approve expense "${expense.title}" for ₹${expense.amount.toStringAsFixed(0)}?'),
+        content: Text(
+          'Approve expense "${expense.title}" for ₹${expense.amount.toStringAsFixed(0)}?',
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(dialogCtx),
@@ -296,7 +380,8 @@ class _ExpenseScreenState extends State<ExpenseScreen> {
           ElevatedButton(
             onPressed: () {
               Navigator.pop(dialogCtx);
-              final userId = context.read<AuthBloc>().state.user?.id ?? 'staff_1';
+              final userId =
+                  context.read<AuthBloc>().state.user?.id ?? 'staff_1';
               context.read<SchoolBloc>().add(
                 ApproveExpenseRequested(userId: userId, expenseId: expense.id),
               );
@@ -352,122 +437,160 @@ class _ExpenseScreenState extends State<ExpenseScreen> {
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          Text('New Expense', style: TextStyle(fontSize: 20.sp, fontWeight: FontWeight.w800, color: AppColors.textPrimary)),
+                          Text(
+                            'New Expense',
+                            style: TextStyle(
+                              fontSize: 20.sp,
+                              fontWeight: FontWeight.w800,
+                              color: AppColors.textPrimary,
+                            ),
+                          ),
                           IconButton(
-                            icon: const Icon(Icons.close_rounded, color: AppColors.textSecondary),
+                            icon: const Icon(
+                              Icons.close_rounded,
+                              color: AppColors.textSecondary,
+                            ),
                             onPressed: () => Navigator.pop(sheetCtx),
                           ),
                         ],
                       ),
                       16.h.height,
                       Form(
-                key: formKey,
-                child: SingleChildScrollView(
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      TextFormField(
-                        controller: titleCtrl,
-                        style: const TextStyle(color: AppColors.textPrimary),
-                        decoration: const InputDecoration(
-                          labelText: 'Expense Title',
-                          prefixIcon: Icon(Icons.receipt_outlined),
-                        ),
-                        validator: (v) => v == null || v.trim().isEmpty ? 'Enter title' : null,
-                      ),
-                      12.h.height,
-                      TextFormField(
-                        controller: descCtrl,
-                        style: const TextStyle(color: AppColors.textPrimary),
-                        decoration: const InputDecoration(
-                          labelText: 'Description',
-                          prefixIcon: Icon(Icons.description_outlined),
-                        ),
-                        maxLines: 2,
-                        validator: (v) => v == null || v.trim().isEmpty ? 'Enter description' : null,
-                      ),
-                      12.h.height,
-                      TextFormField(
-                        controller: amountCtrl,
-                        keyboardType: TextInputType.number,
-                        style: const TextStyle(color: AppColors.textPrimary),
-                        decoration: const InputDecoration(
-                          labelText: 'Amount (₹)',
-                          prefixIcon: Icon(Icons.currency_rupee_outlined),
-                        ),
-                        validator: (v) {
-                          if (v == null || v.trim().isEmpty) return 'Enter amount';
-                          if (double.tryParse(v.trim()) == null || double.parse(v.trim()) <= 0) return 'Enter valid amount';
-                          return null;
-                        },
-                      ),
-                      12.h.height,
-                      DropdownButtonFormField<ExpenseCategory>(
-                        initialValue: selectedCategory,
-                        dropdownColor: AppColors.surface,
-                        decoration: const InputDecoration(
-                          labelText: 'Category',
-                          prefixIcon: Icon(Icons.category_outlined),
-                        ),
-                        items: ExpenseCategory.values.map((cat) {
-                          return DropdownMenuItem(
-                            value: cat,
-                            child: Text(
-                              cat.name[0].toUpperCase() + cat.name.substring(1),
-                              style: const TextStyle(color: AppColors.textPrimary),
-                            ),
-                          );
-                        }).toList(),
-                        onChanged: (v) {
-                          if (v != null) {
-                            setModalState(() => selectedCategory = v);
-                          }
-                        },
-                      ),
-                      12.h.height,
-                      TextFormField(
-                        controller: submitterCtrl,
-                        style: const TextStyle(color: AppColors.textPrimary),
-                        decoration: const InputDecoration(
-                          labelText: 'Submitted By',
-                          prefixIcon: Icon(Icons.person_outline),
-                        ),
-                        validator: (v) => v == null || v.trim().isEmpty ? 'Enter name' : null,
-                      ),
-                      20.h.height,
-                      SizedBox(
-                        width: double.infinity,
-                        child: ElevatedButton(
-                          onPressed: () {
-                            if (formKey.currentState!.validate()) {
-                              context.read<SchoolBloc>().add(
-                                AddExpenseRequested(
-                                  title: titleCtrl.text.trim(),
-                                  description: descCtrl.text.trim(),
-                                  amount: double.parse(amountCtrl.text.trim()),
-                                  category: selectedCategory,
-                                  submittedBy: submitterCtrl.text.trim(),
+                        key: formKey,
+                        child: SingleChildScrollView(
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              TextFormField(
+                                controller: titleCtrl,
+                                style: const TextStyle(
+                                  color: AppColors.textPrimary,
                                 ),
-                              );
-                              Navigator.pop(sheetCtx);
-                            }
-                          },
-                          child: Text('Add Expense', style: TextStyle(fontSize: 14.sp)),
+                                decoration: const InputDecoration(
+                                  labelText: 'Expense Title',
+                                  prefixIcon: Icon(Icons.receipt_outlined),
+                                ),
+                                validator: (v) => v == null || v.trim().isEmpty
+                                    ? 'Enter title'
+                                    : null,
+                              ),
+                              12.h.height,
+                              TextFormField(
+                                controller: descCtrl,
+                                style: const TextStyle(
+                                  color: AppColors.textPrimary,
+                                ),
+                                decoration: const InputDecoration(
+                                  labelText: 'Description',
+                                  prefixIcon: Icon(Icons.description_outlined),
+                                ),
+                                maxLines: 2,
+                                validator: (v) => v == null || v.trim().isEmpty
+                                    ? 'Enter description'
+                                    : null,
+                              ),
+                              12.h.height,
+                              TextFormField(
+                                controller: amountCtrl,
+                                keyboardType: TextInputType.number,
+                                style: const TextStyle(
+                                  color: AppColors.textPrimary,
+                                ),
+                                decoration: const InputDecoration(
+                                  labelText: 'Amount (₹)',
+                                  prefixIcon: Icon(
+                                    Icons.currency_rupee_outlined,
+                                  ),
+                                ),
+                                validator: (v) {
+                                  if (v == null || v.trim().isEmpty)
+                                    return 'Enter amount';
+                                  if (double.tryParse(v.trim()) == null ||
+                                      double.parse(v.trim()) <= 0)
+                                    return 'Enter valid amount';
+                                  return null;
+                                },
+                              ),
+                              12.h.height,
+                              DropdownButtonFormField<ExpenseCategory>(
+                                initialValue: selectedCategory,
+                                dropdownColor: AppColors.surface,
+                                decoration: const InputDecoration(
+                                  labelText: 'Category',
+                                  prefixIcon: Icon(Icons.category_outlined),
+                                ),
+                                items: ExpenseCategory.values.map((cat) {
+                                  return DropdownMenuItem(
+                                    value: cat,
+                                    child: Text(
+                                      cat.name[0].toUpperCase() +
+                                          cat.name.substring(1),
+                                      style: const TextStyle(
+                                        color: AppColors.textPrimary,
+                                      ),
+                                    ),
+                                  );
+                                }).toList(),
+                                onChanged: (v) {
+                                  if (v != null) {
+                                    setModalState(() => selectedCategory = v);
+                                  }
+                                },
+                              ),
+                              12.h.height,
+                              TextFormField(
+                                controller: submitterCtrl,
+                                style: const TextStyle(
+                                  color: AppColors.textPrimary,
+                                ),
+                                decoration: const InputDecoration(
+                                  labelText: 'Submitted By',
+                                  prefixIcon: Icon(Icons.person_outline),
+                                ),
+                                validator: (v) => v == null || v.trim().isEmpty
+                                    ? 'Enter name'
+                                    : null,
+                              ),
+                              20.h.height,
+                              SizedBox(
+                                width: double.infinity,
+                                child: ElevatedButton(
+                                  onPressed: () {
+                                    if (formKey.currentState!.validate()) {
+                                      context.read<SchoolBloc>().add(
+                                        AddExpenseRequested(
+                                          title: titleCtrl.text.trim(),
+                                          description: descCtrl.text.trim(),
+                                          amount: double.parse(
+                                            amountCtrl.text.trim(),
+                                          ),
+                                          category: selectedCategory,
+                                          submittedBy: submitterCtrl.text
+                                              .trim(),
+                                        ),
+                                      );
+                                      Navigator.pop(sheetCtx);
+                                    }
+                                  },
+                                  child: Text(
+                                    'Add Expense',
+                                    style: TextStyle(fontSize: 14.sp),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
                       ),
                     ],
                   ),
                 ),
               ),
-            ],
-          ),
-        ),
-      ),
+            );
+          },
+        );
+      },
     );
-    },
-  );
-    },
-  );
   }
 
   Widget _infoChip(IconData icon, String text) {
@@ -486,26 +609,49 @@ class _ExpenseScreenState extends State<ExpenseScreen> {
 
   Color _categoryColor(ExpenseCategory cat) {
     switch (cat) {
-      case ExpenseCategory.maintenance: return AppColors.primary;
-      case ExpenseCategory.supplies: return AppColors.info;
-      case ExpenseCategory.transport: return AppColors.warning;
-      case ExpenseCategory.utilities: return AppColors.error;
-      case ExpenseCategory.other: return AppColors.textSecondary;
+      case ExpenseCategory.maintenance:
+        return AppColors.primary;
+      case ExpenseCategory.supplies:
+        return AppColors.info;
+      case ExpenseCategory.transport:
+        return AppColors.warning;
+      case ExpenseCategory.utilities:
+        return AppColors.error;
+      case ExpenseCategory.other:
+        return AppColors.textSecondary;
     }
   }
 
   IconData _categoryIcon(ExpenseCategory cat) {
     switch (cat) {
-      case ExpenseCategory.maintenance: return Icons.build_outlined;
-      case ExpenseCategory.supplies: return Icons.shopping_bag_outlined;
-      case ExpenseCategory.transport: return Icons.local_shipping_outlined;
-      case ExpenseCategory.utilities: return Icons.bolt_outlined;
-      case ExpenseCategory.other: return Icons.more_horiz_outlined;
+      case ExpenseCategory.maintenance:
+        return Icons.build_outlined;
+      case ExpenseCategory.supplies:
+        return Icons.shopping_bag_outlined;
+      case ExpenseCategory.transport:
+        return Icons.local_shipping_outlined;
+      case ExpenseCategory.utilities:
+        return Icons.bolt_outlined;
+      case ExpenseCategory.other:
+        return Icons.more_horiz_outlined;
     }
   }
 
   String _formatDate(DateTime dt) {
-    final months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    final months = [
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec',
+    ];
     return '${dt.day} ${months[dt.month - 1]} ${dt.year}';
   }
 }

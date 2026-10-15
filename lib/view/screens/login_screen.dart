@@ -7,8 +7,6 @@ import '../../core/extensions/context_extensions.dart';
 import '../../logic/auth/auth_bloc.dart';
 import '../../logic/auth/auth_event.dart';
 import '../../logic/auth/auth_state.dart';
-import '../../logic/school/school_bloc.dart';
-import '../../logic/school/school_event.dart';
 import '../widgets/glass_card.dart';
 import '../widgets/custom_text_field.dart';
 
@@ -217,10 +215,14 @@ class _LoginScreenState extends State<LoginScreen> {
                                       vertical: 10.h,
                                     ),
                                     decoration: BoxDecoration(
-                                      color: AppColors.error.withValues(alpha: 0.08),
+                                      color: AppColors.error.withValues(
+                                        alpha: 0.08,
+                                      ),
                                       borderRadius: BorderRadius.circular(8.r),
                                       border: Border.all(
-                                        color: AppColors.error.withValues(alpha: 0.3),
+                                        color: AppColors.error.withValues(
+                                          alpha: 0.3,
+                                        ),
                                       ),
                                     ),
                                     child: Row(
@@ -257,7 +259,8 @@ class _LoginScreenState extends State<LoginScreen> {
                                               .validate()) {
                                             context.read<AuthBloc>().add(
                                               LoginRequested(
-                                                email: _emailController.text.trim(),
+                                                email: _emailController.text
+                                                    .trim(),
                                                 password:
                                                     _passwordController.text,
                                               ),

@@ -13,7 +13,6 @@ import 'teacher_dashboard.dart';
 import 'staff_dashboard.dart';
 import 'driver_dashboard.dart';
 import '../modules/notice_screen.dart';
-import '../modules/chat_screen.dart';
 import '../modules/homework_screen.dart';
 import '../modules/fees_screen.dart';
 import '../modules/exam_screen.dart';
