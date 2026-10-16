@@ -1,7 +1,7 @@
 class AppUrl {
-  static const String baseUrl =
-      'https://school-springboot-backend.onrender.com/api';
-  // static const String baseUrl = 'http://10.47.97.61:8080/api';
+  // static const String baseUrl =
+  //     'https://school-springboot-backend.onrender.com/api';
+  static const String baseUrl = 'http://10.87.192.61:8080/api';
   // static const String baseUrl = 'http://localhost:8080/api';
 
   // Auth Endpoints
@@ -49,12 +49,14 @@ class AppUrl {
   // eSchool Teacher Flow (Classes, Lessons, Assignments ID-wise)
   static const String teacherClasses = '$baseUrl/mobile/teacher/classes';
   static String classStudents(String className, {String? section}) {
-    String url = '$baseUrl/mobile/classes/${Uri.encodeComponent(className)}/students';
+    String url =
+        '$baseUrl/mobile/classes/${Uri.encodeComponent(className)}/students';
     if (section != null && section.isNotEmpty) {
       url += '?section=${Uri.encodeComponent(section)}';
     }
     return url;
   }
+
   static String teacherLessons({String? className, int? subjectId}) {
     List<String> q = [];
     if (className != null && className.isNotEmpty) {
@@ -65,6 +67,7 @@ class AppUrl {
     }
     return '$baseUrl/mobile/teacher/lessons${q.isNotEmpty ? '?${q.join('&')}' : ''}';
   }
+
   static const String createTeacherLesson = '$baseUrl/mobile/teacher/lessons';
   static String addLessonTopic(String lessonId) =>
       '$baseUrl/mobile/teacher/lessons/$lessonId/topics';
@@ -80,7 +83,9 @@ class AppUrl {
     }
     return '$baseUrl/mobile/teacher/assignments${q.isNotEmpty ? '?${q.join('&')}' : ''}';
   }
-  static const String createTeacherAssignment = '$baseUrl/mobile/teacher/assignments';
+
+  static const String createTeacherAssignment =
+      '$baseUrl/mobile/teacher/assignments';
   static String assignmentSubmissions(String assignmentId) =>
       '$baseUrl/mobile/teacher/assignments/$assignmentId/submissions';
   static String reviewSubmission(String assignmentId, String submissionId) =>
@@ -89,8 +94,8 @@ class AppUrl {
   // eSchool Student & Parent Flow (Assignments ID-wise & Submissions)
   static String studentAssignments({String? admissionNo}) =>
       admissionNo != null && admissionNo.isNotEmpty
-          ? '$baseUrl/mobile/student/assignments?admissionNo=${Uri.encodeComponent(admissionNo)}'
-          : '$baseUrl/mobile/student/assignments';
+      ? '$baseUrl/mobile/student/assignments?admissionNo=${Uri.encodeComponent(admissionNo)}'
+      : '$baseUrl/mobile/student/assignments';
   static String submitStudentAssignment(String assignmentId) =>
       '$baseUrl/mobile/student/assignments/$assignmentId/submit';
 }
