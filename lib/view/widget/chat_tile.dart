@@ -26,73 +26,76 @@ class ChatTile extends StatelessWidget {
           ),
         ],
       ),
-      child: ListTile(
-        contentPadding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 8.h),
-        leading: Stack(
-          children: [
-            CircleAvatar(
-              radius: 28.r,
-              backgroundImage: chat.imageUrl != null
-                  ? NetworkImage(chat.imageUrl!)
-                  : null,
-              child: chat.imageUrl == null ? Text(chat.name[0]) : null,
-            ),
-          ],
-        ),
-        title: Row(
-          children: [
-            if (chat.isVerified) ...[
-              Icon(
-                Icons.check_circle,
-                color: const Color(0xFFC46AFF),
-                size: 18.sp,
-              ),
-              SizedBox(width: 5.w),
-            ],
-            Expanded(
-              child: Text(
-                chat.name,
-                style: context.body.copyWith(
-                  fontWeight: FontWeight.bold,
-                  color: AppColors.darkText,
-                ),
-              ),
-            ),
-            Text(
-              chat.timeLabel,
-              style: context.bodySmall.copyWith(
-                color: Colors.grey,
-                fontSize: 10.sp,
-              ),
-            ),
-            SizedBox(width: 5.w),
-            Icon(Icons.done_all, color: Colors.grey, size: 16.sp),
-          ],
-        ),
-        subtitle: Padding(
-          padding: EdgeInsets.only(top: 4.h),
-          child: Row(
+      child: Material(
+        type: MaterialType.transparency,
+        child: ListTile(
+          contentPadding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 8.h),
+          leading: Stack(
             children: [
-              Icon(Icons.reply, size: 16.sp, color: Colors.grey),
-              SizedBox(width: 5.w),
-              Expanded(
-                child: Text(
-                  chat.message,
-                  style: context.bodySmall.copyWith(color: Colors.grey),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
+              CircleAvatar(
+                radius: 28.r,
+                backgroundImage: chat.imageUrl != null
+                    ? NetworkImage(chat.imageUrl!)
+                    : null,
+                child: chat.imageUrl == null ? Text(chat.name[0]) : null,
               ),
             ],
           ),
+          title: Row(
+            children: [
+              if (chat.isVerified) ...[
+                Icon(
+                  Icons.check_circle,
+                  color: const Color(0xFFC46AFF),
+                  size: 18.sp,
+                ),
+                SizedBox(width: 5.w),
+              ],
+              Expanded(
+                child: Text(
+                  chat.name,
+                  style: context.body.copyWith(
+                    fontWeight: FontWeight.bold,
+                    color: AppColors.darkText,
+                  ),
+                ),
+              ),
+              Text(
+                chat.timeLabel,
+                style: context.bodySmall.copyWith(
+                  color: Colors.grey,
+                  fontSize: 10.sp,
+                ),
+              ),
+              SizedBox(width: 5.w),
+              Icon(Icons.done_all, color: Colors.grey, size: 16.sp),
+            ],
+          ),
+          subtitle: Padding(
+            padding: EdgeInsets.only(top: 4.h),
+            child: Row(
+              children: [
+                Icon(Icons.reply, size: 16.sp, color: Colors.grey),
+                SizedBox(width: 5.w),
+                Expanded(
+                  child: Text(
+                    chat.message,
+                    style: context.bodySmall.copyWith(color: Colors.grey),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          onTap: () {
+            Navigator.pushNamed(
+              context,
+              RoutesName.message,
+              arguments: {'contactName': chat.name},
+            );
+          },
         ),
-        onTap: () {
-          Navigator.pushNamed(
-            context,
-            RoutesName.message,
-            arguments: {'contactName': chat.name},
-          );
-        },
       ),
     );
   }

@@ -9,11 +9,13 @@ import '../../widgets/glass_card.dart';
 class DriverDashboard extends StatefulWidget {
   final UserModel user;
   final VoidCallback onOpenDrawer;
+  final Map<String, dynamic>? initialDuty;
 
   const DriverDashboard({
     super.key,
     required this.user,
     required this.onOpenDrawer,
+    this.initialDuty,
   });
 
   @override
@@ -34,7 +36,12 @@ class _DriverDashboardState extends State<DriverDashboard> {
   @override
   void initState() {
     super.initState();
-    _loadDuty();
+    if (widget.initialDuty != null) {
+      _dutyData = widget.initialDuty;
+      _isLoading = false;
+    } else {
+      _loadDuty();
+    }
   }
 
   Future<void> _loadDuty() async {
@@ -159,12 +166,22 @@ class _DriverDashboardState extends State<DriverDashboard> {
           12.w.horizontalSpace,
         ],
       ),
-      body: SingleChildScrollView(
-        physics: const BouncingScrollPhysics(),
-        padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 12.h),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
+      body: RefreshIndicator(
+        onRefresh: _loadDuty,
+        color: AppColors.primary,
+        child: SingleChildScrollView(
+          physics: const AlwaysScrollableScrollPhysics(
+            parent: BouncingScrollPhysics(),
+          ),
+          padding: EdgeInsets.only(
+            left: 20.w,
+            right: 20.w,
+            top: 12.h,
+            bottom: 120.h,
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
             // Active Trip Banner if running
             if (isTripInProgress) ...[
               Container(
@@ -255,27 +272,33 @@ class _DriverDashboardState extends State<DriverDashboard> {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Row(
-                        children: [
-                          Container(
-                            padding: EdgeInsets.all(8.r),
-                            decoration: BoxDecoration(
-                              color: AppColors.primary.withValues(alpha: 0.12),
-                              borderRadius: BorderRadius.circular(10.r),
+                      Expanded(
+                        child: Row(
+                          children: [
+                            Container(
+                              padding: EdgeInsets.all(8.r),
+                              decoration: BoxDecoration(
+                                color: AppColors.primary.withValues(alpha: 0.12),
+                                borderRadius: BorderRadius.circular(10.r),
+                              ),
+                              child: const Icon(Icons.directions_bus_rounded, color: AppColors.primary, size: 20),
                             ),
-                            child: const Icon(Icons.directions_bus_rounded, color: AppColors.primary, size: 20),
-                          ),
-                          10.w.horizontalSpace,
-                          Text(
-                            'Today\'s Assigned Duty',
-                            style: TextStyle(
-                              fontSize: 15.sp,
-                              fontWeight: FontWeight.w800,
-                              color: AppColors.textPrimary,
+                            10.w.horizontalSpace,
+                            Flexible(
+                              child: Text(
+                                'Today\'s Assigned Duty',
+                                style: TextStyle(
+                                  fontSize: 15.sp,
+                                  fontWeight: FontWeight.w800,
+                                  color: AppColors.textPrimary,
+                                ),
+                                overflow: TextOverflow.ellipsis,
+                              ),
                             ),
-                          ),
-                        ],
+                          ],
+                        ),
                       ),
+                      8.w.horizontalSpace,
                       Container(
                         padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 4.h),
                         decoration: BoxDecoration(
@@ -455,6 +478,7 @@ class _DriverDashboardState extends State<DriverDashboard> {
           ],
         ),
       ),
+    ),
     );
   }
 }
