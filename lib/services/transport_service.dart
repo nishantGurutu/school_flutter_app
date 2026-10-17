@@ -1,70 +1,87 @@
 import 'dart:async';
-import 'dart:convert';
-import 'package:http/http.dart' as http;
-import '../../services/storage/local_storage.dart';
+import 'dart:developer';
+import '../data/network/network_api_services.dart';
+import '../utils/app_url.dart';
 
 class TransportService {
-  static const String baseUrl = 'http://10.0.2.2:8080/api/v1/transport'; // Android emulator localhost or fallback
-  static const String localBaseUrl = 'http://localhost:8080/api/v1/transport';
+  static final NetworkApiService _apiService = NetworkApiService();
 
   // In-memory offline GPS queue for network disruptions
   static final List<Map<String, dynamic>> _offlineGpsQueue = [];
 
-  static Future<Map<String, String>> _getHeaders() async {
-    final token = await StorageHelper.getAccessToken();
-    return {
-      'Content-Type': 'application/json',
-      'Accept': 'application/json',
-      if (token != null && token.isNotEmpty) 'Authorization': 'Bearer $token',
-    };
+  // Helper to extract Map<String, dynamic> safely
+  static Map<String, dynamic>? _toMap(dynamic response) {
+    if (response == null) return null;
+    if (response is Map<String, dynamic>) return response;
+    if (response is Map) return Map<String, dynamic>.from(response);
+    return null;
   }
 
-  // Fetch driver duty
+  // Fetch driver duty dynamically via NetworkApiService and AppUrl
   static Future<Map<String, dynamic>?> getDriverDuty({String? email}) async {
     try {
-      final headers = await _getHeaders();
-      final url = Uri.parse('$baseUrl/driver/my-duty${email != null ? '?email=$email' : ''}');
-      final res = await http.get(url, headers: headers).timeout(const Duration(seconds: 4));
-      if (res.statusCode == 200) {
-        return jsonDecode(res.body) as Map<String, dynamic>;
+      final url = AppUrl.transportDriverDuty(email: email);
+      log("TransportService: Calling getDriverDuty via $url");
+      final res = await _apiService.getApi(url);
+      final map = _toMap(res);
+      if (map != null) {
+        log("TransportService: getDriverDuty success: $map");
+        return map;
       }
-    } catch (_) {
-      // Fallback local or mock duty
+    } catch (e) {
+      log("TransportService: getDriverDuty error: $e");
     }
     return _getMockDriverDuty();
   }
 
-  // Start trip
+  // Start trip dynamically via NetworkApiService and AppUrl
   static Future<Map<String, dynamic>?> startTrip({
     required int routeId,
     required int busId,
     String shift = 'MORNING',
     double? startLat,
     double? startLon,
+    String? startLocationName,
     bool preTripCheckPassed = true,
     String? preTripNotes,
+    bool chkBrakes = true,
+    bool chkLights = true,
+    bool chkTires = true,
+    bool chkEmergencyKit = true,
+    bool chkGpsActive = true,
     String? email,
   }) async {
-    try {
-      final headers = await _getHeaders();
-      final url = Uri.parse('$baseUrl/trips/start${email != null ? '?email=$email' : ''}');
-      final body = jsonEncode({
-        'routeId': routeId,
-        'busId': busId,
-        'shift': shift,
-        'startLatitude': startLat ?? 25.6150,
-        'startLongitude': startLon ?? 85.1280,
-        'preTripCheckPassed': preTripCheckPassed,
-        'preTripNotes': preTripNotes ?? 'Checklist completed: Brakes, tires, fluids and GPS active.',
-      });
+    final body = {
+      'routeId': routeId,
+      'busId': busId,
+      'shift': shift,
+      'startLatitude': startLat ?? 25.6150,
+      'startLongitude': startLon ?? 85.1280,
+      'startLocationName': startLocationName,
+      'preTripCheckPassed': preTripCheckPassed,
+      'preTripNotes':
+          preTripNotes ??
+          'Checklist completed: Brakes, tires, fluids and GPS active.',
+      'chkBrakes': chkBrakes,
+      'chkLights': chkLights,
+      'chkTires': chkTires,
+      'chkEmergencyKit': chkEmergencyKit,
+      'chkGpsActive': chkGpsActive,
+    };
 
-      final res = await http.post(url, headers: headers, body: body).timeout(const Duration(seconds: 4));
-      if (res.statusCode == 200 || res.statusCode == 201) {
-        return jsonDecode(res.body) as Map<String, dynamic>;
+    try {
+      final url = AppUrl.transportStartTrip(email: email);
+      log("TransportService: Calling startTrip via $url with payload: $body");
+      final res = await _apiService.postApi(url, body);
+      final map = _toMap(res);
+      if (map != null) {
+        log("TransportService: startTrip success: $map");
+        return map;
       }
-    } catch (_) {
-      // Fallback offline mock trip
+    } catch (e) {
+      log("TransportService: startTrip error: $e");
     }
+
     return {
       'tripId': 1,
       'status': 'IN_PROGRESS',
@@ -98,17 +115,15 @@ class TransportService {
     _offlineGpsQueue.add(point);
 
     try {
-      final headers = await _getHeaders();
-      final url = Uri.parse('$baseUrl/trips/$tripId/locations:batch${email != null ? '?email=$email' : ''}');
-      final body = jsonEncode({'points': _offlineGpsQueue});
-
-      final res = await http.post(url, headers: headers, body: body).timeout(const Duration(seconds: 4));
-      if (res.statusCode == 200) {
+      final url = AppUrl.transportBatchGps(tripId, email: email);
+      final body = {'points': List<Map<String, dynamic>>.from(_offlineGpsQueue)};
+      final res = await _apiService.postApi(url, body);
+      if (res != null) {
         _offlineGpsQueue.clear();
         return true;
       }
-    } catch (_) {
-      // Keeps queued locally in _offlineGpsQueue for subsequent sync
+    } catch (e) {
+      log("TransportService: sendGpsLocation queued locally: $e");
     }
     return false;
   }
@@ -123,20 +138,20 @@ class TransportService {
     String? notes,
     String? email,
   }) async {
-    try {
-      final headers = await _getHeaders();
-      final url = Uri.parse('$baseUrl/trips/$tripId/stops/$stopId/events${email != null ? '?email=$email' : ''}');
-      final body = jsonEncode({
-        'stopId': stopId,
-        'eventType': eventType,
-        'studentsBoarded': studentsBoarded,
-        'studentsDeboarded': studentsDeboarded,
-        'notes': notes,
-      });
+    final body = {
+      'stopId': stopId,
+      'eventType': eventType,
+      'studentsBoarded': studentsBoarded,
+      'studentsDeboarded': studentsDeboarded,
+      'notes': notes,
+    };
 
-      final res = await http.post(url, headers: headers, body: body).timeout(const Duration(seconds: 4));
-      return res.statusCode == 200;
-    } catch (_) {
+    try {
+      final url = AppUrl.transportStopEvents(tripId, stopId, email: email);
+      final res = await _apiService.postApi(url, body);
+      return res != null;
+    } catch (e) {
+      log("TransportService: recordStopEvent error: $e");
       return true;
     }
   }
@@ -151,20 +166,20 @@ class TransportService {
     String severity = 'HIGH',
     String? email,
   }) async {
-    try {
-      final headers = await _getHeaders();
-      final url = Uri.parse('$baseUrl/trips/$tripId/incidents${email != null ? '?email=$email' : ''}');
-      final body = jsonEncode({
-        'incidentType': incidentType,
-        'severity': severity,
-        'description': description,
-        'latitude': lat ?? 25.6025,
-        'longitude': lon ?? 85.1430,
-      });
+    final body = {
+      'incidentType': incidentType,
+      'severity': severity,
+      'description': description,
+      'latitude': lat ?? 25.6025,
+      'longitude': lon ?? 85.1430,
+    };
 
-      final res = await http.post(url, headers: headers, body: body).timeout(const Duration(seconds: 4));
-      return res.statusCode == 200;
-    } catch (_) {
+    try {
+      final url = AppUrl.transportIncidents(tripId, email: email);
+      final res = await _apiService.postApi(url, body);
+      return res != null;
+    } catch (e) {
+      log("TransportService: reportIncident error: $e");
       return true;
     }
   }
@@ -176,21 +191,20 @@ class TransportService {
     String? notes,
     String? email,
   }) async {
-    try {
-      final headers = await _getHeaders();
-      final url = Uri.parse('$baseUrl/trips/$tripId/end${email != null ? '?email=$email' : ''}');
-      final body = jsonEncode({
-        'totalDistanceKm': totalDistanceKm,
-        'notes': notes ?? 'Trip completed safely at campus depot.',
-      });
+    final body = {
+      'totalDistanceKm': totalDistanceKm,
+      'notes': notes ?? 'Trip completed safely at campus depot.',
+    };
 
-      final res = await http.post(url, headers: headers, body: body).timeout(const Duration(seconds: 4));
-      if (res.statusCode == 200) {
-        return jsonDecode(res.body) as Map<String, dynamic>;
-      }
-    } catch (_) {
-      // Fallback
+    try {
+      final url = AppUrl.transportEndTrip(tripId, email: email);
+      final res = await _apiService.postApi(url, body);
+      final map = _toMap(res);
+      if (map != null) return map;
+    } catch (e) {
+      log("TransportService: endTrip error: $e");
     }
+
     return {
       'tripId': tripId,
       'status': 'COMPLETED',
@@ -200,15 +214,18 @@ class TransportService {
   }
 
   // Parent child transport info
-  static Future<Map<String, dynamic>?> getParentChildTransport(int studentId, {String? email}) async {
+  static Future<Map<String, dynamic>?> getParentChildTransport(
+    int studentId, {
+    String? email,
+  }) async {
     try {
-      final headers = await _getHeaders();
-      final url = Uri.parse('$baseUrl/parent/children/$studentId/transport${email != null ? '?email=$email' : ''}');
-      final res = await http.get(url, headers: headers).timeout(const Duration(seconds: 4));
-      if (res.statusCode == 200) {
-        return jsonDecode(res.body) as Map<String, dynamic>;
-      }
-    } catch (_) {}
+      final url = AppUrl.transportParentChild(studentId, email: email);
+      final res = await _apiService.getApi(url);
+      final map = _toMap(res);
+      if (map != null) return map;
+    } catch (e) {
+      log("TransportService: getParentChildTransport error: $e");
+    }
 
     return {
       'studentName': 'Child Transport',
@@ -252,13 +269,48 @@ class TransportService {
         'plannedDurationMinutes': 45,
         'speedLimitKmh': 50,
         'stops': [
-          {'id': 1, 'stopName': 'North City Square', 'stopOrder': 1, 'plannedMorningPickupTime': '07:15 AM', 'landmark': 'Opposite HDFC Bank', 'assignedStudentsCount': 8},
-          {'id': 2, 'stopName': 'Metro Station Pillar 42', 'stopOrder': 2, 'plannedMorningPickupTime': '07:25 AM', 'landmark': 'Near Gate 2 Escalator', 'assignedStudentsCount': 12},
-          {'id': 3, 'stopName': 'Central Mall Junction', 'stopOrder': 3, 'plannedMorningPickupTime': '07:35 AM', 'landmark': 'Bus Bay 3', 'assignedStudentsCount': 10},
-          {'id': 4, 'stopName': 'Kankarbagh Park', 'stopOrder': 4, 'plannedMorningPickupTime': '07:45 AM', 'landmark': 'Roundabout Park Corner', 'assignedStudentsCount': 9},
-          {'id': 5, 'stopName': 'School Main Gate', 'stopOrder': 5, 'plannedMorningPickupTime': '08:00 AM', 'landmark': 'Campus Bus Bay', 'assignedStudentsCount': 39},
-        ]
-      }
+          {
+            'id': 1,
+            'stopName': 'North City Square',
+            'stopOrder': 1,
+            'plannedMorningPickupTime': '07:15 AM',
+            'landmark': 'Opposite HDFC Bank',
+            'assignedStudentsCount': 8,
+          },
+          {
+            'id': 2,
+            'stopName': 'Metro Station Pillar 42',
+            'stopOrder': 2,
+            'plannedMorningPickupTime': '07:25 AM',
+            'landmark': 'Near Gate 2 Escalator',
+            'assignedStudentsCount': 12,
+          },
+          {
+            'id': 3,
+            'stopName': 'Central Mall Junction',
+            'stopOrder': 3,
+            'plannedMorningPickupTime': '07:35 AM',
+            'landmark': 'Bus Bay 3',
+            'assignedStudentsCount': 10,
+          },
+          {
+            'id': 4,
+            'stopName': 'Kankarbagh Park',
+            'stopOrder': 4,
+            'plannedMorningPickupTime': '07:45 AM',
+            'landmark': 'Roundabout Park Corner',
+            'assignedStudentsCount': 9,
+          },
+          {
+            'id': 5,
+            'stopName': 'School Main Gate',
+            'stopOrder': 5,
+            'plannedMorningPickupTime': '08:00 AM',
+            'landmark': 'Campus Bus Bay',
+            'assignedStudentsCount': 39,
+          },
+        ],
+      },
     };
   }
 }

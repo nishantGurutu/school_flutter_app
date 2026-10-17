@@ -1,7 +1,7 @@
 class AppUrl {
   // static const String baseUrl =
   //     'https://school-springboot-backend.onrender.com/api';
-  static const String baseUrl = 'http://10.170.45.61:8080/api';
+  static const String baseUrl = 'http://192.168.31.210:8080/api';
   // static const String baseUrl = 'http://localhost:8080/api';
 
   // Auth Endpoints
@@ -98,4 +98,42 @@ class AppUrl {
       : '$baseUrl/mobile/student/assignments';
   static String submitStudentAssignment(String assignmentId) =>
       '$baseUrl/mobile/student/assignments/$assignmentId/submit';
+
+  // ==========================================
+  // Transport & Driver Tracking Endpoints
+  // ==========================================
+  static const String transportBase = '$baseUrl/v1/transport';
+
+  static String transportDriverDuty({String? email}) =>
+      '$transportBase/driver/my-duty${email != null && email.isNotEmpty ? '?email=${Uri.encodeComponent(email)}' : ''}';
+
+  static String transportStartTrip({String? email}) =>
+      '$transportBase/trips/start${email != null && email.isNotEmpty ? '?email=${Uri.encodeComponent(email)}' : ''}';
+
+  static String transportBatchGps(dynamic tripId, {String? email}) =>
+      '$transportBase/trips/$tripId/locations:batch${email != null && email.isNotEmpty ? '?email=${Uri.encodeComponent(email)}' : ''}';
+
+  static String transportStopEvents(dynamic tripId, dynamic stopId, {String? email}) =>
+      '$transportBase/trips/$tripId/stops/$stopId/events${email != null && email.isNotEmpty ? '?email=${Uri.encodeComponent(email)}' : ''}';
+
+  static String transportIncidents(dynamic tripId, {String? email}) =>
+      '$transportBase/trips/$tripId/incidents${email != null && email.isNotEmpty ? '?email=${Uri.encodeComponent(email)}' : ''}';
+
+  static String transportEndTrip(dynamic tripId, {String? email}) =>
+      '$transportBase/trips/$tripId/end${email != null && email.isNotEmpty ? '?email=${Uri.encodeComponent(email)}' : ''}';
+
+  static String transportLiveTracking({String? schoolId}) =>
+      '$transportBase/tracking/live${schoolId != null && schoolId.isNotEmpty ? '?schoolId=${Uri.encodeComponent(schoolId)}' : ''}';
+
+  static String transportTripPlayback(dynamic tripId) =>
+      '$transportBase/tracking/trips/$tripId/playback';
+
+  static String transportParentChild(dynamic studentId, {String? email}) =>
+      '$transportBase/parent/children/$studentId/transport${email != null && email.isNotEmpty ? '?email=${Uri.encodeComponent(email)}' : ''}';
+
+  static String transportStudentMyTransport({String? email}) =>
+      '$transportBase/student/my-transport${email != null && email.isNotEmpty ? '?email=${Uri.encodeComponent(email)}' : ''}';
+
+  static String transportDriverDailyDetails(dynamic driverId, {String? schoolId}) =>
+      '$transportBase/drivers/$driverId/daily-details${schoolId != null && schoolId.isNotEmpty ? '?schoolId=${Uri.encodeComponent(schoolId)}' : ''}';
 }
