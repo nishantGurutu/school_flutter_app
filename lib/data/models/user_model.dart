@@ -43,23 +43,40 @@ class UserModel {
     final rawUserType = json['userType']?.toString();
     final rawRole = json['role']?.toString();
     String roleStr = (rawUserType ?? rawRole ?? 'student').toString().toUpperCase();
+    final dept = json['department']?.toString().toUpperCase() ?? '';
+    final details = json['details']?.toString().toUpperCase() ?? '';
+    final desig = (json['designation'] ?? json['className'])?.toString().toUpperCase() ?? '';
+
     UserRole roleVal = UserRole.student;
     if (roleStr == 'PARENT') roleVal = UserRole.parent;
     if (roleStr == 'TEACHER') roleVal = UserRole.teacher;
     if (roleStr == 'STAFF' || roleStr == 'PRINCIPAL') roleVal = UserRole.staff;
     if (roleStr == 'ADMIN') roleVal = UserRole.admin;
     if (roleStr == 'MASTER_ADMIN' || roleStr == 'MASTERADMIN') roleVal = UserRole.masterAdmin;
-    if (roleStr == 'DRIVER') roleVal = UserRole.driver;
+    if (roleStr == 'DRIVER' || dept == 'DRIVER' || dept == 'TRANSPORT' || desig.contains('DRIVER') || details.contains('DRIVER')) {
+      roleVal = UserRole.driver;
+    }
+
+    // className is only for students (and teachers assigned to a class), never for drivers, staff, or admin
+    String? resolvedClassName = json['className']?.toString();
+    if (roleVal != UserRole.student && roleVal != UserRole.teacher) {
+      resolvedClassName = null;
+    } else if (resolvedClassName != null && 
+        (resolvedClassName.toLowerCase().contains('driver') || 
+         resolvedClassName.toLowerCase().contains('faculty') || 
+         resolvedClassName.toLowerCase().contains('staff'))) {
+      resolvedClassName = null;
+    }
 
     return UserModel(
       id: (json['userId'] ?? json['id'] ?? '1').toString(),
       name: json['name'] ?? 'User',
       email: json['email'] ?? '',
       role: roleVal,
-      userType: rawUserType ?? rawRole ?? roleVal.name.toUpperCase(),
+      userType: roleVal == UserRole.driver ? 'DRIVER' : (rawUserType ?? rawRole ?? roleVal.name.toUpperCase()),
       avatarUrl: json['avatarUrl'] ?? 'https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?w=150',
-      className: json['className'],
-      details: json['details'] ?? (roleStr == 'MASTER_ADMIN' ? 'System Administrator' : 'School Desk User'),
+      className: resolvedClassName,
+      details: json['details'] ?? (roleVal == UserRole.driver ? 'Bus Driver • Transport' : (roleStr == 'MASTER_ADMIN' ? 'System Administrator' : 'School Desk User')),
       token: token ?? json['accessToken'],
       refreshToken: refreshToken ?? json['refreshToken'],
       expiresAt: json['expiresAt'] is int ? json['expiresAt'] : (json['expiresAt'] != null ? int.tryParse(json['expiresAt'].toString()) : null),
