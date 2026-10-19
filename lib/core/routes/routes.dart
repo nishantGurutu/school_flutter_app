@@ -60,13 +60,7 @@ class Routes {
         final initialTab = settings.arguments is int
             ? settings.arguments as int
             : 0;
-        return _slideLeftRoute(
-          LinkedChildScope(
-            builder: (admission) =>
-                ExamScreen(initialTab: initialTab, admissionNo: admission),
-          ),
-          settings,
-        );
+        return _slideLeftRoute(ExamScreen(initialTab: initialTab));
 
       case RoutesName.homework:
         return _slideLeftRoute(
@@ -125,17 +119,18 @@ class Routes {
         return _slideLeftRoute(const AcademicCalendarScreen(), settings);
 
       case RoutesName.activeTrip:
-        final args = settings.arguments as Map<String, dynamic>?;
-        return _slideLeftRoute(ActiveTripScreen(initialData: args), settings);
+        final args = settings.arguments;
+        return _slideLeftRoute(
+          ActiveTripScreen(
+            initialData: args is Map ? Map<String, dynamic>.from(args) : null,
+          ),
+        );
 
       case RoutesName.parentTransport:
         final studentId = settings.arguments is int
             ? settings.arguments as int
             : null;
-        return _slideLeftRoute(
-          ParentTransportScreen(studentId: studentId),
-          settings,
-        );
+        return _slideLeftRoute(ParentTransportScreen(studentId: studentId));
 
       case RoutesName.studentTransport:
         return _slideLeftRoute(const StudentTransportScreen(), settings);

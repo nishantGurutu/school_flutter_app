@@ -1,9 +1,13 @@
+import '../../../location_tracking/data/datasources/location_service.dart';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+
 import '../../../data/models/user_model.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/routes/routes_name.dart';
 import '../../../services/transport_service.dart';
+import '../../../services/location_tracking_service.dart';
 import '../../widgets/glass_card.dart';
 
 class DriverDashboard extends StatefulWidget {
@@ -24,57 +28,234 @@ class DriverDashboard extends StatefulWidget {
 
 class _DriverDashboardState extends State<DriverDashboard> {
   bool _isLoading = true;
+  bool _isStarting = false;
+  bool _syncing = false;
+  List<Map<String, Object?>> _pendingTrips = [];
   Map<String, dynamic>? _dutyData;
 
-  // Pre-Trip Vehicle Checklist
-  bool _chkBrakes = true;
-  bool _chkLights = true;
-  bool _chkTires = true;
-  bool _chkEmergencyKit = true;
-  bool _chkGpsActive = true;
+  // Pre-Trip Vehicle Checklist (daily driver inspection)
+  bool _chkBrakes = false;
+  bool _chkLights = false;
+  bool _chkTires = false;
+  bool _chkEmergencyKit = false;
+  bool _chkGpsActive = false;
 
   @override
   void initState() {
     super.initState();
+    _loadPendingTrips();
     if (widget.initialDuty != null) {
       _dutyData = widget.initialDuty;
+      _applyDutyChecklistState(_dutyData);
       _isLoading = false;
     } else {
       _loadDuty();
     }
   }
 
+  void _applyDutyChecklistState(Map<String, dynamic>? data) {
+    if (data == null) return;
+    final isTripInProgress = data['tripStatus'] == 'IN_PROGRESS';
+    final isChecklistDone =
+        data['todayChecklistCompleted'] == true || isTripInProgress;
+    if (isChecklistDone) {
+      _chkBrakes = data['todayChkBrakes'] ?? true;
+      _chkLights = data['todayChkLights'] ?? true;
+      _chkTires = data['todayChkTires'] ?? true;
+      _chkEmergencyKit = data['todayChkEmergencyKit'] ?? true;
+      _chkGpsActive = data['todayChkGpsActive'] ?? true;
+    }
+  }
+
   Future<void> _loadDuty() async {
     setState(() => _isLoading = true);
     final data = await TransportService.getDriverDuty(email: widget.user.email);
+    await _loadPendingTrips();
     if (mounted) {
       setState(() {
         _dutyData = data;
+        _applyDutyChecklistState(data);
         _isLoading = false;
       });
     }
   }
 
-  bool get _isChecklistComplete =>
-      _chkBrakes && _chkLights && _chkTires && _chkEmergencyKit && _chkGpsActive;
+  Future<void> _loadPendingTrips() async {
+    if (widget.user.role != UserRole.driver) return;
+    try {
+      final pending = await LocationService.store.pending(widget.user.email);
+      if (mounted) setState(() => _pendingTrips = pending);
+    } catch (_) {
+      /* Storage is unavailable on unsupported platforms. */
+    }
+  }
+
+  Future<void> _retryPendingTrips() async {
+    if (_syncing) return;
+    setState(() => _syncing = true);
+    try {
+      for (final trip in _pendingTrips) {
+        await TransportService.endTrip(tripId: trip['trip_id'] as int);
+      }
+      await _loadPendingTrips();
+      await _loadDuty();
+    } catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'Trip data remains on this phone. Retry when online: $error',
+            ),
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _syncing = false);
+    }
+  }
+
+  int get _checkedCount =>
+      (_chkBrakes ? 1 : 0) +
+      (_chkLights ? 1 : 0) +
+      (_chkTires ? 1 : 0) +
+      (_chkEmergencyKit ? 1 : 0) +
+      (_chkGpsActive ? 1 : 0);
+
+  bool get _isChecklistComplete => _checkedCount == 5;
+
+  void _toggleVerifyAll() {
+    final target = !_isChecklistComplete;
+    setState(() {
+      _chkBrakes = target;
+      _chkLights = target;
+      _chkTires = target;
+      _chkEmergencyKit = target;
+      _chkGpsActive = target;
+    });
+  }
 
   void _handleStartTrip() async {
+    if (_isStarting || widget.user.role != UserRole.driver) return;
     if (!_isChecklistComplete) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Please verify all pre-trip checklist items before departure.'),
+        SnackBar(
+          content: Text(
+            'Safety Checklist Incomplete ($_checkedCount/5 verified). Please check all 5 vehicle inspection items before departure.',
+          ),
           backgroundColor: AppColors.warning,
+          duration: const Duration(seconds: 4),
         ),
       );
       return;
     }
 
+    setState(() => _isStarting = true);
+
+    // Capture real-time GPS location
+    double? startLat;
+    double? startLon;
+    String startLocName = 'Depot Campus Gate';
+    try {
+      final pos = await LocationTrackingService().getCurrentPosition();
+      if (pos != null) {
+        startLat = pos.latitude;
+        startLon = pos.longitude;
+        startLocName =
+            'GPS: ${pos.latitude.toStringAsFixed(4)}, ${pos.longitude.toStringAsFixed(4)}';
+      }
+    } catch (_) {}
+
+    if (!mounted) return;
+    if (startLat == null || startLon == null) {
+      setState(() => _isStarting = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Enable location permission and GPS before starting your trip.',
+          ),
+        ),
+      );
+      return;
+    }
+
+    final routeName = _dutyData?['routeName'] ?? 'Route 1 - North Campus Loop';
+    final busNumber = _dutyData?['busNumber'] ?? 'Bus 04';
+    final plannedTime = _dutyData?['plannedDepartureTime'] ?? '07:15 AM';
+
     final confirm = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Start Transport Trip?'),
-        content: Text(
-          'Bus ${_dutyData?['busNumber'] ?? 'Bus 04'} will begin active GPS tracking for ${_dutyData?['routeName'] ?? 'Route 1'}. School Desk admin and parents will receive live updates.',
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16.r),
+        ),
+        title: Row(
+          children: [
+            const Icon(Icons.verified_user_rounded, color: AppColors.success),
+            8.w.horizontalSpace,
+            const Text('Confirm Departure'),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'All 5 pre-trip safety checklist items are verified OK.',
+              style: TextStyle(
+                fontSize: 13.sp,
+                fontWeight: FontWeight.w600,
+                color: AppColors.success,
+              ),
+            ),
+            12.h.verticalSpace,
+            Container(
+              padding: EdgeInsets.all(12.r),
+              decoration: BoxDecoration(
+                color: Colors.grey.withValues(alpha: 0.08),
+                borderRadius: BorderRadius.circular(10.r),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    '• Bus: $busNumber',
+                    style: TextStyle(
+                      fontSize: 12.sp,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  4.h.verticalSpace,
+                  Text(
+                    '• Route: $routeName',
+                    style: TextStyle(
+                      fontSize: 12.sp,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  4.h.verticalSpace,
+                  Text(
+                    '• Planned Departure: $plannedTime',
+                    style: TextStyle(fontSize: 12.sp),
+                  ),
+                  4.h.verticalSpace,
+                  Text(
+                    '• Start Location: $startLocName',
+                    style: TextStyle(fontSize: 12.sp, color: AppColors.primary),
+                  ),
+                  4.h.verticalSpace,
+                  Text(
+                    '• Start Time: ${TimeOfDay.now().format(context)}',
+                    style: TextStyle(fontSize: 12.sp, color: AppColors.primary),
+                  ),
+                ],
+              ),
+            ),
+            12.h.verticalSpace,
+            Text(
+              'GPS tracking starts after departure is confirmed. Trip history is saved locally until you complete the trip.',
+              style: TextStyle(fontSize: 11.sp, color: AppColors.textMuted),
+            ),
+          ],
         ),
         actions: [
           TextButton(
@@ -83,26 +264,96 @@ class _DriverDashboardState extends State<DriverDashboard> {
           ),
           ElevatedButton(
             onPressed: () => Navigator.pop(ctx, true),
-            style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary),
-            child: const Text('Confirm Departure', style: TextStyle(color: Colors.white)),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.primary,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8.r),
+              ),
+            ),
+            child: const Text(
+              'Start Trip Now',
+              style: TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
           ),
         ],
       ),
     );
 
-    if (confirm != true || !mounted) return;
+    if (!mounted) return;
+    if (confirm != true) {
+      setState(() => _isStarting = false);
+      return;
+    }
 
-    final routeId = _dutyData?['routeId'] is int ? _dutyData!['routeId'] as int : 1;
-    final busId = _dutyData?['busId'] is int ? _dutyData!['busId'] as int : 3;
+    final routeId = (_dutyData?['routeId'] as num?)?.toInt();
+    final busId = (_dutyData?['busId'] as num?)?.toInt();
+    if (routeId == null || busId == null) {
+      setState(() => _isStarting = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'No valid bus and route assignment. Refresh your duty.',
+          ),
+        ),
+      );
+      return;
+    }
 
     final res = await TransportService.startTrip(
       routeId: routeId,
       busId: busId,
+      driverEmail: widget.user.email,
       shift: _dutyData?['shift']?.toString() ?? 'MORNING',
-      email: widget.user.email,
+      startLat: startLat,
+      startLon: startLon,
+      startLocationName: startLocName,
+      chkBrakes: _chkBrakes,
+      chkLights: _chkLights,
+      chkTires: _chkTires,
+      chkEmergencyKit: _chkEmergencyKit,
+      chkGpsActive: _chkGpsActive,
+      preTripCheckPassed: true,
+      preTripNotes:
+          'All 5 safety checklist items verified by ${widget.user.name}. Departure recorded at $startLocName.',
     );
 
     if (!mounted) return;
+    final tripId = (res?['tripId'] as num?)?.toInt();
+    if (tripId == null || res?['status'] != 'IN_PROGRESS') {
+      setState(() => _isStarting = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Trip could not be started. Tracking has not started. Please retry.',
+          ),
+        ),
+      );
+      return;
+    }
+    setState(() {
+      _dutyData?['tripStatus'] = 'IN_PROGRESS';
+      _dutyData?['activeTripId'] = tripId;
+    });
+    try {
+      await LocationService.store.begin(tripId, widget.user.email);
+    } catch (error) {
+      if (!mounted) return;
+      setState(() => _isStarting = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Trip started, but local recording could not start: $error',
+          ),
+        ),
+      );
+      return;
+    }
+    if (!mounted) return;
+    if (!mounted) return;
+    setState(() => _isStarting = false);
 
     Navigator.pushNamed(
       context,
@@ -110,6 +361,7 @@ class _DriverDashboardState extends State<DriverDashboard> {
       arguments: {
         'duty': _dutyData,
         'trip': res,
+        'driverEmail': widget.user.email,
       },
     ).then((_) => _loadDuty());
   }
@@ -117,15 +369,16 @@ class _DriverDashboardState extends State<DriverDashboard> {
   @override
   Widget build(BuildContext context) {
     if (_isLoading) {
-      return const Scaffold(
-        body: Center(child: CircularProgressIndicator()),
-      );
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
 
     final busNumber = _dutyData?['busNumber']?.toString() ?? 'Bus 04';
-    final regNo = _dutyData?['registrationNumber']?.toString() ?? 'MH-02-EF-4004';
-    final routeName = _dutyData?['routeName']?.toString() ?? 'Route 1 - North Campus Loop';
-    final plannedTime = _dutyData?['plannedDepartureTime']?.toString() ?? '07:15 AM';
+    final regNo =
+        _dutyData?['registrationNumber']?.toString() ?? 'MH-02-EF-4004';
+    final routeName =
+        _dutyData?['routeName']?.toString() ?? 'Route 1 - North Campus Loop';
+    final plannedTime =
+        _dutyData?['plannedDepartureTime']?.toString() ?? '07:15 AM';
     final shift = _dutyData?['shift']?.toString() ?? 'MORNING';
     final isTripInProgress = _dutyData?['tripStatus'] == 'IN_PROGRESS';
 
@@ -151,10 +404,7 @@ class _DriverDashboardState extends State<DriverDashboard> {
             ),
             Text(
               'Safe Route Navigator • ${widget.user.name}',
-              style: TextStyle(
-                fontSize: 11.sp,
-                color: AppColors.textMuted,
-              ),
+              style: TextStyle(fontSize: 11.sp, color: AppColors.textMuted),
             ),
           ],
         ),
@@ -182,95 +432,281 @@ class _DriverDashboardState extends State<DriverDashboard> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-            // Active Trip Banner if running
-            if (isTripInProgress) ...[
-              Container(
-                padding: EdgeInsets.all(16.r),
-                decoration: BoxDecoration(
-                  gradient: const LinearGradient(
-                    colors: [Color(0xFF0D9488), Color(0xFF0284C7)],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
+              if (_pendingTrips.isNotEmpty) ...[
+                Card(
+                  child: ListTile(
+                    title: Text('${_pendingTrips.length} trip save pending'),
+                    subtitle: const Text(
+                      'GPS history is safely stored on this phone. Retry to finish syncing.',
+                    ),
+                    trailing: TextButton(
+                      onPressed: _syncing ? null : _retryPendingTrips,
+                      child: Text(_syncing ? 'Saving…' : 'Retry save'),
+                    ),
                   ),
-                  borderRadius: BorderRadius.circular(16.r),
-                  boxShadow: [
-                    BoxShadow(
-                      color: const Color(0xFF0D9488).withValues(alpha: 0.35),
-                      blurRadius: 12,
-                      offset: const Offset(0, 4),
-                    ),
-                  ],
                 ),
-                child: Row(
-                  children: [
-                    Container(
-                      padding: EdgeInsets.all(10.r),
-                      decoration: const BoxDecoration(
-                        color: Colors.white24,
-                        shape: BoxShape.circle,
-                      ),
-                      child: const Icon(Icons.navigation_rounded, color: Colors.white, size: 24),
+                12.h.verticalSpace,
+              ],
+              // Active Trip Banner if running
+              if (isTripInProgress) ...[
+                Container(
+                  padding: EdgeInsets.all(16.r),
+                  decoration: BoxDecoration(
+                    gradient: const LinearGradient(
+                      colors: [Color(0xFF0D9488), Color(0xFF0284C7)],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
                     ),
-                    14.w.horizontalSpace,
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'TRIP CURRENTLY ACTIVE',
+                    borderRadius: BorderRadius.circular(16.r),
+                    boxShadow: [
+                      BoxShadow(
+                        color: const Color(0xFF0D9488).withValues(alpha: 0.35),
+                        blurRadius: 12,
+                        offset: const Offset(0, 4),
+                      ),
+                    ],
+                  ),
+                  child: Row(
+                    children: [
+                      Container(
+                        padding: EdgeInsets.all(10.r),
+                        decoration: const BoxDecoration(
+                          color: Colors.white24,
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(
+                          Icons.navigation_rounded,
+                          color: Colors.white,
+                          size: 24,
+                        ),
+                      ),
+                      14.w.horizontalSpace,
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'TRIP CURRENTLY ACTIVE',
+                              style: TextStyle(
+                                fontSize: 11.sp,
+                                fontWeight: FontWeight.w800,
+                                color: Colors.white.withValues(alpha: 0.9),
+                                letterSpacing: 0.8,
+                              ),
+                            ),
+                            4.h.verticalSpace,
+                            Text(
+                              '$busNumber • $routeName',
+                              style: TextStyle(
+                                fontSize: 14.sp,
+                                fontWeight: FontWeight.w700,
+                                color: Colors.white,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      ElevatedButton(
+                        onPressed: () {
+                          Navigator.pushNamed(
+                            context,
+                            RoutesName.activeTrip,
+                            arguments: {
+                              'duty': _dutyData,
+                              'trip': {'tripId': _dutyData?['activeTripId']},
+                              'driverEmail': widget.user.email,
+                            },
+                          ).then((_) => _loadDuty());
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.white,
+                          foregroundColor: const Color(0xFF0D9488),
+                          elevation: 0,
+                          padding: EdgeInsets.symmetric(
+                            horizontal: 14.w,
+                            vertical: 8.h,
+                          ),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(10.r),
+                          ),
+                        ),
+                        child: const Text(
+                          'Resume',
+                          style: TextStyle(fontWeight: FontWeight.w800),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                20.h.verticalSpace,
+              ],
+
+              // Step 2: My Duty Card
+              GlassCard(
+                padding: EdgeInsets.all(20.r),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Expanded(
+                          child: Row(
+                            children: [
+                              Container(
+                                padding: EdgeInsets.all(8.r),
+                                decoration: BoxDecoration(
+                                  color: AppColors.primary.withValues(
+                                    alpha: 0.12,
+                                  ),
+                                  borderRadius: BorderRadius.circular(10.r),
+                                ),
+                                child: const Icon(
+                                  Icons.directions_bus_rounded,
+                                  color: AppColors.primary,
+                                  size: 20,
+                                ),
+                              ),
+                              10.w.horizontalSpace,
+                              Flexible(
+                                child: Text(
+                                  'Today\'s Assigned Duty',
+                                  style: TextStyle(
+                                    fontSize: 15.sp,
+                                    fontWeight: FontWeight.w800,
+                                    color: AppColors.textPrimary,
+                                  ),
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        8.w.horizontalSpace,
+                        Container(
+                          padding: EdgeInsets.symmetric(
+                            horizontal: 10.w,
+                            vertical: 4.h,
+                          ),
+                          decoration: BoxDecoration(
+                            color: AppColors.success.withValues(alpha: 0.12),
+                            borderRadius: BorderRadius.circular(8.r),
+                          ),
+                          child: Text(
+                            shift,
                             style: TextStyle(
                               fontSize: 11.sp,
                               fontWeight: FontWeight.w800,
-                              color: Colors.white.withValues(alpha: 0.9),
-                              letterSpacing: 0.8,
+                              color: AppColors.success,
                             ),
                           ),
-                          4.h.verticalSpace,
-                          Text(
-                            '$busNumber • $routeName',
-                            style: TextStyle(
-                              fontSize: 14.sp,
-                              fontWeight: FontWeight.w700,
-                              color: Colors.white,
-                            ),
-                          ),
-                        ],
-                      ),
+                        ),
+                      ],
                     ),
-                    ElevatedButton(
-                      onPressed: () {
-                        Navigator.pushNamed(
-                          context,
-                          RoutesName.activeTrip,
-                          arguments: {
-                            'duty': _dutyData,
-                            'trip': {'tripId': _dutyData?['activeTripId'] ?? 1},
-                          },
-                        ).then((_) => _loadDuty());
-                      },
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.white,
-                        foregroundColor: const Color(0xFF0D9488),
-                        elevation: 0,
-                        padding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 8.h),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10.r)),
-                      ),
-                      child: const Text('Resume', style: TextStyle(fontWeight: FontWeight.w800)),
+                    16.h.verticalSpace,
+                    const Divider(height: 1),
+                    14.h.verticalSpace,
+
+                    // Duty Details Grid
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Vehicle',
+                                style: TextStyle(
+                                  fontSize: 11.sp,
+                                  color: AppColors.textMuted,
+                                ),
+                              ),
+                              4.h.verticalSpace,
+                              Text(
+                                busNumber,
+                                style: TextStyle(
+                                  fontSize: 14.sp,
+                                  fontWeight: FontWeight.w800,
+                                  color: AppColors.textPrimary,
+                                ),
+                              ),
+                              Text(
+                                regNo,
+                                style: TextStyle(
+                                  fontSize: 11.sp,
+                                  color: AppColors.textMuted,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Departure',
+                                style: TextStyle(
+                                  fontSize: 11.sp,
+                                  color: AppColors.textMuted,
+                                ),
+                              ),
+                              4.h.verticalSpace,
+                              Text(
+                                plannedTime,
+                                style: TextStyle(
+                                  fontSize: 14.sp,
+                                  fontWeight: FontWeight.w800,
+                                  color: AppColors.primary,
+                                ),
+                              ),
+                              Text(
+                                'On Schedule',
+                                style: TextStyle(
+                                  fontSize: 11.sp,
+                                  color: AppColors.success,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                    14.h.verticalSpace,
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Assigned Route',
+                          style: TextStyle(
+                            fontSize: 11.sp,
+                            color: AppColors.textMuted,
+                          ),
+                        ),
+                        4.h.verticalSpace,
+                        Text(
+                          routeName,
+                          style: TextStyle(
+                            fontSize: 13.sp,
+                            fontWeight: FontWeight.w700,
+                            color: AppColors.textPrimary,
+                          ),
+                        ),
+                      ],
                     ),
                   ],
                 ),
               ),
               20.h.verticalSpace,
-            ],
 
-            // Step 2: My Duty Card
-            GlassCard(
-              padding: EdgeInsets.all(20.r),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+              // Pre-Trip Vehicle Inspection Checklist Header
+              Wrap(
+                alignment: WrapAlignment.spaceBetween,
+                crossAxisAlignment: WrapCrossAlignment.center,
                 children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  Wrap(
+                    crossAxisAlignment: WrapCrossAlignment.center,
                     children: [
                       Expanded(
                         child: Row(
@@ -278,10 +714,16 @@ class _DriverDashboardState extends State<DriverDashboard> {
                             Container(
                               padding: EdgeInsets.all(8.r),
                               decoration: BoxDecoration(
-                                color: AppColors.primary.withValues(alpha: 0.12),
+                                color: AppColors.primary.withValues(
+                                  alpha: 0.12,
+                                ),
                                 borderRadius: BorderRadius.circular(10.r),
                               ),
-                              child: const Icon(Icons.directions_bus_rounded, color: AppColors.primary, size: 20),
+                              child: const Icon(
+                                Icons.directions_bus_rounded,
+                                color: AppColors.primary,
+                                size: 20,
+                              ),
                             ),
                             10.w.horizontalSpace,
                             Flexible(
@@ -300,7 +742,10 @@ class _DriverDashboardState extends State<DriverDashboard> {
                       ),
                       8.w.horizontalSpace,
                       Container(
-                        padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 4.h),
+                        padding: EdgeInsets.symmetric(
+                          horizontal: 10.w,
+                          vertical: 4.h,
+                        ),
                         decoration: BoxDecoration(
                           color: AppColors.success.withValues(alpha: 0.12),
                           borderRadius: BorderRadius.circular(8.r),
@@ -327,10 +772,29 @@ class _DriverDashboardState extends State<DriverDashboard> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text('Vehicle', style: TextStyle(fontSize: 11.sp, color: AppColors.textMuted)),
+                            Text(
+                              'Vehicle',
+                              style: TextStyle(
+                                fontSize: 11.sp,
+                                color: AppColors.textMuted,
+                              ),
+                            ),
                             4.h.verticalSpace,
-                            Text(busNumber, style: TextStyle(fontSize: 14.sp, fontWeight: FontWeight.w800, color: AppColors.textPrimary)),
-                            Text(regNo, style: TextStyle(fontSize: 11.sp, color: AppColors.textMuted)),
+                            Text(
+                              busNumber,
+                              style: TextStyle(
+                                fontSize: 14.sp,
+                                fontWeight: FontWeight.w800,
+                                color: AppColors.textPrimary,
+                              ),
+                            ),
+                            Text(
+                              regNo,
+                              style: TextStyle(
+                                fontSize: 11.sp,
+                                color: AppColors.textMuted,
+                              ),
+                            ),
                           ],
                         ),
                       ),
@@ -338,10 +802,30 @@ class _DriverDashboardState extends State<DriverDashboard> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text('Departure', style: TextStyle(fontSize: 11.sp, color: AppColors.textMuted)),
+                            Text(
+                              'Departure',
+                              style: TextStyle(
+                                fontSize: 11.sp,
+                                color: AppColors.textMuted,
+                              ),
+                            ),
                             4.h.verticalSpace,
-                            Text(plannedTime, style: TextStyle(fontSize: 14.sp, fontWeight: FontWeight.w800, color: AppColors.primary)),
-                            Text('On Schedule', style: TextStyle(fontSize: 11.sp, color: AppColors.success, fontWeight: FontWeight.w600)),
+                            Text(
+                              plannedTime,
+                              style: TextStyle(
+                                fontSize: 14.sp,
+                                fontWeight: FontWeight.w800,
+                                color: AppColors.primary,
+                              ),
+                            ),
+                            Text(
+                              'On Schedule',
+                              style: TextStyle(
+                                fontSize: 11.sp,
+                                color: AppColors.success,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
                           ],
                         ),
                       ),
@@ -351,134 +835,64 @@ class _DriverDashboardState extends State<DriverDashboard> {
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text('Assigned Route', style: TextStyle(fontSize: 11.sp, color: AppColors.textMuted)),
+                      Text(
+                        'Assigned Route',
+                        style: TextStyle(
+                          fontSize: 11.sp,
+                          color: AppColors.textMuted,
+                        ),
+                      ),
                       4.h.verticalSpace,
                       Text(
                         routeName,
-                        style: TextStyle(fontSize: 13.sp, fontWeight: FontWeight.w700, color: AppColors.textPrimary),
+                        style: TextStyle(
+                          fontSize: 13.sp,
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.textPrimary,
+                        ),
                       ),
                     ],
                   ),
                 ],
               ),
-            ),
-            20.h.verticalSpace,
+              24.h.verticalSpace,
 
-            // Pre-Trip Vehicle Inspection Checklist
-            Text(
-              'Pre-Trip Vehicle Safety Checklist',
-              style: TextStyle(
-                fontSize: 14.sp,
-                fontWeight: FontWeight.w800,
-                color: AppColors.textPrimary,
-              ),
-            ),
-            8.h.verticalSpace,
-            GlassCard(
-              padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 8.h),
-              child: Column(
-                children: [
-                  CheckboxListTile(
-                    title: const Text('Brakes, Steering & Horn OK', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
-                    value: _chkBrakes,
-                    activeColor: AppColors.primary,
-                    dense: true,
-                    contentPadding: EdgeInsets.zero,
-                    onChanged: (v) => setState(() => _chkBrakes = v ?? false),
+              // Quick Info Card
+              Container(
+                padding: EdgeInsets.all(14.r),
+                decoration: BoxDecoration(
+                  color: AppColors.primary.withValues(alpha: 0.06),
+                  borderRadius: BorderRadius.circular(12.r),
+                  border: Border.all(
+                    color: AppColors.primary.withValues(alpha: 0.2),
                   ),
-                  CheckboxListTile(
-                    title: const Text('Headlights, Indicators & Mirrors OK', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
-                    value: _chkLights,
-                    activeColor: AppColors.primary,
-                    dense: true,
-                    contentPadding: EdgeInsets.zero,
-                    onChanged: (v) => setState(() => _chkLights = v ?? false),
-                  ),
-                  CheckboxListTile(
-                    title: const Text('Tire Pressure & Fuel / Fluids OK', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
-                    value: _chkTires,
-                    activeColor: AppColors.primary,
-                    dense: true,
-                    contentPadding: EdgeInsets.zero,
-                    onChanged: (v) => setState(() => _chkTires = v ?? false),
-                  ),
-                  CheckboxListTile(
-                    title: const Text('First Aid Kit & Fire Extinguisher Checked', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
-                    value: _chkEmergencyKit,
-                    activeColor: AppColors.primary,
-                    dense: true,
-                    contentPadding: EdgeInsets.zero,
-                    onChanged: (v) => setState(() => _chkEmergencyKit = v ?? false),
-                  ),
-                  CheckboxListTile(
-                    title: const Text('Driver Phone GPS Location Enabled', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
-                    value: _chkGpsActive,
-                    activeColor: AppColors.primary,
-                    dense: true,
-                    contentPadding: EdgeInsets.zero,
-                    onChanged: (v) => setState(() => _chkGpsActive = v ?? false),
-                  ),
-                ],
-              ),
-            ),
-            24.h.verticalSpace,
-
-            // Start Trip Button
-            ElevatedButton(
-              onPressed: isTripInProgress ? null : _handleStartTrip,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.primary,
-                disabledBackgroundColor: Colors.grey.shade400,
-                elevation: 4,
-                padding: EdgeInsets.symmetric(vertical: 16.h),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(14.r),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(
+                      Icons.verified_user_rounded,
+                      color: AppColors.primary,
+                      size: 20,
+                    ),
+                    12.w.horizontalSpace,
+                    Expanded(
+                      child: Text(
+                        'Driver License verified: ${_dutyData?['licenseNumber'] ?? 'DL-0420110056789'}\nValid through ${_dutyData?['licenseExpiryDate'] ?? '2029-06-30'}',
+                        style: TextStyle(
+                          fontSize: 11.sp,
+                          color: AppColors.textSecondary,
+                          height: 1.3,
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const Icon(Icons.play_circle_fill_rounded, color: Colors.white, size: 24),
-                  10.w.horizontalSpace,
-                  Text(
-                    isTripInProgress ? 'Trip Already In Progress' : 'Start Scheduled Trip',
-                    style: TextStyle(
-                      fontSize: 15.sp,
-                      fontWeight: FontWeight.w800,
-                      color: Colors.white,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            24.h.verticalSpace,
-
-            // Quick Info Card
-            Container(
-              padding: EdgeInsets.all(14.r),
-              decoration: BoxDecoration(
-                color: AppColors.primary.withValues(alpha: 0.06),
-                borderRadius: BorderRadius.circular(12.r),
-                border: Border.all(color: AppColors.primary.withValues(alpha: 0.2)),
-              ),
-              child: Row(
-                children: [
-                  const Icon(Icons.verified_user_rounded, color: AppColors.primary, size: 20),
-                  12.w.horizontalSpace,
-                  Expanded(
-                    child: Text(
-                      'Driver License verified: ${_dutyData?['licenseNumber'] ?? 'DL-0420110056789'}\nValid through ${_dutyData?['licenseExpiryDate'] ?? '2029-06-30'}',
-                      style: TextStyle(fontSize: 11.sp, color: AppColors.textSecondary, height: 1.3),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            30.h.verticalSpace,
-          ],
+              30.h.verticalSpace,
+            ],
+          ),
         ),
       ),
-    ),
     );
   }
 }

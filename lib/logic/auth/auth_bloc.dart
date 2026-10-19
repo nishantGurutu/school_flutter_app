@@ -1,9 +1,11 @@
 import 'dart:async';
 
-import '../../services/push_notifications.dart';
-
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:school_desk_app/services/push_notifications.dart';
 
+import '../../analytics/posthog_analytics_service.dart';
+import '../../analytics/posthog_feature.dart';
+import '../../analytics/posthog_login_sync.dart';
 import '../../core/di/locator.dart';
 import '../../data/exception/app_exceptions.dart';
 import '../../data/repositories/auth_repository.dart';
@@ -54,8 +56,19 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
 
       // Finally authenticate
       emit(state.copyWith(status: AuthStatus.authenticated, user: user));
-      unawaited(PushNotifications.instance.signedIn());
-    } catch (e) {
+
+      // Sync identity to PostHog
+      unawaited(syncPosthogIdentity(user));
+    } catch (e, stackTrace) {
+      unawaited(
+        posthogAnalytics.captureException(
+          e,
+          stackTrace: stackTrace,
+          feature: PosthogFeature.auth,
+          action: 'login_requested',
+        ),
+      );
+
       String message = 'Invalid credentials';
       if (e is AppException && e.message.isNotEmpty) {
         message = e.message;
@@ -76,6 +89,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     emit(state.copyWith(status: AuthStatus.authenticating));
     await PushNotifications.instance.signedOut();
     await _authRepository.logout();
+    unawaited(resetPosthogIdentity());
     emit(const AuthState(status: AuthStatus.unauthenticated));
   }
 
@@ -85,6 +99,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
   ) async {
     final storedUser = await _authRepository.getStoredUser();
     if (storedUser != null) {
+      unawaited(syncPosthogIdentity(storedUser));
       emit(state.copyWith(status: AuthStatus.authenticated, user: storedUser));
       unawaited(PushNotifications.instance.signedIn());
     } else {

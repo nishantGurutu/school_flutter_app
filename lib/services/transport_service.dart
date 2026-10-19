@@ -1,108 +1,122 @@
 import 'dart:async';
+import 'dart:developer';
+
+import '../data/network/network_api_services.dart';
 import '../utils/app_url.dart';
-import 'dart:convert';
-import 'package:http/http.dart' as http;
-import '../../services/storage/local_storage.dart';
+import '../location_tracking/data/datasources/location_service.dart';
+import '../location_tracking/data/trip_completion_coordinator.dart';
+import '../data/models/user_model.dart';
+import 'storage/local_storage.dart';
 
 class TransportService {
-  static const String baseUrl = '${AppUrl.baseUrl}/v1/transport';
-  static const String localBaseUrl = 'http://localhost:8080/api/v1/transport';
+  static final NetworkApiService _apiService = NetworkApiService();
 
-  // In-memory offline GPS queue for network disruptions
-  static final List<Map<String, dynamic>> _offlineGpsQueue = [];
+  static final _completion = TripCompletionCoordinator(
+    store: LocationService.store,
+    stopTracking: LocationService.stop,
+    upload: (tripId, body) async {
+      final user = await StorageHelper.getUserSession();
+      final email = user?.email;
+      return _toMap(
+        await _apiService.postApi(
+          AppUrl.transportEndTrip(tripId, email: email),
+          {
+            ...body,
+            if (email != null && email.isNotEmpty) 'driverEmail': email,
+          },
+        ),
+      );
+    },
+  );
 
-  static Future<Map<String, String>> _getHeaders() async {
-    final token = await StorageHelper.getAccessToken();
-    return {
-      'Content-Type': 'application/json',
-      'Accept': 'application/json',
-      if (token != null && token.isNotEmpty) 'Authorization': 'Bearer $token',
-    };
+  // Helper to extract Map<String, dynamic> safely
+  static Map<String, dynamic>? _toMap(dynamic response) {
+    if (response == null) return null;
+    if (response is Map<String, dynamic>) return response;
+    if (response is Map) return Map<String, dynamic>.from(response);
+    return null;
   }
 
-  // Fetch driver duty
+  // Fetch driver duty dynamically via NetworkApiService and AppUrl
   static Future<Map<String, dynamic>?> getDriverDuty({String? email}) async {
     try {
-      final headers = await _getHeaders();
-      final url = Uri.parse('$baseUrl/driver/my-duty${email != null ? '?email=$email' : ''}');
-      final res = await http.get(url, headers: headers).timeout(const Duration(seconds: 4));
-      if (res.statusCode == 200) {
-        return jsonDecode(res.body) as Map<String, dynamic>;
+      final url = AppUrl.transportDriverDuty(email: email);
+      log("TransportService: Calling getDriverDuty via $url");
+      final res = await _apiService.getApi(url);
+      final map = _toMap(res);
+      if (map != null) {
+        log("TransportService: getDriverDuty success: $map");
+        return map;
       }
-    } catch (_) {
-      // The caller displays a connection error.
+    } catch (e) {
+      log("TransportService: getDriverDuty error: $e");
     }
     return null;
   }
 
-  // Start trip
+  // Start trip dynamically via NetworkApiService and AppUrl
   static Future<Map<String, dynamic>?> startTrip({
     required int routeId,
     required int busId,
+    String? driverEmail,
     String shift = 'MORNING',
     double? startLat,
     double? startLon,
+    String? startLocationName,
     bool preTripCheckPassed = true,
     String? preTripNotes,
-    String? email,
+    bool chkBrakes = true,
+    bool chkLights = true,
+    bool chkTires = true,
+    bool chkEmergencyKit = true,
+    bool chkGpsActive = true,
   }) async {
-    try {
-      final headers = await _getHeaders();
-      final url = Uri.parse('$baseUrl/trips/start${email != null ? '?email=$email' : ''}');
-      final body = jsonEncode({
-        'routeId': routeId,
-        'busId': busId,
-        'shift': shift,
-        'startLatitude': startLat,
-        'startLongitude': startLon,
-        'preTripCheckPassed': preTripCheckPassed,
-        'preTripNotes': preTripNotes,
-      });
+    final body = {
+      'routeId': routeId,
+      'busId': busId,
+      if (driverEmail != null && driverEmail.isNotEmpty)
+        'driverEmail': driverEmail,
+      'shift': shift,
+      'startLatitude': startLat ?? 25.6150,
+      'startLongitude': startLon ?? 85.1280,
+      'startLocationName': startLocationName,
+      'preTripCheckPassed': preTripCheckPassed,
+      'preTripNotes':
+          preTripNotes ??
+          'Checklist completed: Brakes, tires, fluids and GPS active.',
+      'chkBrakes': chkBrakes,
+      'chkLights': chkLights,
+      'chkTires': chkTires,
+      'chkEmergencyKit': chkEmergencyKit,
+      'chkGpsActive': chkGpsActive,
+    };
 
-      final res = await http.post(url, headers: headers, body: body).timeout(const Duration(seconds: 4));
-      if (res.statusCode == 200 || res.statusCode == 201) {
-        return jsonDecode(res.body) as Map<String, dynamic>;
+    try {
+      final url = AppUrl.transportStartTrip(email: driverEmail);
+      log("TransportService: Calling startTrip via $url with payload: $body");
+      final res = await _apiService.postApi(url, body);
+      final map = _toMap(res);
+      if (map != null) {
+        log("TransportService: startTrip success: $map");
+        return map;
       }
-    } catch (_) {
-      // A failed request must never create a local trip.
+    } catch (e) {
+      log("TransportService: startTrip error: $e");
     }
+
     return null;
   }
 
-  // Upload GPS batch (with offline queue auto-sync)
-  static Future<bool> sendGpsLocation({
-    required int tripId,
-    required double lat,
-    required double lon,
-    required double speedKmh,
-    double heading = 0.0,
+  /// Latest position only, held in server memory; no history database write.
+  static Future<void> publishLiveLocation(
+    int tripId,
+    Map<String, dynamic> point, {
     String? email,
   }) async {
-    final point = {
-      'latitude': lat,
-      'longitude': lon,
-      'speedKmh': speedKmh,
-      'heading': heading,
-      'accuracyMeters': 5.0,
-      'recordedAt': DateTime.now().toIso8601String(),
-    };
-
-    _offlineGpsQueue.add(point);
-
-    try {
-      final headers = await _getHeaders();
-      final url = Uri.parse('$baseUrl/trips/$tripId/locations:batch${email != null ? '?email=$email' : ''}');
-      final body = jsonEncode({'points': _offlineGpsQueue});
-
-      final res = await http.post(url, headers: headers, body: body).timeout(const Duration(seconds: 4));
-      if (res.statusCode == 200) {
-        _offlineGpsQueue.clear();
-        return true;
-      }
-    } catch (_) {
-      // Keeps queued locally in _offlineGpsQueue for subsequent sync
-    }
-    return false;
+    await _apiService.postApi(
+      AppUrl.transportLiveLocation(tripId, email: email),
+      point,
+    );
   }
 
   // Stop Event (Arrival / Departure)
@@ -115,20 +129,20 @@ class TransportService {
     String? notes,
     String? email,
   }) async {
-    try {
-      final headers = await _getHeaders();
-      final url = Uri.parse('$baseUrl/trips/$tripId/stops/$stopId/events${email != null ? '?email=$email' : ''}');
-      final body = jsonEncode({
-        'stopId': stopId,
-        'eventType': eventType,
-        'studentsBoarded': studentsBoarded,
-        'studentsDeboarded': studentsDeboarded,
-        'notes': notes,
-      });
+    final body = {
+      'stopId': stopId,
+      'eventType': eventType,
+      'studentsBoarded': studentsBoarded,
+      'studentsDeboarded': studentsDeboarded,
+      'notes': notes,
+    };
 
-      final res = await http.post(url, headers: headers, body: body).timeout(const Duration(seconds: 4));
-      return res.statusCode == 200;
-    } catch (_) {
+    try {
+      final url = AppUrl.transportStopEvents(tripId, stopId, email: email);
+      final res = await _apiService.postApi(url, body);
+      return res != null;
+    } catch (e) {
+      log("TransportService: recordStopEvent error: $e");
       return false;
     }
   }
@@ -143,63 +157,58 @@ class TransportService {
     String severity = 'HIGH',
     String? email,
   }) async {
-    try {
-      final headers = await _getHeaders();
-      final url = Uri.parse('$baseUrl/trips/$tripId/incidents${email != null ? '?email=$email' : ''}');
-      final body = jsonEncode({
-        'incidentType': incidentType,
-        'severity': severity,
-        'description': description,
-        'latitude': lat,
-        'longitude': lon,
-      });
+    final body = {
+      'incidentType': incidentType,
+      'severity': severity,
+      'description': description,
+      'latitude': lat,
+      'longitude': lon,
+    };
 
-      final res = await http.post(url, headers: headers, body: body).timeout(const Duration(seconds: 4));
-      return res.statusCode == 200;
-    } catch (_) {
+    try {
+      final url = AppUrl.transportIncidents(tripId, email: email);
+      final res = await _apiService.postApi(url, body);
+      return res != null;
+    } catch (e) {
+      log("TransportService: reportIncident error: $e");
       return false;
     }
   }
 
-  // End Trip
-  static Future<Map<String, dynamic>?> endTrip({
+  /// Freeze GPS locally first, then save points and complete the trip atomically.
+  /// A retry uses the same SQLite batch; server completion is idempotent.
+  static Future<Map<String, dynamic>> endTrip({
     required int tripId,
-    double totalDistanceKm = 0,
+    double? totalDistanceKm,
     String? notes,
     String? email,
   }) async {
-    try {
-      final headers = await _getHeaders();
-      final url = Uri.parse('$baseUrl/trips/$tripId/end${email != null ? '?email=$email' : ''}');
-      final body = jsonEncode({
-        'totalDistanceKm': totalDistanceKm,
-        'notes': notes,
-      });
-
-      final res = await http.post(url, headers: headers, body: body).timeout(const Duration(seconds: 4));
-      if (res.statusCode == 200) {
-        return jsonDecode(res.body) as Map<String, dynamic>;
-      }
-    } catch (_) {
-      // Fallback
+    final user = await StorageHelper.getUserSession();
+    if (user?.role != UserRole.driver) {
+      throw StateError('Only the signed-in driver can complete this trip.');
     }
-    return null;
+    return _completion.complete(
+      tripId: tripId,
+      driverEmail: user!.email,
+      distanceKm: totalDistanceKm,
+      notes: notes,
+    );
   }
 
   // Parent child transport info
-  static Future<Map<String, dynamic>?> getParentChildTransport(int studentId, {String? email}) async {
+  static Future<Map<String, dynamic>?> getParentChildTransport(
+    int studentId, {
+    String? email,
+  }) async {
     try {
-      final headers = await _getHeaders();
-      final url = Uri.parse('$baseUrl/parent/children/$studentId/transport${email != null ? '?email=$email' : ''}');
-      final res = await http.get(url, headers: headers).timeout(const Duration(seconds: 4));
-      if (res.statusCode == 200) {
-        return jsonDecode(res.body) as Map<String, dynamic>;
-      }
-    } catch (_) {}
+      final url = AppUrl.transportParentChild(studentId, email: email);
+      final res = await _apiService.getApi(url);
+      final map = _toMap(res);
+      if (map != null) return map;
+    } catch (e) {
+      log("TransportService: getParentChildTransport error: $e");
+    }
 
     return null;
   }
-
-  static int get queuedPointsCount => _offlineGpsQueue.length;
-
 }
