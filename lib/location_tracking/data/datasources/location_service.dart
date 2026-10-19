@@ -260,7 +260,11 @@ Future<void> onStart(ServiceInstance service) async {
           await stop();
           return;
         }
-        await TransportService.publishLiveLocation(tripId!, latest!);
+        await TransportService.publishLiveLocation(
+          tripId!,
+          latest!,
+          email: session['driver_email']?.toString() ?? currentUser?.email,
+        );
       } catch (_) {
         /* SQLite history remains intact while offline. */
       } finally {

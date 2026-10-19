@@ -94,7 +94,6 @@ class StaffDashboard extends StatelessWidget {
                     // Attendance Check-In Banner for Staff
                     AttendanceCheckInBanner(user: user),
                     24.h.height,
-
                     // School Attendance Tracking Card (Admin / Staff Feature)
                     Text(
                       'School Attendance Tracking',

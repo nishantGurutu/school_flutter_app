@@ -13,9 +13,19 @@ class TransportService {
   static final _completion = TripCompletionCoordinator(
     store: LocationService.store,
     stopTracking: LocationService.stop,
-    upload: (tripId, body) async => _toMap(
-      await _apiService.postApi(AppUrl.transportEndTrip(tripId), body),
-    ),
+    upload: (tripId, body) async {
+      final user = await StorageHelper.getUserSession();
+      final email = user?.email;
+      return _toMap(
+        await _apiService.postApi(
+          AppUrl.transportEndTrip(tripId, email: email),
+          {
+            ...body,
+            if (email != null && email.isNotEmpty) 'driverEmail': email,
+          },
+        ),
+      );
+    },
   );
 
   // Helper to extract Map<String, dynamic> safely
@@ -47,6 +57,7 @@ class TransportService {
   static Future<Map<String, dynamic>?> startTrip({
     required int routeId,
     required int busId,
+    String? driverEmail,
     String shift = 'MORNING',
     double? startLat,
     double? startLon,
@@ -62,6 +73,8 @@ class TransportService {
     final body = {
       'routeId': routeId,
       'busId': busId,
+      if (driverEmail != null && driverEmail.isNotEmpty)
+        'driverEmail': driverEmail,
       'shift': shift,
       'startLatitude': startLat ?? 25.6150,
       'startLongitude': startLon ?? 85.1280,
@@ -78,7 +91,7 @@ class TransportService {
     };
 
     try {
-      final url = AppUrl.transportStartTrip();
+      final url = AppUrl.transportStartTrip(email: driverEmail);
       log("TransportService: Calling startTrip via $url with payload: $body");
       final res = await _apiService.postApi(url, body);
       final map = _toMap(res);
@@ -96,9 +109,13 @@ class TransportService {
   /// Latest position only, held in server memory; no history database write.
   static Future<void> publishLiveLocation(
     int tripId,
-    Map<String, dynamic> point,
-  ) async {
-    await _apiService.postApi(AppUrl.transportLiveLocation(tripId), point);
+    Map<String, dynamic> point, {
+    String? email,
+  }) async {
+    await _apiService.postApi(
+      AppUrl.transportLiveLocation(tripId, email: email),
+      point,
+    );
   }
 
   // Stop Event (Arrival / Departure)

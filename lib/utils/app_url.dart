@@ -107,10 +107,11 @@ class AppUrl {
   static String transportDriverDuty({String? email}) =>
       '$transportBase/driver/my-duty${email != null && email.isNotEmpty ? '?email=${Uri.encodeComponent(email)}' : ''}';
 
-  static String transportStartTrip() => '$transportBase/trips/start';
+  static String transportStartTrip({String? email}) =>
+      '$transportBase/trips/start${email != null && email.isNotEmpty ? '?email=${Uri.encodeComponent(email)}' : ''}';
 
-  static String transportLiveLocation(dynamic tripId) =>
-      '$transportBase/trips/$tripId/locations/live';
+  static String transportLiveLocation(dynamic tripId, {String? email}) =>
+      '$transportBase/trips/$tripId/locations/live${email != null && email.isNotEmpty ? '?email=${Uri.encodeComponent(email)}' : ''}';
 
   static String transportBatchGps(dynamic tripId, {String? email}) =>
       '$transportBase/trips/$tripId/locations:batch${email != null && email.isNotEmpty ? '?email=${Uri.encodeComponent(email)}' : ''}';

@@ -303,6 +303,7 @@ class _DriverDashboardState extends State<DriverDashboard> {
     final res = await TransportService.startTrip(
       routeId: routeId,
       busId: busId,
+      driverEmail: widget.user.email,
       shift: _dutyData?['shift']?.toString() ?? 'MORNING',
       startLat: startLat,
       startLon: startLon,
