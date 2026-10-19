@@ -8,6 +8,7 @@ import '../../core/theme/app_colors.dart';
 import '../../logic/auth/auth_bloc.dart';
 import '../../logic/auth/auth_event.dart';
 import '../../services/storage/local_storage.dart';
+import '../../firebase/app_permissions.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -50,7 +51,13 @@ class _SplashScreenState extends State<SplashScreen>
   }
 
   Future<void> _checkSessionAndNavigate() async {
-    await Future.delayed(const Duration(milliseconds: 2000));
+    try {
+      await AppPermissions.requestStartupPermissions();
+    } catch (e) {
+      debugPrint("Startup permissions error: $e");
+    }
+
+    await Future.delayed(const Duration(milliseconds: 1500));
     if (!mounted) return;
 
     final user = await StorageHelper.getUserSession();

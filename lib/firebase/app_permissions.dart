@@ -23,13 +23,20 @@ class AppPermissions {
 
   static Future<void> _requestAndroid() async {
     final permissions = <Permission>[
+      Permission.location,
       Permission.notification,
       Permission.camera,
-      Permission.photos,
-      Permission.microphone,
     ];
 
     await permissions.request();
+
+    // Background location must be requested after foreground location is granted on Android 10+
+    final locationStatus = await Permission.location.status;
+    if (locationStatus.isGranted || locationStatus.isLimited) {
+      if (await Permission.locationAlways.isDenied) {
+        await Permission.locationAlways.request();
+      }
+    }
 
     if (await Permission.ignoreBatteryOptimizations.isDenied) {
       await Permission.ignoreBatteryOptimizations.request();
@@ -38,13 +45,26 @@ class AppPermissions {
 
   static Future<void> _requestApple() async {
     final permissions = <Permission>[
+      Permission.locationWhenInUse,
       Permission.notification,
       Permission.camera,
-      Permission.photos,
-      Permission.microphone,
     ];
 
     await permissions.request();
+
+    if (await Permission.locationWhenInUse.isGranted) {
+      if (await Permission.locationAlways.isDenied) {
+        await Permission.locationAlways.request();
+      }
+    }
+  }
+
+  static Future<bool> ensureLocation() async {
+    var status = await Permission.location.status;
+    if (!status.isGranted && !status.isLimited) {
+      status = await Permission.location.request();
+    }
+    return status.isGranted || status.isLimited;
   }
 
   static Future<bool> ensureCamera() async {
