@@ -1,4 +1,7 @@
+import '../../../services/driver_location_gate.dart';
 import '../../../location_tracking/data/datasources/location_service.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import '../../../location_tracking/presentation/bloc/location_tracking_bloc.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import '../../../data/models/user_model.dart';
@@ -92,6 +95,7 @@ class _DriverDashboardState extends State<DriverDashboard> {
     if (_syncing) return;
     setState(() => _syncing = true);
     try {
+      if (!await DriverLocationGate.ensureReady(context) || !mounted) return;
       for (final trip in _pendingTrips) {
         await TransportService.endTrip(tripId: trip['trip_id'] as int);
       }
@@ -132,8 +136,71 @@ class _DriverDashboardState extends State<DriverDashboard> {
     });
   }
 
+  Future<void> _handleEndTrip() async {
+    if (_isStarting || widget.user.role != UserRole.driver) return;
+    final tripId = (_dutyData?['activeTripId'] as num?)?.toInt();
+    if (tripId == null) return;
+    setState(() => _isStarting = true);
+    try {
+      if (!await DriverLocationGate.ensureReady(context) || !mounted) return;
+      final confirm = await showDialog<bool>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: const Text('Complete Transport Trip?'),
+          content: const Text(
+            'Stop background GPS and save this trip route to school records?',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text('Resume Trip'),
+            ),
+            ElevatedButton(
+              onPressed: () => Navigator.pop(ctx, true),
+              child: const Text('Complete Trip'),
+            ),
+          ],
+        ),
+      );
+      if (confirm != true) return;
+      if (!mounted ||
+          !await DriverLocationGate.ensureReady(context) ||
+          !mounted) {
+        return;
+      }
+      await TransportService.endTrip(tripId: tripId);
+      if (!mounted) return;
+      context.read<LocationTrackingBloc>().add(
+        const LocationTrackingStatusRequested(),
+      );
+      await _loadDuty();
+    } catch (error) {
+      if (!mounted) return;
+      context.read<LocationTrackingBloc>().add(
+        const LocationTrackingStatusRequested(),
+      );
+      await _loadPendingTrips();
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Trip save failed. GPS data stays on this phone. Retry End Trip: $error',
+          ),
+        ),
+      );
+    } finally {
+      if (mounted) setState(() => _isStarting = false);
+    }
+  }
+
   void _handleStartTrip() async {
     if (_isStarting || widget.user.role != UserRole.driver) return;
+    if (_dutyData?['tripStatus'] == 'IN_PROGRESS') return;
+    if (_dutyData?['busId'] == null ||
+        _dutyData?['routeId'] == null ||
+        _pendingTrips.isNotEmpty) {
+      return;
+    }
     if (!_isChecklistComplete) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -148,6 +215,11 @@ class _DriverDashboardState extends State<DriverDashboard> {
     }
 
     setState(() => _isStarting = true);
+
+    if (!await DriverLocationGate.ensureReady(context) || !mounted) {
+      if (mounted) setState(() => _isStarting = false);
+      return;
+    }
 
     // Capture real-time GPS location
     double? startLat;
@@ -176,8 +248,8 @@ class _DriverDashboardState extends State<DriverDashboard> {
       return;
     }
 
-    final routeName = _dutyData?['routeName'] ?? 'Route 1 - North Campus Loop';
-    final busNumber = _dutyData?['busNumber'] ?? 'Bus 04';
+    final routeName = _dutyData?['routeName'] ?? 'No route assigned';
+    final busNumber = _dutyData?['busNumber'] ?? 'No bus assigned';
     final plannedTime = _dutyData?['plannedDepartureTime'] ?? '07:15 AM';
 
     final confirm = await showDialog<bool>(
@@ -300,6 +372,10 @@ class _DriverDashboardState extends State<DriverDashboard> {
       return;
     }
 
+    if (!await DriverLocationGate.ensureReady(context) || !mounted) {
+      if (mounted) setState(() => _isStarting = false);
+      return;
+    }
     final res = await TransportService.startTrip(
       routeId: routeId,
       busId: busId,
@@ -350,7 +426,6 @@ class _DriverDashboardState extends State<DriverDashboard> {
       return;
     }
     if (!mounted) return;
-    if (!mounted) return;
     setState(() => _isStarting = false);
 
     Navigator.pushNamed(
@@ -370,11 +445,10 @@ class _DriverDashboardState extends State<DriverDashboard> {
       return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
 
-    final busNumber = _dutyData?['busNumber']?.toString() ?? 'Bus 04';
-    final regNo =
-        _dutyData?['registrationNumber']?.toString() ?? 'MH-02-EF-4004';
+    final busNumber = _dutyData?['busNumber']?.toString() ?? 'No bus assigned';
+    final regNo = _dutyData?['registrationNumber']?.toString() ?? '—';
     final routeName =
-        _dutyData?['routeName']?.toString() ?? 'Route 1 - North Campus Loop';
+        _dutyData?['routeName']?.toString() ?? 'No route assigned';
     final plannedTime =
         _dutyData?['plannedDepartureTime']?.toString() ?? '07:15 AM';
     final shift = _dutyData?['shift']?.toString() ?? 'MORNING';
@@ -956,24 +1030,17 @@ class _DriverDashboardState extends State<DriverDashboard> {
               ),
               22.h.verticalSpace,
 
-              // Start Trip Button
+              // Start or complete the assigned trip.
               ElevatedButton(
-                onPressed: (isTripInProgress || _isStarting)
-                    ? (isTripInProgress
-                          ? () {
-                              Navigator.pushNamed(
-                                context,
-                                RoutesName.activeTrip,
-                                arguments: {
-                                  'duty': _dutyData,
-                                  'trip': {
-                                    'tripId': _dutyData?['activeTripId'],
-                                  },
-                                  'driverEmail': widget.user.email,
-                                },
-                              ).then((_) => _loadDuty());
-                            }
-                          : null)
+                key: const Key('driver-trip-action'),
+                onPressed: _isStarting || _syncing
+                    ? null
+                    : isTripInProgress
+                    ? _handleEndTrip
+                    : (_dutyData?['busId'] == null ||
+                          _dutyData?['routeId'] == null ||
+                          _pendingTrips.isNotEmpty)
+                    ? null
                     : _handleStartTrip,
                 style: ElevatedButton.styleFrom(
                   backgroundColor: isTripInProgress
@@ -1003,7 +1070,9 @@ class _DriverDashboardState extends State<DriverDashboard> {
                           12.w.horizontalSpace,
                           Flexible(
                             child: Text(
-                              'Acquiring Location & Starting Trip...',
+                              isTripInProgress
+                                  ? 'Saving Trip…'
+                                  : 'Acquiring Location & Starting Trip...',
                               style: TextStyle(
                                 fontSize: 14.sp,
                                 fontWeight: FontWeight.w800,
@@ -1018,7 +1087,7 @@ class _DriverDashboardState extends State<DriverDashboard> {
                         children: [
                           Icon(
                             isTripInProgress
-                                ? Icons.navigation_rounded
+                                ? Icons.stop_circle_outlined
                                 : (_isChecklistComplete
                                       ? Icons.play_circle_fill_rounded
                                       : Icons.pending_actions_rounded),
@@ -1029,7 +1098,7 @@ class _DriverDashboardState extends State<DriverDashboard> {
                           Flexible(
                             child: Text(
                               isTripInProgress
-                                  ? 'Trip Active • Resume Navigation'
+                                  ? 'End Trip'
                                   : (_isChecklistComplete
                                         ? 'Start Scheduled Trip'
                                         : 'Verify Checklist to Start ($_checkedCount/5)'),

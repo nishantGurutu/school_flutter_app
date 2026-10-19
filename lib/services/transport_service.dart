@@ -1,3 +1,4 @@
+import 'driver_location_gate.dart';
 import 'dart:async';
 import 'dart:developer';
 import '../data/network/network_api_services.dart';
@@ -91,6 +92,7 @@ class TransportService {
     };
 
     try {
+      await DriverLocationGate.requireReady();
       final url = AppUrl.transportStartTrip(email: driverEmail);
       log("TransportService: Calling startTrip via $url with payload: $body");
       final res = await _apiService.postApi(url, body);
@@ -186,6 +188,7 @@ class TransportService {
     if (user?.role != UserRole.driver) {
       throw StateError('Only the signed-in driver can complete this trip.');
     }
+    await DriverLocationGate.requireReady();
     return _completion.complete(
       tripId: tripId,
       driverEmail: user!.email,

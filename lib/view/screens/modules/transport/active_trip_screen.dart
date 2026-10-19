@@ -1,3 +1,4 @@
+import '../../../../services/driver_location_gate.dart';
 import '../../../../location_tracking/presentation/trip_navigation_data.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../../location_tracking/presentation/bloc/location_tracking_bloc.dart';
@@ -10,7 +11,6 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../services/transport_service.dart';
-import '../../../widgets/glass_card.dart';
 
 class ActiveTripScreen extends StatefulWidget {
   final Map<String, dynamic>? initialData;
@@ -49,11 +49,6 @@ class _ActiveTripScreenState extends State<ActiveTripScreen> {
 
   // Stops state
   List<Map<String, dynamic>> _stops = [];
-  int _currentStopIndex = 0;
-
-  // Incident modal states
-  final _incidentDescController = TextEditingController();
-  String _selectedIncidentType = 'TRAFFIC_DELAY';
 
   @override
   void initState() {
@@ -269,7 +264,6 @@ class _ActiveTripScreenState extends State<ActiveTripScreen> {
   void dispose() {
     _locationSub?.cancel();
     _tripClockTimer?.cancel();
-    _incidentDescController.dispose();
     // GoogleMap owns its controller and disposes it with the platform view.
     _mapController = null;
     super.dispose();
@@ -291,165 +285,13 @@ class _ActiveTripScreenState extends State<ActiveTripScreen> {
     return '$mins:$secs';
   }
 
-  void _handleStopAction(int index, String newStatus) async {
-    final stop = _stops[index];
-    final stopId = stop['id'] is int ? stop['id'] as int : (index + 1);
-
-    setState(() {
-      _stops[index]['status'] = newStatus;
-      if (newStatus == 'DEPARTED' && index < _stops.length - 1) {
-        _currentStopIndex = index + 1;
-      }
-      _updateMapPins();
-    });
-
-    await TransportService.recordStopEvent(
-      tripId: _tripId,
-      stopId: stopId,
-      eventType: newStatus,
-      studentsBoarded: stop['students'] is int ? stop['students'] as int : 5,
-    );
-
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('${stop['stopName']} marked as $newStatus'),
-          duration: const Duration(seconds: 2),
-          backgroundColor: AppColors.primary,
-        ),
-      );
-    }
-  }
-
-  void _showReportIncidentDialog() {
-    showDialog(
-      context: context,
-      builder: (ctx) => StatefulBuilder(
-        builder: (context, setDlgState) => AlertDialog(
-          title: const Row(
-            children: [
-              Icon(Icons.warning_amber_rounded, color: AppColors.error),
-              SizedBox(width: 8),
-              Text(
-                'Report Safety Incident',
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800),
-              ),
-            ],
-          ),
-          content: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  'Incident Type',
-                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700),
-                ),
-                const SizedBox(height: 6),
-                DropdownButtonFormField<String>(
-                  initialValue: _selectedIncidentType,
-                  decoration: InputDecoration(
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    contentPadding: const EdgeInsets.symmetric(
-                      horizontal: 10,
-                      vertical: 8,
-                    ),
-                  ),
-                  items: const [
-                    DropdownMenuItem(
-                      value: 'TRAFFIC_DELAY',
-                      child: Text('Traffic Congestion'),
-                    ),
-                    DropdownMenuItem(
-                      value: 'ROUTE_DEVIATION',
-                      child: Text('Route Diversion / Block'),
-                    ),
-                    DropdownMenuItem(
-                      value: 'BUS_BREAKDOWN',
-                      child: Text('Mechanical Breakdown'),
-                    ),
-                    DropdownMenuItem(
-                      value: 'ACCIDENT',
-                      child: Text('Vehicle Collision / Scratch'),
-                    ),
-                    DropdownMenuItem(
-                      value: 'MEDICAL_EMERGENCY',
-                      child: Text('Student Medical Help'),
-                    ),
-                  ],
-                  onChanged: (val) {
-                    if (val != null) {
-                      setDlgState(() => _selectedIncidentType = val);
-                    }
-                  },
-                ),
-                const SizedBox(height: 12),
-                const Text(
-                  'Description & Action Taken',
-                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700),
-                ),
-                const SizedBox(height: 6),
-                TextField(
-                  controller: _incidentDescController,
-                  maxLines: 3,
-                  decoration: InputDecoration(
-                    hintText:
-                        'Enter incident details, location landmark, delay estimate...',
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(ctx),
-              child: const Text('Cancel'),
-            ),
-            ElevatedButton(
-              onPressed: () async {
-                final messenger = ScaffoldMessenger.of(this.context);
-                Navigator.pop(ctx);
-                final sent = await TransportService.reportIncident(
-                  tripId: _tripId,
-                  incidentType: _selectedIncidentType,
-                  description: _incidentDescController.text.trim().isNotEmpty
-                      ? _incidentDescController.text.trim()
-                      : 'Incident reported by driver via companion app',
-                  lat: _hasBusPosition ? _busPosition.latitude : null,
-                  lon: _hasBusPosition ? _busPosition.longitude : null,
-                );
-                if (!mounted) return;
-                messenger.showSnackBar(
-                  SnackBar(
-                    content: Text(
-                      sent
-                          ? 'Incident alerted to School Desk transport manager.'
-                          : 'Incident was not sent. Please retry.',
-                    ),
-                    backgroundColor: AppColors.error,
-                  ),
-                );
-              },
-              style: ElevatedButton.styleFrom(backgroundColor: AppColors.error),
-              child: const Text(
-                'Dispatch Alert',
-                style: TextStyle(color: Colors.white),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
   void _handleEndTrip() async {
     if (_ending || !_authorized) return;
     setState(() => _ending = true);
+    if (!await DriverLocationGate.ensureReady(context) || !mounted) {
+      if (mounted) setState(() => _ending = false);
+      return;
+    }
     final confirm = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -480,6 +322,10 @@ class _ActiveTripScreenState extends State<ActiveTripScreen> {
       return;
     }
     try {
+      if (!await DriverLocationGate.ensureReady(context) || !mounted) {
+        if (mounted) setState(() => _ending = false);
+        return;
+      }
       await TransportService.endTrip(
         tripId: _tripId,
         totalDistanceKm: _distanceKm,
@@ -572,16 +418,6 @@ class _ActiveTripScreenState extends State<ActiveTripScreen> {
             ),
           ],
         ),
-        actions: [
-          IconButton(
-            icon: const Icon(
-              Icons.warning_amber_rounded,
-              color: AppColors.error,
-            ),
-            onPressed: _showReportIncidentDialog,
-          ),
-          8.w.horizontalSpace,
-        ],
       ),
       body: Column(
         children: [
@@ -702,195 +538,22 @@ class _ActiveTripScreenState extends State<ActiveTripScreen> {
             ),
           ),
 
-          // Lower Stops & Actions Sheet
-          Expanded(
-            flex: 6,
-            child: Container(
-              padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 12.h),
-              decoration: BoxDecoration(
-                color: AppColors.surface,
-                borderRadius: BorderRadius.vertical(top: Radius.circular(20.r)),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.05),
-                    blurRadius: 10,
-                    offset: const Offset(0, -3),
+          SafeArea(
+            top: false,
+            child: Padding(
+              padding: EdgeInsets.all(16.r),
+              child: SizedBox(
+                width: double.infinity,
+                child: ElevatedButton.icon(
+                  onPressed: _ending ? null : _handleEndTrip,
+                  icon: const Icon(Icons.stop_circle_outlined),
+                  label: Text(_ending ? 'Saving Trip…' : 'End Trip'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFFDC2626),
+                    foregroundColor: Colors.white,
+                    padding: EdgeInsets.symmetric(vertical: 16.h),
                   ),
-                ],
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Wrap(
-                    alignment: WrapAlignment.spaceBetween,
-                    crossAxisAlignment: WrapCrossAlignment.center,
-                    spacing: 8,
-                    runSpacing: 8,
-                    children: [
-                      Text(
-                        'Route Stops Sequence (${_stops.length})',
-                        style: TextStyle(
-                          fontSize: 14.sp,
-                          fontWeight: FontWeight.w800,
-                          color: AppColors.textPrimary,
-                        ),
-                      ),
-                      ElevatedButton.icon(
-                        onPressed: _ending ? null : _handleEndTrip,
-                        icon: const Icon(
-                          Icons.stop_circle_outlined,
-                          size: 16,
-                          color: Colors.white,
-                        ),
-                        label: Text(
-                          _ending ? 'Saving Trip…' : 'End Trip',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFFDC2626),
-                          padding: EdgeInsets.symmetric(
-                            horizontal: 12.w,
-                            vertical: 8.h,
-                          ),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(8.r),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                  10.h.verticalSpace,
-
-                  // Scrollable Stops List
-                  Expanded(
-                    child: ListView.separated(
-                      physics: const BouncingScrollPhysics(),
-                      itemCount: _stops.length,
-                      separatorBuilder: (c, i) => 8.h.verticalSpace,
-                      itemBuilder: (context, idx) {
-                        final stop = _stops[idx];
-                        final isCurrent = idx == _currentStopIndex;
-                        final isDeparted = stop['status'] == 'DEPARTED';
-                        final isArrived = stop['status'] == 'ARRIVED';
-
-                        return GlassCard(
-                          padding: EdgeInsets.all(12.r),
-                          child: Row(
-                            children: [
-                              Container(
-                                width: 28.r,
-                                height: 28.r,
-                                decoration: BoxDecoration(
-                                  color: isDeparted
-                                      ? const Color(0xFF10B981)
-                                      : (isArrived
-                                            ? const Color(0xFF0D9488)
-                                            : AppColors.border),
-                                  shape: BoxShape.circle,
-                                ),
-                                child: Center(
-                                  child: isDeparted
-                                      ? const Icon(
-                                          Icons.check,
-                                          size: 16,
-                                          color: Colors.white,
-                                        )
-                                      : Text(
-                                          '${idx + 1}',
-                                          style: TextStyle(
-                                            fontSize: 12.sp,
-                                            fontWeight: FontWeight.w800,
-                                            color: isArrived
-                                                ? Colors.white
-                                                : AppColors.textPrimary,
-                                          ),
-                                        ),
-                                ),
-                              ),
-                              12.w.horizontalSpace,
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      stop['stopName'] ?? 'Stop ${idx + 1}',
-                                      style: TextStyle(
-                                        fontSize: 13.sp,
-                                        fontWeight: isCurrent
-                                            ? FontWeight.w800
-                                            : FontWeight.w600,
-                                        color: AppColors.textPrimary,
-                                      ),
-                                    ),
-                                    2.h.verticalSpace,
-                                    Text(
-                                      'Pickup: ${stop['plannedMorningPickupTime'] ?? 'N/A'} • ${stop['students'] ?? 0} Students',
-                                      style: TextStyle(
-                                        fontSize: 11.sp,
-                                        color: AppColors.textMuted,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                              if (!isDeparted) ...[
-                                if (!isArrived)
-                                  OutlinedButton(
-                                    onPressed: () =>
-                                        _handleStopAction(idx, 'ARRIVED'),
-                                    style: OutlinedButton.styleFrom(
-                                      padding: EdgeInsets.symmetric(
-                                        horizontal: 10.w,
-                                        vertical: 4.h,
-                                      ),
-                                      side: const BorderSide(
-                                        color: Color(0xFF0D9488),
-                                      ),
-                                    ),
-                                    child: const Text(
-                                      'Arrived',
-                                      style: TextStyle(
-                                        color: Color(0xFF0D9488),
-                                        fontSize: 11,
-                                      ),
-                                    ),
-                                  )
-                                else
-                                  ElevatedButton(
-                                    onPressed: () =>
-                                        _handleStopAction(idx, 'DEPARTED'),
-                                    style: ElevatedButton.styleFrom(
-                                      backgroundColor: const Color(0xFF10B981),
-                                      padding: EdgeInsets.symmetric(
-                                        horizontal: 10.w,
-                                        vertical: 4.h,
-                                      ),
-                                    ),
-                                    child: const Text(
-                                      'Depart',
-                                      style: TextStyle(
-                                        color: Colors.white,
-                                        fontSize: 11,
-                                        fontWeight: FontWeight.bold,
-                                      ),
-                                    ),
-                                  ),
-                              ] else
-                                const Icon(
-                                  Icons.check_circle_rounded,
-                                  color: Color(0xFF10B981),
-                                  size: 20,
-                                ),
-                            ],
-                          ),
-                        );
-                      },
-                    ),
-                  ),
-                ],
+                ),
               ),
             ),
           ),

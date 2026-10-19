@@ -1,3 +1,5 @@
+import 'package:geolocator/geolocator.dart';
+import 'support/fake_driver_location.dart';
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -24,6 +26,17 @@ class FakeMaps extends GoogleMapsFlutterPlatform {
 }
 
 void main() {
+  late GeolocatorPlatform originalLocation;
+  late FakeDriverLocation location;
+  setUp(() {
+    originalLocation = GeolocatorPlatform.instance;
+    location = FakeDriverLocation();
+    GeolocatorPlatform.instance = location;
+  });
+  tearDown(() async {
+    GeolocatorPlatform.instance = originalLocation;
+    await location.statuses.close();
+  });
   TestWidgetsFlutterBinding.ensureInitialized();
   sqfliteFfiInit();
   late Directory temporary;
@@ -114,6 +127,9 @@ void main() {
         await tester.pump();
       }
       expect(find.text('Active Trip Tracking'), findsOneWidget);
+      expect(find.textContaining('Route Stops Sequence'), findsNothing);
+      expect(find.text('Arrived'), findsNothing);
+      expect(find.text('Depart'), findsNothing);
       expect(find.byKey(const Key('trip-native-map')), findsOneWidget);
       expect(tester.takeException(), isNull);
       await tester.tap(find.text('End Trip'));
