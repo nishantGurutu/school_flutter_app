@@ -1,4 +1,8 @@
+import 'dart:async';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import '../../analytics/posthog_analytics_service.dart';
+import '../../analytics/posthog_feature.dart';
+import '../../analytics/posthog_login_sync.dart';
 import '../../core/di/locator.dart';
 import '../../data/exception/app_exceptions.dart';
 import '../../data/repositories/auth_repository.dart';
@@ -44,7 +48,19 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
 
       // Finally authenticate
       emit(state.copyWith(status: AuthStatus.authenticated, user: user));
-    } catch (e) {
+
+      // Sync identity to PostHog
+      unawaited(syncPosthogIdentity(user));
+    } catch (e, stackTrace) {
+      unawaited(
+        posthogAnalytics.captureException(
+          e,
+          stackTrace: stackTrace,
+          feature: PosthogFeature.auth,
+          action: 'login_requested',
+        ),
+      );
+
       String message = 'Invalid credentials';
       if (e is AppException && e.message.isNotEmpty) {
         message = e.message;
@@ -64,15 +80,18 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
   Future<void> _onLogoutRequested(LogoutRequested event, Emitter<AuthState> emit) async {
     emit(state.copyWith(status: AuthStatus.authenticating));
     await _authRepository.logout();
+    unawaited(resetPosthogIdentity());
     emit(const AuthState(status: AuthStatus.unauthenticated));
   }
 
   Future<void> _onCheckAuthStatus(CheckAuthStatus event, Emitter<AuthState> emit) async {
     final storedUser = await _authRepository.getStoredUser();
     if (storedUser != null) {
+      unawaited(syncPosthogIdentity(storedUser));
       emit(state.copyWith(status: AuthStatus.authenticated, user: storedUser));
     } else {
       emit(const AuthState(status: AuthStatus.unauthenticated));
     }
   }
 }
+

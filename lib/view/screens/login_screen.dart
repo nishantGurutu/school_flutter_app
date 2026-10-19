@@ -91,41 +91,12 @@ class _LoginScreenState extends State<LoginScreen> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
-                          // Header Logo
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Icon(
-                                Icons.school_rounded,
-                                color: AppColors.primary,
-                                size: 38.sp,
-                              ),
-                              12.w.width,
-                              Text(
-                                'SchoolDesk',
-                                style: TextStyle(
-                                  fontSize: 28.sp,
-                                  fontWeight: FontWeight.w800,
-                                  color: AppColors.textPrimary,
-                                ),
-                              ),
-                            ],
+                          Image.asset(
+                            "assets/img/school_desk_logo.png",
+                            width: 200.w,
+                            height: 200.h,
                           ),
-                          4.h.height,
-                          Center(
-                            child: Text(
-                              'Smart School Management',
-                              style: TextStyle(
-                                fontSize: 12.sp,
-                                fontWeight: FontWeight.w600,
-                                color: AppColors.textMuted,
-                                letterSpacing: 0.5,
-                              ),
-                            ),
-                          ),
-                          36.h.height,
-
-                          // Greeting text
+                          10.h.height,
                           Text(
                             'Welcome Back!',
                             style: context.h1,

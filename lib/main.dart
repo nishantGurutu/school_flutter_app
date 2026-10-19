@@ -1,17 +1,34 @@
 import 'dart:ui';
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:firebase_core/firebase_core.dart';
 import 'core/theme/app_theme.dart';
 import 'core/routes/routes.dart' as new_routes;
 import 'core/routes/routes_name.dart';
 import 'core/di/locator.dart';
+import 'firebase/notification_firebase.dart';
+import 'firebase/notification_services.dart';
 import 'logic/auth/auth_bloc.dart';
 import 'logic/school/school_bloc.dart';
 
-void main() {
+@pragma('vm:entry-point')
+Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
+  await Firebase.initializeApp();
+}
+
+void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   setupLocator();
+  try {
+    await Firebase.initializeApp();
+    FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
+    await LocalNotificationService.initialize();
+    await firebaseNotification();
+  } catch (e) {
+    debugPrint("Firebase & Notification setup error: $e");
+  }
   runApp(const MyApp());
 }
 
@@ -31,6 +48,7 @@ class MyApp extends StatelessWidget {
             BlocProvider<SchoolBloc>(create: (_) => SchoolBloc()),
           ],
           child: MaterialApp(
+            navigatorKey: navigatorKey,
             debugShowCheckedModeBanner: false,
             title: 'SchoolDesk',
             theme: AppTheme.lightTheme,

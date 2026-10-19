@@ -123,25 +123,26 @@ class _SplashScreenState extends State<SplashScreen>
                             ),
                             boxShadow: [
                               BoxShadow(
-                                color: AppColors.primary.withValues(alpha: 0.25),
+                                color: AppColors.primary.withValues(
+                                  alpha: 0.25,
+                                ),
                                 blurRadius: 24,
                                 spreadRadius: 1,
                               ),
                             ],
                           ),
-                          child: Icon(
-                            Icons.school_rounded,
-                            size: 64.sp,
-                            color: AppColors.primary,
+                          child: Image.asset(
+                            "assets/img/school_desk_logo.png",
+                            width: 200.w,
+                            height: 200.h,
                           ),
                         ),
                         24.h.height,
-                        // Logo text
                         ShaderMask(
                           shaderCallback: (bounds) =>
                               AppColors.primaryGradient.createShader(bounds),
                           child: Text(
-                            'SchoolDesk',
+                            'School Desk',
                             style: TextStyle(
                               fontSize: 34.sp,
                               fontWeight: FontWeight.w800,
