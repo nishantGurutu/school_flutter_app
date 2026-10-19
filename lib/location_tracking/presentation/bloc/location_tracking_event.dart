@@ -8,20 +8,13 @@ final class LocationTrackingStatusRequested extends LocationTrackingEvent {
 
 final class LocationTrackingStarted extends LocationTrackingEvent {
   const LocationTrackingStarted({
-    required this.empId,
-    required this.companyCode,
-    required this.token,
-    required this.deviceId,
-    required this.baseUrl,
-    required this.uploadUrl,
+    required this.tripId,
+    required this.driverEmail,
+    this.restart = false,
   });
-
-  final int empId;
-  final String companyCode;
-  final String token;
-  final String deviceId;
-  final String baseUrl;
-  final String uploadUrl;
+  final int tripId;
+  final String driverEmail;
+  final bool restart;
 }
 
 final class LocationTrackingStopped extends LocationTrackingEvent {

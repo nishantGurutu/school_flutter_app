@@ -2,12 +2,21 @@ import 'dart:async';
 import 'dart:developer';
 import '../data/network/network_api_services.dart';
 import '../utils/app_url.dart';
+import '../location_tracking/data/datasources/location_service.dart';
+import '../location_tracking/data/trip_completion_coordinator.dart';
+import '../data/models/user_model.dart';
+import 'storage/local_storage.dart';
 
 class TransportService {
   static final NetworkApiService _apiService = NetworkApiService();
 
-  // In-memory offline GPS queue for network disruptions
-  static final List<Map<String, dynamic>> _offlineGpsQueue = [];
+  static final _completion = TripCompletionCoordinator(
+    store: LocationService.store,
+    stopTracking: LocationService.stop,
+    upload: (tripId, body) async => _toMap(
+      await _apiService.postApi(AppUrl.transportEndTrip(tripId), body),
+    ),
+  );
 
   // Helper to extract Map<String, dynamic> safely
   static Map<String, dynamic>? _toMap(dynamic response) {
@@ -31,7 +40,7 @@ class TransportService {
     } catch (e) {
       log("TransportService: getDriverDuty error: $e");
     }
-    return _getMockDriverDuty();
+    return null;
   }
 
   // Start trip dynamically via NetworkApiService and AppUrl
@@ -49,7 +58,6 @@ class TransportService {
     bool chkTires = true,
     bool chkEmergencyKit = true,
     bool chkGpsActive = true,
-    String? email,
   }) async {
     final body = {
       'routeId': routeId,
@@ -70,7 +78,7 @@ class TransportService {
     };
 
     try {
-      final url = AppUrl.transportStartTrip(email: email);
+      final url = AppUrl.transportStartTrip();
       log("TransportService: Calling startTrip via $url with payload: $body");
       final res = await _apiService.postApi(url, body);
       final map = _toMap(res);
@@ -82,50 +90,15 @@ class TransportService {
       log("TransportService: startTrip error: $e");
     }
 
-    return {
-      'tripId': 1,
-      'status': 'IN_PROGRESS',
-      'busNumber': 'Bus 04',
-      'routeName': 'Route 1 - North Campus Loop',
-      'totalDistanceKm': 0.0,
-      'completedStopsCount': 0,
-      'totalStopsCount': 5,
-      'currentSpeedKmh': 0.0,
-    };
+    return null;
   }
 
-  // Upload GPS batch (with offline queue auto-sync)
-  static Future<bool> sendGpsLocation({
-    required int tripId,
-    required double lat,
-    required double lon,
-    required double speedKmh,
-    double heading = 0.0,
-    String? email,
-  }) async {
-    final point = {
-      'latitude': lat,
-      'longitude': lon,
-      'speedKmh': speedKmh,
-      'heading': heading,
-      'accuracyMeters': 5.0,
-      'recordedAt': DateTime.now().toIso8601String(),
-    };
-
-    _offlineGpsQueue.add(point);
-
-    try {
-      final url = AppUrl.transportBatchGps(tripId, email: email);
-      final body = {'points': List<Map<String, dynamic>>.from(_offlineGpsQueue)};
-      final res = await _apiService.postApi(url, body);
-      if (res != null) {
-        _offlineGpsQueue.clear();
-        return true;
-      }
-    } catch (e) {
-      log("TransportService: sendGpsLocation queued locally: $e");
-    }
-    return false;
+  /// Latest position only, held in server memory; no history database write.
+  static Future<void> publishLiveLocation(
+    int tripId,
+    Map<String, dynamic> point,
+  ) async {
+    await _apiService.postApi(AppUrl.transportLiveLocation(tripId), point);
   }
 
   // Stop Event (Arrival / Departure)
@@ -152,7 +125,7 @@ class TransportService {
       return res != null;
     } catch (e) {
       log("TransportService: recordStopEvent error: $e");
-      return true;
+      return false;
     }
   }
 
@@ -170,8 +143,8 @@ class TransportService {
       'incidentType': incidentType,
       'severity': severity,
       'description': description,
-      'latitude': lat ?? 25.6025,
-      'longitude': lon ?? 85.1430,
+      'latitude': lat,
+      'longitude': lon,
     };
 
     try {
@@ -180,37 +153,28 @@ class TransportService {
       return res != null;
     } catch (e) {
       log("TransportService: reportIncident error: $e");
-      return true;
+      return false;
     }
   }
 
-  // End Trip
-  static Future<Map<String, dynamic>?> endTrip({
+  /// Freeze GPS locally first, then save points and complete the trip atomically.
+  /// A retry uses the same SQLite batch; server completion is idempotent.
+  static Future<Map<String, dynamic>> endTrip({
     required int tripId,
-    double totalDistanceKm = 18.5,
+    double? totalDistanceKm,
     String? notes,
     String? email,
   }) async {
-    final body = {
-      'totalDistanceKm': totalDistanceKm,
-      'notes': notes ?? 'Trip completed safely at campus depot.',
-    };
-
-    try {
-      final url = AppUrl.transportEndTrip(tripId, email: email);
-      final res = await _apiService.postApi(url, body);
-      final map = _toMap(res);
-      if (map != null) return map;
-    } catch (e) {
-      log("TransportService: endTrip error: $e");
+    final user = await StorageHelper.getUserSession();
+    if (user?.role != UserRole.driver) {
+      throw StateError('Only the signed-in driver can complete this trip.');
     }
-
-    return {
-      'tripId': tripId,
-      'status': 'COMPLETED',
-      'totalDistanceKm': totalDistanceKm,
-      'completedStopsCount': 5,
-    };
+    return _completion.complete(
+      tripId: tripId,
+      driverEmail: user!.email,
+      distanceKm: totalDistanceKm,
+      notes: notes,
+    );
   }
 
   // Parent child transport info
@@ -241,76 +205,6 @@ class TransportService {
       'busSpeedKmh': 32.0,
       'estimatedArrivalMinutes': 6,
       'currentStopName': 'Central Mall Junction',
-    };
-  }
-
-  static int get queuedPointsCount => _offlineGpsQueue.length;
-
-  static Map<String, dynamic> _getMockDriverDuty() {
-    return {
-      'driverId': 1,
-      'driverName': 'Ramesh Kumar',
-      'phone': '+91 98765 43210',
-      'licenseNumber': 'DL-0420110056789',
-      'licenseExpiryDate': '2029-06-30',
-      'assignmentId': 1,
-      'busId': 3,
-      'busNumber': 'Bus 04',
-      'registrationNumber': 'MH-02-EF-4004',
-      'busCapacity': 45,
-      'routeId': 1,
-      'routeName': 'Route 1 - North Campus Loop',
-      'routeCode': 'RT-NORTH-01',
-      'shift': 'MORNING',
-      'plannedDepartureTime': '07:15 AM',
-      'tripStatus': 'SCHEDULED',
-      'route': {
-        'totalDistanceKm': 18.5,
-        'plannedDurationMinutes': 45,
-        'speedLimitKmh': 50,
-        'stops': [
-          {
-            'id': 1,
-            'stopName': 'North City Square',
-            'stopOrder': 1,
-            'plannedMorningPickupTime': '07:15 AM',
-            'landmark': 'Opposite HDFC Bank',
-            'assignedStudentsCount': 8,
-          },
-          {
-            'id': 2,
-            'stopName': 'Metro Station Pillar 42',
-            'stopOrder': 2,
-            'plannedMorningPickupTime': '07:25 AM',
-            'landmark': 'Near Gate 2 Escalator',
-            'assignedStudentsCount': 12,
-          },
-          {
-            'id': 3,
-            'stopName': 'Central Mall Junction',
-            'stopOrder': 3,
-            'plannedMorningPickupTime': '07:35 AM',
-            'landmark': 'Bus Bay 3',
-            'assignedStudentsCount': 10,
-          },
-          {
-            'id': 4,
-            'stopName': 'Kankarbagh Park',
-            'stopOrder': 4,
-            'plannedMorningPickupTime': '07:45 AM',
-            'landmark': 'Roundabout Park Corner',
-            'assignedStudentsCount': 9,
-          },
-          {
-            'id': 5,
-            'stopName': 'School Main Gate',
-            'stopOrder': 5,
-            'plannedMorningPickupTime': '08:00 AM',
-            'landmark': 'Campus Bus Bay',
-            'assignedStudentsCount': 39,
-          },
-        ],
-      },
     };
   }
 }

@@ -1,3 +1,4 @@
+import '../../../location_tracking/data/datasources/location_service.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import '../../../data/models/user_model.dart';
@@ -26,6 +27,8 @@ class DriverDashboard extends StatefulWidget {
 class _DriverDashboardState extends State<DriverDashboard> {
   bool _isLoading = true;
   bool _isStarting = false;
+  bool _syncing = false;
+  List<Map<String, Object?>> _pendingTrips = [];
   Map<String, dynamic>? _dutyData;
 
   // Pre-Trip Vehicle Checklist (daily driver inspection)
@@ -38,6 +41,7 @@ class _DriverDashboardState extends State<DriverDashboard> {
   @override
   void initState() {
     super.initState();
+    _loadPendingTrips();
     if (widget.initialDuty != null) {
       _dutyData = widget.initialDuty;
       _applyDutyChecklistState(_dutyData);
@@ -50,7 +54,8 @@ class _DriverDashboardState extends State<DriverDashboard> {
   void _applyDutyChecklistState(Map<String, dynamic>? data) {
     if (data == null) return;
     final isTripInProgress = data['tripStatus'] == 'IN_PROGRESS';
-    final isChecklistDone = data['todayChecklistCompleted'] == true || isTripInProgress;
+    final isChecklistDone =
+        data['todayChecklistCompleted'] == true || isTripInProgress;
     if (isChecklistDone) {
       _chkBrakes = data['todayChkBrakes'] ?? true;
       _chkLights = data['todayChkLights'] ?? true;
@@ -63,12 +68,47 @@ class _DriverDashboardState extends State<DriverDashboard> {
   Future<void> _loadDuty() async {
     setState(() => _isLoading = true);
     final data = await TransportService.getDriverDuty(email: widget.user.email);
+    await _loadPendingTrips();
     if (mounted) {
       setState(() {
         _dutyData = data;
         _applyDutyChecklistState(data);
         _isLoading = false;
       });
+    }
+  }
+
+  Future<void> _loadPendingTrips() async {
+    if (widget.user.role != UserRole.driver) return;
+    try {
+      final pending = await LocationService.store.pending(widget.user.email);
+      if (mounted) setState(() => _pendingTrips = pending);
+    } catch (_) {
+      /* Storage is unavailable on unsupported platforms. */
+    }
+  }
+
+  Future<void> _retryPendingTrips() async {
+    if (_syncing) return;
+    setState(() => _syncing = true);
+    try {
+      for (final trip in _pendingTrips) {
+        await TransportService.endTrip(tripId: trip['trip_id'] as int);
+      }
+      await _loadPendingTrips();
+      await _loadDuty();
+    } catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'Trip data remains on this phone. Retry when online: $error',
+            ),
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _syncing = false);
     }
   }
 
@@ -93,6 +133,7 @@ class _DriverDashboardState extends State<DriverDashboard> {
   }
 
   void _handleStartTrip() async {
+    if (_isStarting || widget.user.role != UserRole.driver) return;
     if (!_isChecklistComplete) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -117,12 +158,21 @@ class _DriverDashboardState extends State<DriverDashboard> {
       if (pos != null) {
         startLat = pos.latitude;
         startLon = pos.longitude;
-        startLocName = 'GPS: ${pos.latitude.toStringAsFixed(4)}, ${pos.longitude.toStringAsFixed(4)}';
+        startLocName =
+            'GPS: ${pos.latitude.toStringAsFixed(4)}, ${pos.longitude.toStringAsFixed(4)}';
       }
     } catch (_) {}
 
-    if (!mounted) {
+    if (!mounted) return;
+    if (startLat == null || startLon == null) {
       setState(() => _isStarting = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Enable location permission and GPS before starting your trip.',
+          ),
+        ),
+      );
       return;
     }
 
@@ -133,7 +183,9 @@ class _DriverDashboardState extends State<DriverDashboard> {
     final confirm = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16.r)),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16.r),
+        ),
         title: Row(
           children: [
             const Icon(Icons.verified_user_rounded, color: AppColors.success),
@@ -147,7 +199,11 @@ class _DriverDashboardState extends State<DriverDashboard> {
           children: [
             Text(
               'All 5 pre-trip safety checklist items are verified OK.',
-              style: TextStyle(fontSize: 13.sp, fontWeight: FontWeight.w600, color: AppColors.success),
+              style: TextStyle(
+                fontSize: 13.sp,
+                fontWeight: FontWeight.w600,
+                color: AppColors.success,
+              ),
             ),
             12.h.verticalSpace,
             Container(
@@ -159,21 +215,42 @@ class _DriverDashboardState extends State<DriverDashboard> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('• Bus: $busNumber', style: TextStyle(fontSize: 12.sp, fontWeight: FontWeight.w600)),
+                  Text(
+                    '• Bus: $busNumber',
+                    style: TextStyle(
+                      fontSize: 12.sp,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
                   4.h.verticalSpace,
-                  Text('• Route: $routeName', style: TextStyle(fontSize: 12.sp, fontWeight: FontWeight.w600)),
+                  Text(
+                    '• Route: $routeName',
+                    style: TextStyle(
+                      fontSize: 12.sp,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
                   4.h.verticalSpace,
-                  Text('• Planned Departure: $plannedTime', style: TextStyle(fontSize: 12.sp)),
+                  Text(
+                    '• Planned Departure: $plannedTime',
+                    style: TextStyle(fontSize: 12.sp),
+                  ),
                   4.h.verticalSpace,
-                  Text('• Start Location: $startLocName', style: TextStyle(fontSize: 12.sp, color: AppColors.primary)),
+                  Text(
+                    '• Start Location: $startLocName',
+                    style: TextStyle(fontSize: 12.sp, color: AppColors.primary),
+                  ),
                   4.h.verticalSpace,
-                  Text('• Start Time: ${TimeOfDay.now().format(context)}', style: TextStyle(fontSize: 12.sp, color: AppColors.primary)),
+                  Text(
+                    '• Start Time: ${TimeOfDay.now().format(context)}',
+                    style: TextStyle(fontSize: 12.sp, color: AppColors.primary),
+                  ),
                 ],
               ),
             ),
             12.h.verticalSpace,
             Text(
-              'Active GPS tracking will start immediately. School admin and parents will receive live departure telemetry.',
+              'GPS tracking starts after departure is confirmed. Trip history is saved locally until you complete the trip.',
               style: TextStyle(fontSize: 11.sp, color: AppColors.textMuted),
             ),
           ],
@@ -187,21 +264,41 @@ class _DriverDashboardState extends State<DriverDashboard> {
             onPressed: () => Navigator.pop(ctx, true),
             style: ElevatedButton.styleFrom(
               backgroundColor: AppColors.primary,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8.r)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8.r),
+              ),
             ),
-            child: const Text('Start Trip Now', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+            child: const Text(
+              'Start Trip Now',
+              style: TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
           ),
         ],
       ),
     );
 
-    if (confirm != true || !mounted) {
+    if (!mounted) return;
+    if (confirm != true) {
       setState(() => _isStarting = false);
       return;
     }
 
-    final routeId = _dutyData?['routeId'] is int ? _dutyData!['routeId'] as int : 1;
-    final busId = _dutyData?['busId'] is int ? _dutyData!['busId'] as int : 3;
+    final routeId = (_dutyData?['routeId'] as num?)?.toInt();
+    final busId = (_dutyData?['busId'] as num?)?.toInt();
+    if (routeId == null || busId == null) {
+      setState(() => _isStarting = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'No valid bus and route assignment. Refresh your duty.',
+          ),
+        ),
+      );
+      return;
+    }
 
     final res = await TransportService.startTrip(
       routeId: routeId,
@@ -216,20 +313,44 @@ class _DriverDashboardState extends State<DriverDashboard> {
       chkEmergencyKit: _chkEmergencyKit,
       chkGpsActive: _chkGpsActive,
       preTripCheckPassed: true,
-      preTripNotes: 'All 5 safety checklist items verified by ${widget.user.name}. Departure recorded at $startLocName.',
-      email: widget.user.email,
+      preTripNotes:
+          'All 5 safety checklist items verified by ${widget.user.name}. Departure recorded at $startLocName.',
     );
 
-    setState(() => _isStarting = false);
-
     if (!mounted) return;
-
-    if (res != null) {
-      setState(() {
-        _dutyData?['tripStatus'] = 'IN_PROGRESS';
-        _dutyData?['activeTripId'] = res['tripId'] ?? 1;
-      });
+    final tripId = (res?['tripId'] as num?)?.toInt();
+    if (tripId == null || res?['status'] != 'IN_PROGRESS') {
+      setState(() => _isStarting = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Trip could not be started. Tracking has not started. Please retry.',
+          ),
+        ),
+      );
+      return;
     }
+    setState(() {
+      _dutyData?['tripStatus'] = 'IN_PROGRESS';
+      _dutyData?['activeTripId'] = tripId;
+    });
+    try {
+      await LocationService.store.begin(tripId, widget.user.email);
+    } catch (error) {
+      if (!mounted) return;
+      setState(() => _isStarting = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Trip started, but local recording could not start: $error',
+          ),
+        ),
+      );
+      return;
+    }
+    if (!mounted) return;
+    if (!mounted) return;
+    setState(() => _isStarting = false);
 
     Navigator.pushNamed(
       context,
@@ -237,6 +358,7 @@ class _DriverDashboardState extends State<DriverDashboard> {
       arguments: {
         'duty': _dutyData,
         'trip': res,
+        'driverEmail': widget.user.email,
       },
     ).then((_) => _loadDuty());
   }
@@ -244,15 +366,16 @@ class _DriverDashboardState extends State<DriverDashboard> {
   @override
   Widget build(BuildContext context) {
     if (_isLoading) {
-      return const Scaffold(
-        body: Center(child: CircularProgressIndicator()),
-      );
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
 
     final busNumber = _dutyData?['busNumber']?.toString() ?? 'Bus 04';
-    final regNo = _dutyData?['registrationNumber']?.toString() ?? 'MH-02-EF-4004';
-    final routeName = _dutyData?['routeName']?.toString() ?? 'Route 1 - North Campus Loop';
-    final plannedTime = _dutyData?['plannedDepartureTime']?.toString() ?? '07:15 AM';
+    final regNo =
+        _dutyData?['registrationNumber']?.toString() ?? 'MH-02-EF-4004';
+    final routeName =
+        _dutyData?['routeName']?.toString() ?? 'Route 1 - North Campus Loop';
+    final plannedTime =
+        _dutyData?['plannedDepartureTime']?.toString() ?? '07:15 AM';
     final shift = _dutyData?['shift']?.toString() ?? 'MORNING';
     final isTripInProgress = _dutyData?['tripStatus'] == 'IN_PROGRESS';
 
@@ -278,10 +401,7 @@ class _DriverDashboardState extends State<DriverDashboard> {
             ),
             Text(
               'Safe Route Navigator • ${widget.user.name}',
-              style: TextStyle(
-                fontSize: 11.sp,
-                color: AppColors.textMuted,
-              ),
+              style: TextStyle(fontSize: 11.sp, color: AppColors.textMuted),
             ),
           ],
         ),
@@ -309,440 +429,657 @@ class _DriverDashboardState extends State<DriverDashboard> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-            // Active Trip Banner if running
-            if (isTripInProgress) ...[
-              Container(
-                padding: EdgeInsets.all(16.r),
-                decoration: BoxDecoration(
-                  gradient: const LinearGradient(
-                    colors: [Color(0xFF0D9488), Color(0xFF0284C7)],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  ),
-                  borderRadius: BorderRadius.circular(16.r),
-                  boxShadow: [
-                    BoxShadow(
-                      color: const Color(0xFF0D9488).withValues(alpha: 0.35),
-                      blurRadius: 12,
-                      offset: const Offset(0, 4),
+              if (_pendingTrips.isNotEmpty) ...[
+                Card(
+                  child: ListTile(
+                    title: Text('${_pendingTrips.length} trip save pending'),
+                    subtitle: const Text(
+                      'GPS history is safely stored on this phone. Retry to finish syncing.',
                     ),
-                  ],
-                ),
-                child: Row(
-                  children: [
-                    Container(
-                      padding: EdgeInsets.all(10.r),
-                      decoration: const BoxDecoration(
-                        color: Colors.white24,
-                        shape: BoxShape.circle,
-                      ),
-                      child: const Icon(Icons.navigation_rounded, color: Colors.white, size: 24),
+                    trailing: TextButton(
+                      onPressed: _syncing ? null : _retryPendingTrips,
+                      child: Text(_syncing ? 'Saving…' : 'Retry save'),
                     ),
-                    14.w.horizontalSpace,
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'TRIP CURRENTLY ACTIVE',
-                            style: TextStyle(
-                              fontSize: 11.sp,
-                              fontWeight: FontWeight.w800,
-                              color: Colors.white.withValues(alpha: 0.9),
-                              letterSpacing: 0.8,
-                            ),
-                          ),
-                          4.h.verticalSpace,
-                          Text(
-                            '$busNumber • $routeName',
-                            style: TextStyle(
-                              fontSize: 14.sp,
-                              fontWeight: FontWeight.w700,
-                              color: Colors.white,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    ElevatedButton(
-                      onPressed: () {
-                        Navigator.pushNamed(
-                          context,
-                          RoutesName.activeTrip,
-                          arguments: {
-                            'duty': _dutyData,
-                            'trip': {'tripId': _dutyData?['activeTripId'] ?? 1},
-                          },
-                        ).then((_) => _loadDuty());
-                      },
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.white,
-                        foregroundColor: const Color(0xFF0D9488),
-                        elevation: 0,
-                        padding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 8.h),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10.r)),
-                      ),
-                      child: const Text('Resume', style: TextStyle(fontWeight: FontWeight.w800)),
-                    ),
-                  ],
-                ),
-              ),
-              20.h.verticalSpace,
-            ],
-
-            // Step 2: My Duty Card
-            GlassCard(
-              padding: EdgeInsets.all(20.r),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Expanded(
-                        child: Row(
-                          children: [
-                            Container(
-                              padding: EdgeInsets.all(8.r),
-                              decoration: BoxDecoration(
-                                color: AppColors.primary.withValues(alpha: 0.12),
-                                borderRadius: BorderRadius.circular(10.r),
-                              ),
-                              child: const Icon(Icons.directions_bus_rounded, color: AppColors.primary, size: 20),
-                            ),
-                            10.w.horizontalSpace,
-                            Flexible(
-                              child: Text(
-                                'Today\'s Assigned Duty',
-                                style: TextStyle(
-                                  fontSize: 15.sp,
-                                  fontWeight: FontWeight.w800,
-                                  color: AppColors.textPrimary,
-                                ),
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      8.w.horizontalSpace,
-                      Container(
-                        padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 4.h),
-                        decoration: BoxDecoration(
-                          color: AppColors.success.withValues(alpha: 0.12),
-                          borderRadius: BorderRadius.circular(8.r),
-                        ),
-                        child: Text(
-                          shift,
-                          style: TextStyle(
-                            fontSize: 11.sp,
-                            fontWeight: FontWeight.w800,
-                            color: AppColors.success,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                  16.h.verticalSpace,
-                  const Divider(height: 1),
-                  14.h.verticalSpace,
-
-                  // Duty Details Grid
-                  Row(
-                    children: [
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text('Vehicle', style: TextStyle(fontSize: 11.sp, color: AppColors.textMuted)),
-                            4.h.verticalSpace,
-                            Text(busNumber, style: TextStyle(fontSize: 14.sp, fontWeight: FontWeight.w800, color: AppColors.textPrimary)),
-                            Text(regNo, style: TextStyle(fontSize: 11.sp, color: AppColors.textMuted)),
-                          ],
-                        ),
-                      ),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text('Departure', style: TextStyle(fontSize: 11.sp, color: AppColors.textMuted)),
-                            4.h.verticalSpace,
-                            Text(plannedTime, style: TextStyle(fontSize: 14.sp, fontWeight: FontWeight.w800, color: AppColors.primary)),
-                            Text('On Schedule', style: TextStyle(fontSize: 11.sp, color: AppColors.success, fontWeight: FontWeight.w600)),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                  14.h.verticalSpace,
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text('Assigned Route', style: TextStyle(fontSize: 11.sp, color: AppColors.textMuted)),
-                      4.h.verticalSpace,
-                      Text(
-                        routeName,
-                        style: TextStyle(fontSize: 13.sp, fontWeight: FontWeight.w700, color: AppColors.textPrimary),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-            20.h.verticalSpace,
-
-            // Pre-Trip Vehicle Inspection Checklist Header
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Row(
-                  children: [
-                    Text(
-                      'Vehicle Safety Checklist',
-                      style: TextStyle(
-                        fontSize: 14.sp,
-                        fontWeight: FontWeight.w800,
-                        color: AppColors.textPrimary,
-                      ),
-                    ),
-                    8.w.horizontalSpace,
-                    Container(
-                      padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 2.h),
-                      decoration: BoxDecoration(
-                        color: _isChecklistComplete
-                            ? AppColors.success.withValues(alpha: 0.15)
-                            : AppColors.warning.withValues(alpha: 0.15),
-                        borderRadius: BorderRadius.circular(12.r),
-                      ),
-                      child: Text(
-                        '$_checkedCount / 5 Verified',
-                        style: TextStyle(
-                          fontSize: 10.sp,
-                          fontWeight: FontWeight.w800,
-                          color: _isChecklistComplete ? AppColors.success : AppColors.warning,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-                TextButton.icon(
-                  onPressed: isTripInProgress ? null : _toggleVerifyAll,
-                  icon: Icon(
-                    _isChecklistComplete ? Icons.restart_alt_rounded : Icons.checklist_rounded,
-                    size: 14.sp,
-                    color: AppColors.primary,
-                  ),
-                  label: Text(
-                    _isChecklistComplete ? 'Reset' : 'Check All',
-                    style: TextStyle(fontSize: 11.sp, fontWeight: FontWeight.w700, color: AppColors.primary),
-                  ),
-                  style: TextButton.styleFrom(
-                    padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 2.h),
-                    visualDensity: VisualDensity.compact,
                   ),
                 ),
+                12.h.verticalSpace,
               ],
-            ),
-            6.h.verticalSpace,
-            GlassCard(
-              padding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 6.h),
-              child: Column(
-                children: [
-                  CheckboxListTile(
-                    title: const Text('Brakes, Steering & Horn OK', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700)),
-                    subtitle: const Text('Hydraulics, brake pedal firmness & horn functional', style: TextStyle(fontSize: 10, color: AppColors.textMuted)),
-                    value: _chkBrakes,
-                    activeColor: AppColors.primary,
-                    dense: true,
-                    contentPadding: EdgeInsets.zero,
-                    secondary: Container(
-                      padding: EdgeInsets.all(6.r),
-                      decoration: BoxDecoration(
-                        color: AppColors.primary.withValues(alpha: 0.08),
-                        shape: BoxShape.circle,
-                      ),
-                      child: const Icon(Icons.speed_rounded, size: 16, color: AppColors.primary),
+              // Active Trip Banner if running
+              if (isTripInProgress) ...[
+                Container(
+                  padding: EdgeInsets.all(16.r),
+                  decoration: BoxDecoration(
+                    gradient: const LinearGradient(
+                      colors: [Color(0xFF0D9488), Color(0xFF0284C7)],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
                     ),
-                    onChanged: isTripInProgress ? null : (v) => setState(() => _chkBrakes = v ?? false),
-                  ),
-                  const Divider(height: 1, indent: 40),
-                  CheckboxListTile(
-                    title: const Text('Headlights, Indicators & Mirrors OK', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700)),
-                    subtitle: const Text('High/low beams, rear indicators and side mirrors clean', style: TextStyle(fontSize: 10, color: AppColors.textMuted)),
-                    value: _chkLights,
-                    activeColor: AppColors.primary,
-                    dense: true,
-                    contentPadding: EdgeInsets.zero,
-                    secondary: Container(
-                      padding: EdgeInsets.all(6.r),
-                      decoration: BoxDecoration(
-                        color: AppColors.primary.withValues(alpha: 0.08),
-                        shape: BoxShape.circle,
+                    borderRadius: BorderRadius.circular(16.r),
+                    boxShadow: [
+                      BoxShadow(
+                        color: const Color(0xFF0D9488).withValues(alpha: 0.35),
+                        blurRadius: 12,
+                        offset: const Offset(0, 4),
                       ),
-                      child: const Icon(Icons.light_mode_rounded, size: 16, color: AppColors.primary),
-                    ),
-                    onChanged: isTripInProgress ? null : (v) => setState(() => _chkLights = v ?? false),
+                    ],
                   ),
-                  const Divider(height: 1, indent: 40),
-                  CheckboxListTile(
-                    title: const Text('Tire Pressure & Fuel / Fluids OK', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700)),
-                    subtitle: const Text('Tire tread condition, coolant, motor oil & fuel tank OK', style: TextStyle(fontSize: 10, color: AppColors.textMuted)),
-                    value: _chkTires,
-                    activeColor: AppColors.primary,
-                    dense: true,
-                    contentPadding: EdgeInsets.zero,
-                    secondary: Container(
-                      padding: EdgeInsets.all(6.r),
-                      decoration: BoxDecoration(
-                        color: AppColors.primary.withValues(alpha: 0.08),
-                        shape: BoxShape.circle,
+                  child: Row(
+                    children: [
+                      Container(
+                        padding: EdgeInsets.all(10.r),
+                        decoration: const BoxDecoration(
+                          color: Colors.white24,
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(
+                          Icons.navigation_rounded,
+                          color: Colors.white,
+                          size: 24,
+                        ),
                       ),
-                      child: const Icon(Icons.tire_repair_rounded, size: 16, color: AppColors.primary),
-                    ),
-                    onChanged: isTripInProgress ? null : (v) => setState(() => _chkTires = v ?? false),
-                  ),
-                  const Divider(height: 1, indent: 40),
-                  CheckboxListTile(
-                    title: const Text('First Aid Kit & Fire Extinguisher Checked', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700)),
-                    subtitle: const Text('Emergency kit stocked and fire cylinder gauge in green', style: TextStyle(fontSize: 10, color: AppColors.textMuted)),
-                    value: _chkEmergencyKit,
-                    activeColor: AppColors.primary,
-                    dense: true,
-                    contentPadding: EdgeInsets.zero,
-                    secondary: Container(
-                      padding: EdgeInsets.all(6.r),
-                      decoration: BoxDecoration(
-                        color: AppColors.primary.withValues(alpha: 0.08),
-                        shape: BoxShape.circle,
+                      14.w.horizontalSpace,
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'TRIP CURRENTLY ACTIVE',
+                              style: TextStyle(
+                                fontSize: 11.sp,
+                                fontWeight: FontWeight.w800,
+                                color: Colors.white.withValues(alpha: 0.9),
+                                letterSpacing: 0.8,
+                              ),
+                            ),
+                            4.h.verticalSpace,
+                            Text(
+                              '$busNumber • $routeName',
+                              style: TextStyle(
+                                fontSize: 14.sp,
+                                fontWeight: FontWeight.w700,
+                                color: Colors.white,
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
-                      child: const Icon(Icons.medical_services_rounded, size: 16, color: AppColors.primary),
-                    ),
-                    onChanged: isTripInProgress ? null : (v) => setState(() => _chkEmergencyKit = v ?? false),
-                  ),
-                  const Divider(height: 1, indent: 40),
-                  CheckboxListTile(
-                    title: const Text('Driver Phone GPS Location Enabled', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700)),
-                    subtitle: const Text('High-accuracy GPS active for live parent & admin tracking', style: TextStyle(fontSize: 10, color: AppColors.textMuted)),
-                    value: _chkGpsActive,
-                    activeColor: AppColors.primary,
-                    dense: true,
-                    contentPadding: EdgeInsets.zero,
-                    secondary: Container(
-                      padding: EdgeInsets.all(6.r),
-                      decoration: BoxDecoration(
-                        color: AppColors.primary.withValues(alpha: 0.08),
-                        shape: BoxShape.circle,
-                      ),
-                      child: const Icon(Icons.gps_fixed_rounded, size: 16, color: AppColors.primary),
-                    ),
-                    onChanged: isTripInProgress ? null : (v) => setState(() => _chkGpsActive = v ?? false),
-                  ),
-                ],
-              ),
-            ),
-            22.h.verticalSpace,
-
-            // Start Trip Button
-            ElevatedButton(
-              onPressed: (isTripInProgress || _isStarting)
-                  ? (isTripInProgress
-                      ? () {
+                      ElevatedButton(
+                        onPressed: () {
                           Navigator.pushNamed(
                             context,
                             RoutesName.activeTrip,
                             arguments: {
                               'duty': _dutyData,
-                              'trip': {'tripId': _dutyData?['activeTripId'] ?? 1},
+                              'trip': {'tripId': _dutyData?['activeTripId']},
+                              'driverEmail': widget.user.email,
                             },
                           ).then((_) => _loadDuty());
-                        }
-                      : null)
-                  : _handleStartTrip,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: isTripInProgress
-                    ? const Color(0xFF0D9488)
-                    : (_isChecklistComplete ? AppColors.primary : const Color(0xFFF59E0B)),
-                foregroundColor: Colors.white,
-                elevation: 4,
-                padding: EdgeInsets.symmetric(vertical: 16.h),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(14.r),
-                ),
-              ),
-              child: _isStarting
-                  ? Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        const SizedBox(
-                          width: 20,
-                          height: 20,
-                          child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2.2),
-                        ),
-                        12.w.horizontalSpace,
-                        Text(
-                          'Acquiring Location & Starting Trip...',
-                          style: TextStyle(
-                            fontSize: 14.sp,
-                            fontWeight: FontWeight.w800,
-                            color: Colors.white,
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.white,
+                          foregroundColor: const Color(0xFF0D9488),
+                          elevation: 0,
+                          padding: EdgeInsets.symmetric(
+                            horizontal: 14.w,
+                            vertical: 8.h,
+                          ),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(10.r),
                           ),
                         ),
-                      ],
-                    )
-                  : Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(
-                          isTripInProgress
-                              ? Icons.navigation_rounded
-                              : (_isChecklistComplete ? Icons.play_circle_fill_rounded : Icons.pending_actions_rounded),
-                          color: Colors.white,
-                          size: 24,
+                        child: const Text(
+                          'Resume',
+                          style: TextStyle(fontWeight: FontWeight.w800),
                         ),
-                        10.w.horizontalSpace,
-                        Text(
-                          isTripInProgress
-                              ? 'Trip Active • Resume Navigation'
-                              : (_isChecklistComplete
-                                  ? 'Start Scheduled Trip'
-                                  : 'Verify Checklist to Start ($_checkedCount/5)'),
-                          style: TextStyle(
-                            fontSize: 15.sp,
-                            fontWeight: FontWeight.w800,
-                            color: Colors.white,
+                      ),
+                    ],
+                  ),
+                ),
+                20.h.verticalSpace,
+              ],
+
+              // Step 2: My Duty Card
+              GlassCard(
+                padding: EdgeInsets.all(20.r),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Expanded(
+                          child: Row(
+                            children: [
+                              Container(
+                                padding: EdgeInsets.all(8.r),
+                                decoration: BoxDecoration(
+                                  color: AppColors.primary.withValues(
+                                    alpha: 0.12,
+                                  ),
+                                  borderRadius: BorderRadius.circular(10.r),
+                                ),
+                                child: const Icon(
+                                  Icons.directions_bus_rounded,
+                                  color: AppColors.primary,
+                                  size: 20,
+                                ),
+                              ),
+                              10.w.horizontalSpace,
+                              Flexible(
+                                child: Text(
+                                  'Today\'s Assigned Duty',
+                                  style: TextStyle(
+                                    fontSize: 15.sp,
+                                    fontWeight: FontWeight.w800,
+                                    color: AppColors.textPrimary,
+                                  ),
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        8.w.horizontalSpace,
+                        Container(
+                          padding: EdgeInsets.symmetric(
+                            horizontal: 10.w,
+                            vertical: 4.h,
+                          ),
+                          decoration: BoxDecoration(
+                            color: AppColors.success.withValues(alpha: 0.12),
+                            borderRadius: BorderRadius.circular(8.r),
+                          ),
+                          child: Text(
+                            shift,
+                            style: TextStyle(
+                              fontSize: 11.sp,
+                              fontWeight: FontWeight.w800,
+                              color: AppColors.success,
+                            ),
                           ),
                         ),
                       ],
                     ),
-            ),
-            24.h.verticalSpace,
+                    16.h.verticalSpace,
+                    const Divider(height: 1),
+                    14.h.verticalSpace,
 
-            // Quick Info Card
-            Container(
-              padding: EdgeInsets.all(14.r),
-              decoration: BoxDecoration(
-                color: AppColors.primary.withValues(alpha: 0.06),
-                borderRadius: BorderRadius.circular(12.r),
-                border: Border.all(color: AppColors.primary.withValues(alpha: 0.2)),
+                    // Duty Details Grid
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Vehicle',
+                                style: TextStyle(
+                                  fontSize: 11.sp,
+                                  color: AppColors.textMuted,
+                                ),
+                              ),
+                              4.h.verticalSpace,
+                              Text(
+                                busNumber,
+                                style: TextStyle(
+                                  fontSize: 14.sp,
+                                  fontWeight: FontWeight.w800,
+                                  color: AppColors.textPrimary,
+                                ),
+                              ),
+                              Text(
+                                regNo,
+                                style: TextStyle(
+                                  fontSize: 11.sp,
+                                  color: AppColors.textMuted,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Departure',
+                                style: TextStyle(
+                                  fontSize: 11.sp,
+                                  color: AppColors.textMuted,
+                                ),
+                              ),
+                              4.h.verticalSpace,
+                              Text(
+                                plannedTime,
+                                style: TextStyle(
+                                  fontSize: 14.sp,
+                                  fontWeight: FontWeight.w800,
+                                  color: AppColors.primary,
+                                ),
+                              ),
+                              Text(
+                                'On Schedule',
+                                style: TextStyle(
+                                  fontSize: 11.sp,
+                                  color: AppColors.success,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                    14.h.verticalSpace,
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Assigned Route',
+                          style: TextStyle(
+                            fontSize: 11.sp,
+                            color: AppColors.textMuted,
+                          ),
+                        ),
+                        4.h.verticalSpace,
+                        Text(
+                          routeName,
+                          style: TextStyle(
+                            fontSize: 13.sp,
+                            fontWeight: FontWeight.w700,
+                            color: AppColors.textPrimary,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
               ),
-              child: Row(
+              20.h.verticalSpace,
+
+              // Pre-Trip Vehicle Inspection Checklist Header
+              Wrap(
+                alignment: WrapAlignment.spaceBetween,
+                crossAxisAlignment: WrapCrossAlignment.center,
                 children: [
-                  const Icon(Icons.verified_user_rounded, color: AppColors.primary, size: 20),
-                  12.w.horizontalSpace,
-                  Expanded(
-                    child: Text(
-                      'Driver License verified: ${_dutyData?['licenseNumber'] ?? 'DL-0420110056789'}\nValid through ${_dutyData?['licenseExpiryDate'] ?? '2029-06-30'}',
-                      style: TextStyle(fontSize: 11.sp, color: AppColors.textSecondary, height: 1.3),
+                  Wrap(
+                    crossAxisAlignment: WrapCrossAlignment.center,
+                    children: [
+                      Text(
+                        'Vehicle Safety Checklist',
+                        style: TextStyle(
+                          fontSize: 14.sp,
+                          fontWeight: FontWeight.w800,
+                          color: AppColors.textPrimary,
+                        ),
+                      ),
+                      8.w.horizontalSpace,
+                      Container(
+                        padding: EdgeInsets.symmetric(
+                          horizontal: 8.w,
+                          vertical: 2.h,
+                        ),
+                        decoration: BoxDecoration(
+                          color: _isChecklistComplete
+                              ? AppColors.success.withValues(alpha: 0.15)
+                              : AppColors.warning.withValues(alpha: 0.15),
+                          borderRadius: BorderRadius.circular(12.r),
+                        ),
+                        child: Text(
+                          '$_checkedCount / 5 Verified',
+                          style: TextStyle(
+                            fontSize: 10.sp,
+                            fontWeight: FontWeight.w800,
+                            color: _isChecklistComplete
+                                ? AppColors.success
+                                : AppColors.warning,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  TextButton.icon(
+                    onPressed: isTripInProgress ? null : _toggleVerifyAll,
+                    icon: Icon(
+                      _isChecklistComplete
+                          ? Icons.restart_alt_rounded
+                          : Icons.checklist_rounded,
+                      size: 14.sp,
+                      color: AppColors.primary,
+                    ),
+                    label: Text(
+                      _isChecklistComplete ? 'Reset' : 'Check All',
+                      style: TextStyle(
+                        fontSize: 11.sp,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.primary,
+                      ),
+                    ),
+                    style: TextButton.styleFrom(
+                      padding: EdgeInsets.symmetric(
+                        horizontal: 8.w,
+                        vertical: 2.h,
+                      ),
+                      visualDensity: VisualDensity.compact,
                     ),
                   ),
                 ],
               ),
-            ),
-            30.h.verticalSpace,
-          ],
+              6.h.verticalSpace,
+              GlassCard(
+                padding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 6.h),
+                child: Column(
+                  children: [
+                    CheckboxListTile(
+                      title: const Text(
+                        'Brakes, Steering & Horn OK',
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      subtitle: const Text(
+                        'Hydraulics, brake pedal firmness & horn functional',
+                        style: TextStyle(
+                          fontSize: 10,
+                          color: AppColors.textMuted,
+                        ),
+                      ),
+                      value: _chkBrakes,
+                      activeColor: AppColors.primary,
+                      dense: true,
+                      contentPadding: EdgeInsets.zero,
+                      secondary: Container(
+                        padding: EdgeInsets.all(6.r),
+                        decoration: BoxDecoration(
+                          color: AppColors.primary.withValues(alpha: 0.08),
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(
+                          Icons.speed_rounded,
+                          size: 16,
+                          color: AppColors.primary,
+                        ),
+                      ),
+                      onChanged: isTripInProgress
+                          ? null
+                          : (v) => setState(() => _chkBrakes = v ?? false),
+                    ),
+                    const Divider(height: 1, indent: 40),
+                    CheckboxListTile(
+                      title: const Text(
+                        'Headlights, Indicators & Mirrors OK',
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      subtitle: const Text(
+                        'High/low beams, rear indicators and side mirrors clean',
+                        style: TextStyle(
+                          fontSize: 10,
+                          color: AppColors.textMuted,
+                        ),
+                      ),
+                      value: _chkLights,
+                      activeColor: AppColors.primary,
+                      dense: true,
+                      contentPadding: EdgeInsets.zero,
+                      secondary: Container(
+                        padding: EdgeInsets.all(6.r),
+                        decoration: BoxDecoration(
+                          color: AppColors.primary.withValues(alpha: 0.08),
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(
+                          Icons.light_mode_rounded,
+                          size: 16,
+                          color: AppColors.primary,
+                        ),
+                      ),
+                      onChanged: isTripInProgress
+                          ? null
+                          : (v) => setState(() => _chkLights = v ?? false),
+                    ),
+                    const Divider(height: 1, indent: 40),
+                    CheckboxListTile(
+                      title: const Text(
+                        'Tire Pressure & Fuel / Fluids OK',
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      subtitle: const Text(
+                        'Tire tread condition, coolant, motor oil & fuel tank OK',
+                        style: TextStyle(
+                          fontSize: 10,
+                          color: AppColors.textMuted,
+                        ),
+                      ),
+                      value: _chkTires,
+                      activeColor: AppColors.primary,
+                      dense: true,
+                      contentPadding: EdgeInsets.zero,
+                      secondary: Container(
+                        padding: EdgeInsets.all(6.r),
+                        decoration: BoxDecoration(
+                          color: AppColors.primary.withValues(alpha: 0.08),
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(
+                          Icons.tire_repair_rounded,
+                          size: 16,
+                          color: AppColors.primary,
+                        ),
+                      ),
+                      onChanged: isTripInProgress
+                          ? null
+                          : (v) => setState(() => _chkTires = v ?? false),
+                    ),
+                    const Divider(height: 1, indent: 40),
+                    CheckboxListTile(
+                      title: const Text(
+                        'First Aid Kit & Fire Extinguisher Checked',
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      subtitle: const Text(
+                        'Emergency kit stocked and fire cylinder gauge in green',
+                        style: TextStyle(
+                          fontSize: 10,
+                          color: AppColors.textMuted,
+                        ),
+                      ),
+                      value: _chkEmergencyKit,
+                      activeColor: AppColors.primary,
+                      dense: true,
+                      contentPadding: EdgeInsets.zero,
+                      secondary: Container(
+                        padding: EdgeInsets.all(6.r),
+                        decoration: BoxDecoration(
+                          color: AppColors.primary.withValues(alpha: 0.08),
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(
+                          Icons.medical_services_rounded,
+                          size: 16,
+                          color: AppColors.primary,
+                        ),
+                      ),
+                      onChanged: isTripInProgress
+                          ? null
+                          : (v) =>
+                                setState(() => _chkEmergencyKit = v ?? false),
+                    ),
+                    const Divider(height: 1, indent: 40),
+                    CheckboxListTile(
+                      title: const Text(
+                        'Driver Phone GPS Location Enabled',
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      subtitle: const Text(
+                        'High-accuracy GPS active for live parent & admin tracking',
+                        style: TextStyle(
+                          fontSize: 10,
+                          color: AppColors.textMuted,
+                        ),
+                      ),
+                      value: _chkGpsActive,
+                      activeColor: AppColors.primary,
+                      dense: true,
+                      contentPadding: EdgeInsets.zero,
+                      secondary: Container(
+                        padding: EdgeInsets.all(6.r),
+                        decoration: BoxDecoration(
+                          color: AppColors.primary.withValues(alpha: 0.08),
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(
+                          Icons.gps_fixed_rounded,
+                          size: 16,
+                          color: AppColors.primary,
+                        ),
+                      ),
+                      onChanged: isTripInProgress
+                          ? null
+                          : (v) => setState(() => _chkGpsActive = v ?? false),
+                    ),
+                  ],
+                ),
+              ),
+              22.h.verticalSpace,
+
+              // Start Trip Button
+              ElevatedButton(
+                onPressed: (isTripInProgress || _isStarting)
+                    ? (isTripInProgress
+                          ? () {
+                              Navigator.pushNamed(
+                                context,
+                                RoutesName.activeTrip,
+                                arguments: {
+                                  'duty': _dutyData,
+                                  'trip': {
+                                    'tripId': _dutyData?['activeTripId'],
+                                  },
+                                  'driverEmail': widget.user.email,
+                                },
+                              ).then((_) => _loadDuty());
+                            }
+                          : null)
+                    : _handleStartTrip,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: isTripInProgress
+                      ? const Color(0xFF0D9488)
+                      : (_isChecklistComplete
+                            ? AppColors.primary
+                            : const Color(0xFFF59E0B)),
+                  foregroundColor: Colors.white,
+                  elevation: 4,
+                  padding: EdgeInsets.symmetric(vertical: 16.h),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(14.r),
+                  ),
+                ),
+                child: _isStarting
+                    ? Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          const SizedBox(
+                            width: 20,
+                            height: 20,
+                            child: CircularProgressIndicator(
+                              color: Colors.white,
+                              strokeWidth: 2.2,
+                            ),
+                          ),
+                          12.w.horizontalSpace,
+                          Flexible(
+                            child: Text(
+                              'Acquiring Location & Starting Trip...',
+                              style: TextStyle(
+                                fontSize: 14.sp,
+                                fontWeight: FontWeight.w800,
+                                color: Colors.white,
+                              ),
+                            ),
+                          ),
+                        ],
+                      )
+                    : Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            isTripInProgress
+                                ? Icons.navigation_rounded
+                                : (_isChecklistComplete
+                                      ? Icons.play_circle_fill_rounded
+                                      : Icons.pending_actions_rounded),
+                            color: Colors.white,
+                            size: 24,
+                          ),
+                          10.w.horizontalSpace,
+                          Flexible(
+                            child: Text(
+                              isTripInProgress
+                                  ? 'Trip Active • Resume Navigation'
+                                  : (_isChecklistComplete
+                                        ? 'Start Scheduled Trip'
+                                        : 'Verify Checklist to Start ($_checkedCount/5)'),
+                              style: TextStyle(
+                                fontSize: 15.sp,
+                                fontWeight: FontWeight.w800,
+                                color: Colors.white,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+              ),
+              24.h.verticalSpace,
+
+              // Quick Info Card
+              Container(
+                padding: EdgeInsets.all(14.r),
+                decoration: BoxDecoration(
+                  color: AppColors.primary.withValues(alpha: 0.06),
+                  borderRadius: BorderRadius.circular(12.r),
+                  border: Border.all(
+                    color: AppColors.primary.withValues(alpha: 0.2),
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(
+                      Icons.verified_user_rounded,
+                      color: AppColors.primary,
+                      size: 20,
+                    ),
+                    12.w.horizontalSpace,
+                    Expanded(
+                      child: Text(
+                        'Driver License verified: ${_dutyData?['licenseNumber'] ?? 'DL-0420110056789'}\nValid through ${_dutyData?['licenseExpiryDate'] ?? '2029-06-30'}',
+                        style: TextStyle(
+                          fontSize: 11.sp,
+                          color: AppColors.textSecondary,
+                          height: 1.3,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              30.h.verticalSpace,
+            ],
+          ),
         ),
       ),
-    ),
     );
   }
 }

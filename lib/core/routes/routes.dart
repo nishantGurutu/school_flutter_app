@@ -39,7 +39,9 @@ class Routes {
         return _slideLeftRoute(const AttendanceScreen());
 
       case RoutesName.exam:
-        final initialTab = settings.arguments is int ? settings.arguments as int : 0;
+        final initialTab = settings.arguments is int
+            ? settings.arguments as int
+            : 0;
         return _slideLeftRoute(ExamScreen(initialTab: initialTab));
 
       case RoutesName.homework:
@@ -84,11 +86,17 @@ class Routes {
         return _slideLeftRoute(const AcademicCalendarScreen());
 
       case RoutesName.activeTrip:
-        final args = settings.arguments as Map<String, dynamic>?;
-        return _slideLeftRoute(ActiveTripScreen(initialData: args));
+        final args = settings.arguments;
+        return _slideLeftRoute(
+          ActiveTripScreen(
+            initialData: args is Map ? Map<String, dynamic>.from(args) : null,
+          ),
+        );
 
       case RoutesName.parentTransport:
-        final studentId = settings.arguments is int ? settings.arguments as int : null;
+        final studentId = settings.arguments is int
+            ? settings.arguments as int
+            : null;
         return _slideLeftRoute(ParentTransportScreen(studentId: studentId));
 
       case RoutesName.studentTransport:
@@ -96,9 +104,8 @@ class Routes {
 
       default:
         return MaterialPageRoute(
-          builder: (_) => const Scaffold(
-            body: Center(child: Text('Route not defined')),
-          ),
+          builder: (_) =>
+              const Scaffold(body: Center(child: Text('Route not defined'))),
         );
     }
   }
@@ -111,11 +118,11 @@ class Routes {
         const begin = Offset(1.0, 0.0);
         const end = Offset.zero;
         const curve = Curves.easeInOutCubic;
-        var tween = Tween(begin: begin, end: end).chain(CurveTween(curve: curve));
-        return SlideTransition(
-          position: animation.drive(tween),
-          child: child,
-        );
+        var tween = Tween(
+          begin: begin,
+          end: end,
+        ).chain(CurveTween(curve: curve));
+        return SlideTransition(position: animation.drive(tween), child: child);
       },
       transitionDuration: const Duration(milliseconds: 350),
     );
@@ -129,11 +136,11 @@ class Routes {
         const begin = Offset(0.0, 1.0);
         const end = Offset.zero;
         const curve = Curves.easeInOutCubic;
-        var tween = Tween(begin: begin, end: end).chain(CurveTween(curve: curve));
-        return SlideTransition(
-          position: animation.drive(tween),
-          child: child,
-        );
+        var tween = Tween(
+          begin: begin,
+          end: end,
+        ).chain(CurveTween(curve: curve));
+        return SlideTransition(position: animation.drive(tween), child: child);
       },
       transitionDuration: const Duration(milliseconds: 400),
     );
@@ -144,10 +151,7 @@ class Routes {
     return PageRouteBuilder(
       pageBuilder: (context, animation, secondaryAnimation) => child,
       transitionsBuilder: (context, animation, secondaryAnimation, child) {
-        return FadeTransition(
-          opacity: animation,
-          child: child,
-        );
+        return FadeTransition(opacity: animation, child: child);
       },
       transitionDuration: const Duration(milliseconds: 400),
     );

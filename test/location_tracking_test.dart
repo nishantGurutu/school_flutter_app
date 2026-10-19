@@ -1,88 +1,80 @@
-import 'package:dio/dio.dart';
+import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:shared_preferences/shared_preferences.dart';
-import 'package:school_desk_app/location_tracking/data/datasources/location_local_data_source.dart';
-import 'package:school_desk_app/location_tracking/data/models/periodic_location_payload.dart';
-import 'package:school_desk_app/location_tracking/data/repositories/location_tracking_repository_impl.dart';
+import 'package:sqflite_common_ffi/sqflite_ffi.dart';
+import 'package:school_desk_app/location_tracking/data/datasources/trip_location_store.dart';
 
-PeriodicLocationPayload point(int second) =>
-    PeriodicLocationPayload.fromDetails(
-      latitude: 25.6,
-      longitude: 85.1,
-      address: '',
-      batteryLevel: 70,
-      deviceId: 'device',
-      empId: 1,
-      foreground: true,
-      timestamp: DateTime(2026, 10, 19, 10, 0, second),
-    );
+Map<String, dynamic> point(int second) => {
+  'latitude': 25.6,
+  'longitude': 85.1,
+  'speedKmh': 20.0,
+  'heading': 90.0,
+  'accuracyMeters': 5.0,
+  'recordedAt': '2026-10-19T10:00:${second.toString().padLeft(2, '0')}',
+};
 
 void main() {
-  TestWidgetsFlutterBinding.ensureInitialized();
+  sqfliteFfiInit();
+  late Directory folder;
+  late TripLocationStore store;
+  late String databasePath;
+  setUp(() async {
+    folder = await Directory.systemTemp.createTemp('trip_sqlite_test');
+    databasePath = '${folder.path}/trips.db';
+    store = TripLocationStore(
+      factory: databaseFactoryFfi,
+      databasePath: databasePath,
+    );
+  });
+  tearDown(() async {
+    await store.close();
+    await folder.delete(recursive: true);
+  });
+
+  test('trip points survive a process reopen and a failed completion', () async {
+    await store.begin(1, 'driver@school.com');
+    await store.append(1, point(1), 0.2);
+    await store.append(1, point(2), 0.4);
+    await store.close();
+    store = TripLocationStore(
+      factory: databaseFactoryFfi,
+      databasePath: databasePath,
+    );
+    expect(await store.points(1), hasLength(2));
+    expect((await store.session(1))!['distance_km'], 0.4);
+    await store.stop(1);
+    await store.append(
+      1,
+      point(3),
+      0.6,
+    ); // A late background callback cannot change the frozen batch.
+    expect(await store.points(1), hasLength(2));
+    expect((await store.session(1))!['state'], 'pending');
+    // No acknowledgement on HTTP failure: same batch remains available for retry.
+    await store.close();
+    store = TripLocationStore(
+      factory: databaseFactoryFfi,
+      databasePath: databasePath,
+    );
+    expect(await store.points(1), hasLength(2));
+    await store.acknowledge(1);
+    expect(await store.points(1), isEmpty);
+    expect((await store.session(1))!['state'], 'uploaded');
+  });
 
   test(
-    'failed upload survives restart and retries all points in order',
+    'trip isolation, duplicate fixes and resume preserve the journal',
     () async {
-      SharedPreferences.setMockInitialValues({});
-      final prefs = await SharedPreferences.getInstance();
-      final local = LocationLocalDataSource(prefs);
-      var online = false;
-      List<dynamic>? sent;
-      final dio = Dio();
-      dio.interceptors.add(
-        InterceptorsWrapper(
-          onRequest: (options, handler) {
-            if (!online) {
-              handler.reject(
-                DioException(
-                  requestOptions: options,
-                  type: DioExceptionType.connectionError,
-                ),
-              );
-            } else {
-              sent = options.data as List<dynamic>;
-              handler.resolve(
-                Response(requestOptions: options, statusCode: 200),
-              );
-            }
-          },
-        ),
-      );
-      LocationTrackingRepositoryImpl repository(
-        LocationLocalDataSource source,
-      ) => LocationTrackingRepositoryImpl(
-        dioClient: dio,
-        localDataSource: source,
-        uploadUrl: 'https://example.test/locations',
-      );
-      Future<void> upload(LocationTrackingRepositoryImpl repo, int second) =>
-          repo.uploadLocation(
-            empId: 1,
-            companyCode: 'school',
-            token: 'token',
-            payload: point(second),
-          );
-      await expectLater(
-        upload(repository(local), 1),
-        throwsA(isA<DioException>()),
-      );
-      final restored = LocationLocalDataSource(prefs);
-      expect(restored.getQueue(), hasLength(1));
-      online = true;
-      await upload(repository(restored), 2);
-      expect(sent, hasLength(2));
-      expect(sent!.map((p) => p['time']), ['10:00:01', '10:00:02']);
-      expect(restored.getQueue(), isEmpty);
+      await store.begin(1, 'driver@school.com');
+      await store.append(1, point(1), 0);
+      await store.append(1, point(1), 0);
+      await store.begin(1, 'driver@school.com');
+      expect(await store.points(1), hasLength(1));
+      await expectLater(store.begin(1, 'other@school.com'), throwsStateError);
+      await expectLater(store.begin(2, 'driver@school.com'), throwsStateError);
+      await store.stop(1);
+      await store.begin(2, 'driver@school.com');
+      expect(await store.points(2), isEmpty);
+      expect(await store.points(1), hasLength(1));
     },
   );
-
-  test('queues from different users stay separate', () async {
-    SharedPreferences.setMockInitialValues({});
-    final prefs = await SharedPreferences.getInstance();
-    final first = LocationLocalDataSource(prefs, queueKey: 'user1');
-    final second = LocationLocalDataSource(prefs, queueKey: 'user2');
-    await first.enqueue(point(1));
-    expect(first.getQueue(), hasLength(1));
-    expect(second.getQueue(), isEmpty);
-  });
 }

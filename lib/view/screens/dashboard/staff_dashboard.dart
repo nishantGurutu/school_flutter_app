@@ -36,7 +36,11 @@ class StaffDashboard extends StatelessWidget {
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   IconButton(
-                    icon: Icon(Icons.menu_rounded, color: AppColors.textPrimary, size: 26.sp),
+                    icon: Icon(
+                      Icons.menu_rounded,
+                      color: AppColors.textPrimary,
+                      size: 26.sp,
+                    ),
                     onPressed: onOpenDrawer,
                   ),
                   Row(
@@ -46,11 +50,15 @@ class StaffDashboard extends StatelessWidget {
                         children: [
                           Text(
                             'Hello, ${user.name} 👋',
-                            style: context.h2.copyWith(fontWeight: FontWeight.w800),
+                            style: context.h2.copyWith(
+                              fontWeight: FontWeight.w800,
+                            ),
                           ),
                           Text(
                             user.roleDisplayName,
-                            style: context.caption.copyWith(color: AppColors.textMuted),
+                            style: context.caption.copyWith(
+                              color: AppColors.textMuted,
+                            ),
                           ),
                         ],
                       ),
@@ -60,7 +68,10 @@ class StaffDashboard extends StatelessWidget {
                         height: 40.w,
                         decoration: BoxDecoration(
                           shape: BoxShape.circle,
-                          border: Border.all(color: AppColors.warning, width: 1.5),
+                          border: Border.all(
+                            color: AppColors.warning,
+                            width: 1.5,
+                          ),
                           image: DecorationImage(
                             image: NetworkImage(user.avatarUrl),
                             fit: BoxFit.cover,
@@ -92,14 +103,18 @@ class StaffDashboard extends StatelessWidget {
                     12.h.height,
                     BlocBuilder<SchoolBloc, SchoolState>(
                       builder: (context, state) {
-                        final stats = state.attendanceStats ?? AttendanceStats.empty();
+                        final stats =
+                            state.attendanceStats ?? AttendanceStats.empty();
 
                         return Container(
                           padding: EdgeInsets.all(18.w),
                           decoration: BoxDecoration(
                             color: AppColors.surface,
                             borderRadius: BorderRadius.circular(20.r),
-                            border: Border.all(color: AppColors.border, width: 1.2),
+                            border: Border.all(
+                              color: AppColors.border,
+                              width: 1.2,
+                            ),
                           ),
                           child: Column(
                             children: [
@@ -109,9 +124,14 @@ class StaffDashboard extends StatelessWidget {
                                     width: 60.w,
                                     height: 60.w,
                                     decoration: BoxDecoration(
-                                      color: AppColors.success.withValues(alpha: 0.12),
+                                      color: AppColors.success.withValues(
+                                        alpha: 0.12,
+                                      ),
                                       shape: BoxShape.circle,
-                                      border: Border.all(color: AppColors.success, width: 2),
+                                      border: Border.all(
+                                        color: AppColors.success,
+                                        width: 2,
+                                      ),
                                     ),
                                     alignment: Alignment.center,
                                     child: Text(
@@ -126,16 +146,25 @@ class StaffDashboard extends StatelessWidget {
                                   16.w.width,
                                   Expanded(
                                     child: Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
                                       children: [
                                         Text(
                                           'Overall School Attendance Rate',
-                                          style: TextStyle(color: AppColors.textMuted, fontSize: 11.sp, fontWeight: FontWeight.w600),
+                                          style: TextStyle(
+                                            color: AppColors.textMuted,
+                                            fontSize: 11.sp,
+                                            fontWeight: FontWeight.w600,
+                                          ),
                                         ),
                                         4.h.height,
                                         Text(
                                           '${stats.presentStudents + stats.presentStaff} Present / ${(stats.absentStudents + stats.absentStaff)} Absent',
-                                          style: TextStyle(color: AppColors.textPrimary, fontSize: 14.sp, fontWeight: FontWeight.bold),
+                                          style: TextStyle(
+                                            color: AppColors.textPrimary,
+                                            fontSize: 14.sp,
+                                            fontWeight: FontWeight.bold,
+                                          ),
                                         ),
                                       ],
                                     ),
@@ -151,7 +180,8 @@ class StaffDashboard extends StatelessWidget {
                                     child: _StatSubBox(
                                       label: 'Student Present Rate',
                                       value: '${stats.studentPercentage}%',
-                                      subText: '${stats.presentStudents}/${stats.totalStudents} Present',
+                                      subText:
+                                          '${stats.presentStudents}/${stats.totalStudents} Present',
                                       color: AppColors.primary,
                                     ),
                                   ),
@@ -160,7 +190,8 @@ class StaffDashboard extends StatelessWidget {
                                     child: _StatSubBox(
                                       label: 'Staff Present Rate',
                                       value: '${stats.staffPercentage}%',
-                                      subText: '${stats.presentStaff}/${stats.totalStaff} Present',
+                                      subText:
+                                          '${stats.presentStaff}/${stats.totalStaff} Present',
                                       color: AppColors.info,
                                     ),
                                   ),
@@ -170,7 +201,9 @@ class StaffDashboard extends StatelessWidget {
                               // Class breakdown preview
                               Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
-                                children: stats.classBreakdown.take(3).map((item) {
+                                children: stats.classBreakdown.take(3).map((
+                                  item,
+                                ) {
                                   return Padding(
                                     padding: EdgeInsets.only(bottom: 8.h),
                                     child: Row(
@@ -179,16 +212,26 @@ class StaffDashboard extends StatelessWidget {
                                           width: 80.w,
                                           child: Text(
                                             item.className,
-                                            style: TextStyle(fontSize: 11.sp, color: AppColors.textSecondary, fontWeight: FontWeight.bold),
+                                            style: TextStyle(
+                                              fontSize: 11.sp,
+                                              color: AppColors.textSecondary,
+                                              fontWeight: FontWeight.bold,
+                                            ),
                                           ),
                                         ),
                                         Expanded(
                                           child: ClipRRect(
-                                            borderRadius: BorderRadius.circular(4.r),
+                                            borderRadius: BorderRadius.circular(
+                                              4.r,
+                                            ),
                                             child: LinearProgressIndicator(
                                               value: item.percentage / 100.0,
                                               backgroundColor: AppColors.border,
-                                              color: item.percentage >= 95 ? AppColors.success : (item.percentage >= 90 ? AppColors.primary : AppColors.warning),
+                                              color: item.percentage >= 95
+                                                  ? AppColors.success
+                                                  : (item.percentage >= 90
+                                                        ? AppColors.primary
+                                                        : AppColors.warning),
                                               minHeight: 6.h,
                                             ),
                                           ),
@@ -196,7 +239,11 @@ class StaffDashboard extends StatelessWidget {
                                         12.w.width,
                                         Text(
                                           '${item.percentage}%',
-                                          style: TextStyle(fontSize: 11.sp, color: AppColors.textPrimary, fontWeight: FontWeight.bold),
+                                          style: TextStyle(
+                                            fontSize: 11.sp,
+                                            color: AppColors.textPrimary,
+                                            fontWeight: FontWeight.bold,
+                                          ),
                                         ),
                                       ],
                                     ),
@@ -209,12 +256,32 @@ class StaffDashboard extends StatelessWidget {
                                   Expanded(
                                     child: OutlinedButton.icon(
                                       style: OutlinedButton.styleFrom(
-                                        side: const BorderSide(color: AppColors.primary),
-                                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.r)),
+                                        side: const BorderSide(
+                                          color: AppColors.primary,
+                                        ),
+                                        shape: RoundedRectangleBorder(
+                                          borderRadius: BorderRadius.circular(
+                                            12.r,
+                                          ),
+                                        ),
                                       ),
-                                      icon: const Icon(Icons.edit_calendar_rounded, size: 16, color: AppColors.primary),
-                                      label: Text('Mark Attendance', style: TextStyle(fontSize: 12.sp, color: AppColors.primary, fontWeight: FontWeight.bold)),
-                                      onPressed: () => Navigator.pushNamed(context, RoutesName.attendance),
+                                      icon: const Icon(
+                                        Icons.edit_calendar_rounded,
+                                        size: 16,
+                                        color: AppColors.primary,
+                                      ),
+                                      label: Text(
+                                        'Mark Attendance',
+                                        style: TextStyle(
+                                          fontSize: 12.sp,
+                                          color: AppColors.primary,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                      onPressed: () => Navigator.pushNamed(
+                                        context,
+                                        RoutesName.attendance,
+                                      ),
                                     ),
                                   ),
                                   12.w.width,
@@ -222,11 +289,29 @@ class StaffDashboard extends StatelessWidget {
                                     child: ElevatedButton.icon(
                                       style: ElevatedButton.styleFrom(
                                         backgroundColor: AppColors.primary,
-                                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.r)),
+                                        shape: RoundedRectangleBorder(
+                                          borderRadius: BorderRadius.circular(
+                                            12.r,
+                                          ),
+                                        ),
                                       ),
-                                      icon: const Icon(Icons.insights_rounded, size: 16, color: Colors.white),
-                                      label: Text('View Analytics', style: TextStyle(fontSize: 12.sp, color: Colors.white, fontWeight: FontWeight.bold)),
-                                      onPressed: () => Navigator.pushNamed(context, RoutesName.attendance),
+                                      icon: const Icon(
+                                        Icons.insights_rounded,
+                                        size: 16,
+                                        color: Colors.white,
+                                      ),
+                                      label: Text(
+                                        'View Analytics',
+                                        style: TextStyle(
+                                          fontSize: 12.sp,
+                                          color: Colors.white,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                      onPressed: () => Navigator.pushNamed(
+                                        context,
+                                        RoutesName.attendance,
+                                      ),
                                     ),
                                   ),
                                 ],
@@ -245,7 +330,10 @@ class StaffDashboard extends StatelessWidget {
                     14.h.height,
                     Builder(
                       builder: (context) {
-                        final actions = RoleNavigationConfig.getQuickAccessActions(user.role);
+                        final actions =
+                            RoleNavigationConfig.getQuickAccessActions(
+                              user.role,
+                            );
                         return GridView.count(
                           shrinkWrap: true,
                           physics: const NeverScrollableScrollPhysics(),
@@ -253,16 +341,20 @@ class StaffDashboard extends StatelessWidget {
                           crossAxisSpacing: 14.w,
                           mainAxisSpacing: 14.h,
                           childAspectRatio: 0.95,
-                          children: actions.map((act) => _QuickAccessTile(
-                            label: act.label,
-                            icon: act.icon,
-                            color: act.color,
-                            onTap: () => Navigator.pushNamed(
-                              context,
-                              act.route,
-                              arguments: act.arguments,
-                            ),
-                          )).toList(),
+                          children: actions
+                              .map(
+                                (act) => _QuickAccessTile(
+                                  label: act.label,
+                                  icon: act.icon,
+                                  color: act.color,
+                                  onTap: () => Navigator.pushNamed(
+                                    context,
+                                    act.route,
+                                    arguments: act.arguments,
+                                  ),
+                                ),
+                              )
+                              .toList(),
                         );
                       },
                     ),
@@ -277,7 +369,8 @@ class StaffDashboard extends StatelessWidget {
                       subtitle: 'Ms. Priya applied for 10th June • 1 day',
                       status: 'Verify',
                       color: AppColors.primary,
-                      onTap: () => Navigator.pushNamed(context, RoutesName.leave),
+                      onTap: () =>
+                          Navigator.pushNamed(context, RoutesName.leave),
                     ),
                     10.h.height,
                     _ActionItemRow(
@@ -285,7 +378,8 @@ class StaffDashboard extends StatelessWidget {
                       subtitle: '₹5,400 bill for purchase of math books',
                       status: 'Approve',
                       color: AppColors.success,
-                      onTap: () => Navigator.pushNamed(context, RoutesName.expense),
+                      onTap: () =>
+                          Navigator.pushNamed(context, RoutesName.expense),
                     ),
                     10.h.height,
                     _ActionItemRow(
@@ -293,7 +387,9 @@ class StaffDashboard extends StatelessWidget {
                       subtitle: 'Daily fuel receipt audit Route 4',
                       status: 'Audit',
                       color: AppColors.info,
-                      onTap: () => context.showAppSnackBar('Fuel logs marked audited. No discrepancies found.'),
+                      onTap: () => context.showAppSnackBar(
+                        'Fuel logs marked audited. No discrepancies found.',
+                      ),
                     ),
                     100.h.height, // Spacer for floating nav bar
                   ],
@@ -332,11 +428,28 @@ class _StatSubBox extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(label, style: TextStyle(fontSize: 10.sp, color: AppColors.textMuted, fontWeight: FontWeight.w600)),
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 10.sp,
+              color: AppColors.textMuted,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
           4.h.height,
-          Text(value, style: TextStyle(fontSize: 16.sp, color: color, fontWeight: FontWeight.bold)),
+          Text(
+            value,
+            style: TextStyle(
+              fontSize: 16.sp,
+              color: color,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
           2.h.height,
-          Text(subText, style: TextStyle(fontSize: 10.sp, color: AppColors.textSecondary)),
+          Text(
+            subText,
+            style: TextStyle(fontSize: 10.sp, color: AppColors.textSecondary),
+          ),
         ],
       ),
     );
@@ -427,7 +540,11 @@ class _ActionItemRow extends StatelessWidget {
               children: [
                 Text(
                   title,
-                  style: TextStyle(color: AppColors.textPrimary, fontSize: 14.sp, fontWeight: FontWeight.bold),
+                  style: TextStyle(
+                    color: AppColors.textPrimary,
+                    fontSize: 14.sp,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
                 4.h.height,
                 Text(
@@ -444,11 +561,17 @@ class _ActionItemRow extends StatelessWidget {
               backgroundColor: color,
               padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 8.h),
               minimumSize: Size.zero,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10.r)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10.r),
+              ),
             ),
             child: Text(
               status,
-              style: TextStyle(fontSize: 12.sp, fontWeight: FontWeight.w700, color: Colors.white),
+              style: TextStyle(
+                fontSize: 12.sp,
+                fontWeight: FontWeight.w700,
+                color: Colors.white,
+              ),
             ),
           ),
         ],

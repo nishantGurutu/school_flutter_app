@@ -107,13 +107,19 @@ class AppUrl {
   static String transportDriverDuty({String? email}) =>
       '$transportBase/driver/my-duty${email != null && email.isNotEmpty ? '?email=${Uri.encodeComponent(email)}' : ''}';
 
-  static String transportStartTrip({String? email}) =>
-      '$transportBase/trips/start${email != null && email.isNotEmpty ? '?email=${Uri.encodeComponent(email)}' : ''}';
+  static String transportStartTrip() => '$transportBase/trips/start';
+
+  static String transportLiveLocation(dynamic tripId) =>
+      '$transportBase/trips/$tripId/locations/live';
 
   static String transportBatchGps(dynamic tripId, {String? email}) =>
       '$transportBase/trips/$tripId/locations:batch${email != null && email.isNotEmpty ? '?email=${Uri.encodeComponent(email)}' : ''}';
 
-  static String transportStopEvents(dynamic tripId, dynamic stopId, {String? email}) =>
+  static String transportStopEvents(
+    dynamic tripId,
+    dynamic stopId, {
+    String? email,
+  }) =>
       '$transportBase/trips/$tripId/stops/$stopId/events${email != null && email.isNotEmpty ? '?email=${Uri.encodeComponent(email)}' : ''}';
 
   static String transportIncidents(dynamic tripId, {String? email}) =>
@@ -134,6 +140,9 @@ class AppUrl {
   static String transportStudentMyTransport({String? email}) =>
       '$transportBase/student/my-transport${email != null && email.isNotEmpty ? '?email=${Uri.encodeComponent(email)}' : ''}';
 
-  static String transportDriverDailyDetails(dynamic driverId, {String? schoolId}) =>
+  static String transportDriverDailyDetails(
+    dynamic driverId, {
+    String? schoolId,
+  }) =>
       '$transportBase/drivers/$driverId/daily-details${schoolId != null && schoolId.isNotEmpty ? '?schoolId=${Uri.encodeComponent(schoolId)}' : ''}';
 }

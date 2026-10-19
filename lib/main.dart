@@ -12,6 +12,7 @@ import 'firebase/notification_firebase.dart';
 import 'firebase/notification_services.dart';
 import 'logic/auth/auth_bloc.dart';
 import 'logic/school/school_bloc.dart';
+import 'location_tracking/presentation/bloc/location_tracking_bloc.dart';
 
 @pragma('vm:entry-point')
 Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
@@ -45,6 +46,9 @@ class MyApp extends StatelessWidget {
         return MultiBlocProvider(
           providers: [
             BlocProvider<AuthBloc>(create: (_) => AuthBloc()),
+            BlocProvider<LocationTrackingBloc>(
+              create: (_) => LocationTrackingBloc(),
+            ),
             BlocProvider<SchoolBloc>(create: (_) => SchoolBloc()),
           ],
           child: MaterialApp(

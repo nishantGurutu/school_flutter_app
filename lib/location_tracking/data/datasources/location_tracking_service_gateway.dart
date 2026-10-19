@@ -8,21 +8,8 @@ class BackgroundLocationTrackingGateway
   Future<bool> isRunning() => LocationService.isRunning();
 
   @override
-  Future<void> start({
-    required int empId,
-    required String companyCode,
-    required String token,
-    required String deviceId,
-    required String baseUrl,
-    required String uploadUrl,
-  }) => LocationService.start(
-    empId: empId,
-    companyCode: companyCode,
-    token: token,
-    deviceId: deviceId,
-    baseUrl: baseUrl,
-    uploadUrl: uploadUrl,
-  );
+  Future<void> start({required int tripId, required String driverEmail}) =>
+      LocationService.start(tripId: tripId, driverEmail: driverEmail);
 
   @override
   Future<void> stop() => LocationService.stop();

@@ -4,6 +4,7 @@ import 'package:school_desk_app/location_tracking/index.dart';
 
 class FakeTrackingService implements LocationTrackingServiceGateway {
   bool running = false;
+  bool emitStopEvent = false;
   final calls = <String>[];
   Completer<void>? startGate;
   final channels = <String, StreamController<Map<String, dynamic>?>>{};
@@ -17,14 +18,7 @@ class FakeTrackingService implements LocationTrackingServiceGateway {
   @override
   Future<bool> isRunning() async => running;
   @override
-  Future<void> start({
-    required int empId,
-    required String companyCode,
-    required String token,
-    required String deviceId,
-    required String baseUrl,
-    required String uploadUrl,
-  }) async {
+  Future<void> start({required int tripId, required String driverEmail}) async {
     calls.add('start');
     await startGate?.future;
     running = true;
@@ -34,6 +28,7 @@ class FakeTrackingService implements LocationTrackingServiceGateway {
   Future<void> stop() async {
     calls.add('stop');
     running = false;
+    if (emitStopEvent) channels['on_tracking_stopped']?.add(null);
   }
 
   Future<void> close() async {
@@ -44,12 +39,8 @@ class FakeTrackingService implements LocationTrackingServiceGateway {
 }
 
 const start = LocationTrackingStarted(
-  empId: 1,
-  companyCode: 'school',
-  token: 'token',
-  deviceId: 'device',
-  baseUrl: 'https://example.test',
-  uploadUrl: 'https://example.test/locations',
+  tripId: 1,
+  driverEmail: 'driver@school.com',
 );
 
 Future<LocationTrackingState> until(
@@ -61,6 +52,33 @@ Future<LocationTrackingState> until(
 }
 
 void main() {
+  test(
+    'explicit GPS retry stops the previous service and starts again',
+    () async {
+      final service = FakeTrackingService()
+        ..running = true
+        ..emitStopEvent = true;
+      final bloc = LocationTrackingBloc(service: service);
+      await until(bloc, (state) => state.isTracking);
+      bloc.add(
+        const LocationTrackingStarted(
+          tripId: 1,
+          driverEmail: 'driver@school.com',
+          restart: true,
+        ),
+      );
+      await until(
+        bloc,
+        (state) => state.status == LocationTrackingStatus.starting,
+      );
+      await until(bloc, (state) => state.isTracking);
+      expect(service.calls, ['stop', 'start']);
+      expect(service.running, isTrue);
+      await bloc.close();
+      await service.close();
+    },
+  );
+
   test(
     'restores service status and handles GPS, error, and service stop',
     () async {

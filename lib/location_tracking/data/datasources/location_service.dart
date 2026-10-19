@@ -1,68 +1,71 @@
+import 'dart:async';
 import 'dart:ui';
-
-import 'package:flutter_background_service/flutter_background_service.dart';
-import 'package:battery_plus/battery_plus.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
+import 'package:flutter_background_service/flutter_background_service.dart';
 import 'package:geolocator/geolocator.dart';
-import 'package:shared_preferences/shared_preferences.dart';
-
+import '../../../data/models/user_model.dart';
+import '../../../services/storage/local_storage.dart';
+import '../../../services/transport_service.dart';
 import 'background_service_configurator.dart';
-import 'background_service_locator.dart';
+import 'trip_location_store.dart';
 
-/// Facade for location tracking background operations.
-///
-/// Delegates all work to focused sub-services:
-/// - [BackgroundServiceConfigurator] for service lifecycle
-/// - [LocationTracker] for GPS stream management
-/// - [LocationUploadScheduler] for periodic upload loop
+/// Driver-only trip tracking. GPS history never uploads while the trip is active.
 class LocationService {
-  static const String _prefsEmpIdKey = 'location_tracking_emp_id';
-  static const String _prefsCompanyCodeKey = 'location_tracking_company_code';
-  static const String _prefsTokenKey = 'location_tracking_token';
-  static const String _prefsDeviceIdKey = 'location_tracking_device_id';
-  static const String _prefsBaseUrlKey = 'location_tracking_base_url';
-  static const String _prefsUploadUrlKey = 'location_tracking_upload_url';
-  static const String _prefsUserStoppedDateKey =
-      'location_tracking_user_stopped_date';
+  static final store = TripLocationStore();
 
+  static Future<void>? _initialization;
+  static Future<void>? _stopping;
+
+  /// Also reconnects the UI event channel when resuming an existing service.
   static Future<void> initialize() async {
-    await BackgroundServiceConfigurator.initialize(
+    if (_initialization != null) return _initialization;
+    final initialization = BackgroundServiceConfigurator.initialize(
       onStart: onStart,
       onBackground: onBackground,
     );
+    _initialization = initialization;
+    try {
+      await initialization;
+    } catch (_) {
+      _initialization = null;
+      rethrow;
+    }
   }
 
   static Future<void> start({
-    required int empId,
-    required String companyCode,
-    required String token,
-    required String deviceId,
-    required String baseUrl,
-    required String uploadUrl,
+    required int tripId,
+    required String driverEmail,
   }) async {
-    if (empId <= 0 ||
-        companyCode.trim().isEmpty ||
-        token.trim().isEmpty ||
-        deviceId.trim().isEmpty) {
-      throw ArgumentError(
-        'A valid user, company, token and device are required.',
+    final user = await StorageHelper.getUserSession();
+    if (user?.role != UserRole.driver ||
+        user?.email != driverEmail ||
+        tripId <= 0) {
+      throw StateError('Only the signed-in driver can track an active trip.');
+    }
+    if (kIsWeb ||
+        (defaultTargetPlatform != TargetPlatform.android &&
+            defaultTargetPlatform != TargetPlatform.iOS)) {
+      throw UnsupportedError(
+        'Background trip tracking requires Android or iOS.',
       );
     }
-    for (final url in [baseUrl, uploadUrl]) {
-      final uri = Uri.tryParse(url);
-      if (uri == null ||
-          !uri.hasAuthority ||
-          !['http', 'https'].contains(uri.scheme)) {
-        throw ArgumentError('Location API URLs must be absolute HTTP(S) URLs.');
+    // A journal created after a confirmed start lets an interrupted trip resume offline.
+    final journal = await store.session(tripId);
+    if (journal == null) {
+      final duty = await TransportService.getDriverDuty(email: driverEmail);
+      if (duty?['tripStatus'] != 'IN_PROGRESS' ||
+          duty?['activeTripId'] != tripId) {
+        throw StateError(
+          'Start the assigned trip successfully before tracking.',
+        );
       }
-    }
-    if (await isRunning()) {
-      throw StateError(
-        'Stop the current tracking session before starting another.',
-      );
+    } else if (journal['driver_email'] != driverEmail ||
+        journal['state'] != 'active') {
+      throw StateError('This trip is stopped or belongs to another driver.');
     }
     if (!await Geolocator.isLocationServiceEnabled()) {
-      throw StateError('Enable device location services before tracking.');
+      throw StateError('Enable device location.');
     }
     var permission = await Geolocator.checkPermission();
     if (permission == LocationPermission.denied) {
@@ -70,40 +73,59 @@ class LocationService {
     }
     if (permission != LocationPermission.always &&
         permission != LocationPermission.whileInUse) {
-      throw StateError('Location permission is required to start tracking.');
+      throw StateError('Location permission is required.');
     }
+    await store.begin(tripId, driverEmail);
     await initialize();
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setInt(_prefsEmpIdKey, empId);
-    await prefs.setString(_prefsCompanyCodeKey, companyCode);
-    await prefs.setString(_prefsTokenKey, token);
-    await prefs.setString(_prefsDeviceIdKey, deviceId);
-    await prefs.setString(_prefsBaseUrlKey, baseUrl);
-    await prefs.setString(_prefsUploadUrlKey, uploadUrl);
-    await prefs.remove(_prefsUserStoppedDateKey);
-
-    await BackgroundServiceConfigurator.startService();
+    if (await BackgroundServiceConfigurator.isRunning()) return;
+    final service = FlutterBackgroundService();
+    final ready = Completer<Map<String, dynamic>?>();
+    final readySubscription = service.on('tracking_ready').listen((event) {
+      if (!ready.isCompleted) ready.complete(event);
+    });
+    // Attach the listener before starting the new isolate.
+    try {
+      await BackgroundServiceConfigurator.startService();
+      final event = await ready.future.timeout(const Duration(seconds: 20));
+      if (event?['error'] != null) throw StateError(event!['error'].toString());
+    } catch (_) {
+      await stop();
+      rethrow;
+    } finally {
+      await readySubscription.cancel();
+    }
   }
 
-  static Future<void> stop() async {
-    final prefs = await SharedPreferences.getInstance();
-    final now = DateTime.now();
-    final todayStr = '${now.year}-${now.month}-${now.day}';
-    await prefs.setString(_prefsUserStoppedDateKey, todayStr);
-    await BackgroundServiceConfigurator.stopService();
+  static bool get _mobile =>
+      !kIsWeb &&
+      (defaultTargetPlatform == TargetPlatform.android ||
+          defaultTargetPlatform == TargetPlatform.iOS);
+
+  static Future<void> stop() {
+    return _stopping ??= _stop().whenComplete(() => _stopping = null);
+  }
+
+  static Future<void> _stop() async {
+    if (!_mobile) return;
+    final service = FlutterBackgroundService();
+    if (!await service.isRunning()) return;
+    await initialize();
+    service.invoke('stopService');
+    // Native state is authoritative; a service event can be lost when an isolate exits.
+    final deadline = DateTime.now().add(const Duration(seconds: 20));
+    while (await service.isRunning()) {
+      if (DateTime.now().isAfter(deadline)) {
+        throw StateError('Location service is still stopping. Retry End Trip.');
+      }
+      await Future<void>.delayed(const Duration(milliseconds: 100));
+    }
   }
 
   static Future<bool> isRunning() async {
-    return BackgroundServiceConfigurator.isRunning();
-  }
-
-  static Future<bool> wasExplicitlyStopped() async {
-    final prefs = await SharedPreferences.getInstance();
-    final stoppedDate = prefs.getString(_prefsUserStoppedDateKey);
-    if (stoppedDate == null) return false;
-    final now = DateTime.now();
-    final todayStr = '${now.year}-${now.month}-${now.day}';
-    return stoppedDate == todayStr;
+    if (!_mobile) return false;
+    final running = await BackgroundServiceConfigurator.isRunning();
+    if (running) await initialize();
+    return running;
   }
 }
 
@@ -111,55 +133,152 @@ class LocationService {
 Future<void> onStart(ServiceInstance service) async {
   WidgetsFlutterBinding.ensureInitialized();
   DartPluginRegistrant.ensureInitialized();
+  final store = TripLocationStore();
+  StreamSubscription<Position>? gps;
+  StreamSubscription<Map<String, dynamic>?>? stopSubscription;
+  Future<void> writes = Future.value();
+  bool stopping = false;
+  Timer? liveTimer;
+  Map<String, dynamic>? latest;
+  int? tripId;
+  double distance = 0;
+  Position? previous;
+  bool sending = false;
 
-  if (service is AndroidServiceInstance) {
-    service.setAsForegroundService();
-    service.setForegroundNotificationInfo(
-      title: "Location tracking active",
-      content: "Sharing location for your active trip.",
-    );
+  Future<void> stop() async {
+    if (stopping) return;
+    stopping = true;
+    liveTimer?.cancel();
+    try {
+      await gps?.cancel();
+      await writes;
+      await stopSubscription?.cancel();
+      await store.close();
+    } catch (error) {
+      service.invoke('on_error', {
+        'message': 'Tracking cleanup failed: $error',
+      });
+    } finally {
+      service.invoke('on_tracking_stopped', {'tripId': tripId});
+      await service.stopSelf();
+    }
   }
 
+  stopSubscription = service.on('stopService').listen((_) async {
+    await stop();
+  });
   try {
-    final locator = BackgroundServiceLocator();
-    await locator.init();
-
-    final scheduler = locator.createScheduler(service);
-
-    scheduler.start(
-      empId: locator.empId,
-      companyCode: locator.companyCode,
-      token: locator.token,
-      deviceId: locator.deviceId,
-      getAddress: (double lat, double lng) async => '',
-      getBatteryLevel: _getBatteryLevel,
+    final session = await store.active();
+    final user = await StorageHelper.getUserSession();
+    if (session == null ||
+        user?.role != UserRole.driver ||
+        session['driver_email'] != user?.email) {
+      throw StateError('No active trip for the signed-in driver.');
+    }
+    tripId = session['trip_id'] as int;
+    distance = (session['distance_km'] as num).toDouble();
+    final savedPoints = await store.points(tripId);
+    final last = savedPoints.isEmpty ? null : savedPoints.last;
+    double? previousLat = (last?['latitude'] as num?)?.toDouble();
+    double? previousLon = (last?['longitude'] as num?)?.toDouble();
+    final settings = defaultTargetPlatform == TargetPlatform.android
+        ? AndroidSettings(
+            accuracy: LocationAccuracy.high,
+            distanceFilter: 25,
+            intervalDuration: const Duration(seconds: 15),
+          )
+        : AppleSettings(
+            accuracy: LocationAccuracy.high,
+            distanceFilter: 25,
+            activityType: ActivityType.automotiveNavigation,
+            pauseLocationUpdatesAutomatically: true,
+            allowBackgroundLocationUpdates: true,
+            showBackgroundLocationIndicator: true,
+          );
+    if (stopping) return;
+    gps = Geolocator.getPositionStream(locationSettings: settings).listen(
+      (position) {
+        if (stopping || position.accuracy > 100 || position.isMocked) return;
+        if (previous != null &&
+            position.timestamp.difference(previous!.timestamp).inSeconds < 10) {
+          return;
+        }
+        previous = position;
+        final point = <String, dynamic>{
+          'latitude': position.latitude,
+          'longitude': position.longitude,
+          'speedKmh': position.speed > 0 ? position.speed * 3.6 : 0.0,
+          'heading': position.heading,
+          'accuracyMeters': position.accuracy,
+          'recordedAt': position.timestamp
+              .toUtc()
+              .toIso8601String()
+              .replaceFirst('Z', ''),
+        };
+        if (previousLat != null && previousLon != null) {
+          final delta = Geolocator.distanceBetween(
+            previousLat!,
+            previousLon!,
+            position.latitude,
+            position.longitude,
+          );
+          if (delta >= 5 && delta < 2000) distance += delta / 1000;
+        }
+        previousLat = position.latitude;
+        previousLon = position.longitude;
+        final distanceAtPoint = distance;
+        writes = writes
+            .then((_) async {
+              await store.append(tripId!, point, distanceAtPoint);
+              latest = point;
+              service.invoke('on_location_update', {
+                ...point,
+                'timestamp': position.timestamp.toIso8601String(),
+                'accuracy': position.accuracy,
+                'speed': position.speed,
+                'distanceKm': distanceAtPoint,
+              });
+            })
+            .catchError((Object error) {
+              service.invoke('on_error', {
+                'message': 'Local GPS save failed: $error',
+              });
+            });
+      },
+      onError: (Object error) {
+        service.invoke('on_error', {'message': 'GPS unavailable: $error'});
+      },
     );
-  } catch (error) {
-    service.invoke('on_error', {
-      'message': 'Location service failed to initialize: $error',
+    // Only one transient latest point is sent per 30s; the server never persists it.
+    liveTimer = Timer.periodic(const Duration(seconds: 30), (_) async {
+      if (sending || stopping || latest == null) return;
+      sending = true;
+      try {
+        final currentUser = await StorageHelper.getUserSession();
+        if (currentUser?.role != UserRole.driver ||
+            currentUser?.email != session['driver_email']) {
+          await stop();
+          return;
+        }
+        await TransportService.publishLiveLocation(tripId!, latest!);
+      } catch (_) {
+        /* SQLite history remains intact while offline. */
+      } finally {
+        sending = false;
+      }
     });
-    service.invoke('on_tracking_stopped');
-    await service.stopSelf();
+    service.invoke('tracking_ready', {'tripId': tripId});
+  } catch (error) {
+    service.invoke('tracking_ready', {'error': error.toString()});
+    service.invoke('on_error', {'message': error.toString()});
+    await stop();
   }
-}
-
-Future<int> _getBatteryLevel() async {
-  try {
-    return await Battery().batteryLevel;
-  } catch (_) {
-    return -1; // Unknown; do not report a fabricated full battery.
-  }
-}
-
-@pragma('vm:entry-point')
-void onForeground(ServiceInstance service) {
-  // iOS foreground handler – no-op because onStart handles both.
 }
 
 @pragma('vm:entry-point')
 Future<bool> onBackground(ServiceInstance service) async {
   WidgetsFlutterBinding.ensureInitialized();
   DartPluginRegistrant.ensureInitialized();
-  // iOS fetch callbacks are bounded; they cannot run a continuous GPS service.
+  // iOS fetch cannot promise an always-running Dart GPS service.
   return true;
 }

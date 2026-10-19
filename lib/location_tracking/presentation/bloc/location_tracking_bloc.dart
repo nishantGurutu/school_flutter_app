@@ -25,6 +25,7 @@ class LocationTrackingBloc
   }
 
   final LocationTrackingServiceGateway _service;
+  bool _restarting = false;
   final List<StreamSubscription<Map<String, dynamic>?>> _subscriptions = [];
 
   void _subscribe() {
@@ -39,6 +40,7 @@ class LocationTrackingBloc
             .events(name)
             .listen(
               (data) {
+                if (_restarting && name == 'on_tracking_stopped') return;
                 if (!isClosed) add(_ServiceEvent(name, data));
               },
               onError: (Object error) {
@@ -70,21 +72,30 @@ class LocationTrackingBloc
             ),
           );
         case LocationTrackingStarted():
-          if (state.isTracking) return;
+          if (state.isTracking && !event.restart) {
+            emit(state.copyWith(tripId: event.tripId));
+            return;
+          }
           emit(
             state.copyWith(
               status: LocationTrackingStatus.starting,
+              tripId: event.tripId,
+              distanceKm: 0,
               clearLocation: true,
             ),
           );
           _subscribe();
+          if (event.restart) {
+            _restarting = true;
+            try {
+              await _service.stop();
+            } finally {
+              _restarting = false;
+            }
+          }
           await _service.start(
-            empId: event.empId,
-            companyCode: event.companyCode,
-            token: event.token,
-            deviceId: event.deviceId,
-            baseUrl: event.baseUrl,
-            uploadUrl: event.uploadUrl,
+            tripId: event.tripId,
+            driverEmail: event.driverEmail,
           );
           if (emit.isDone) return;
           emit(state.copyWith(status: LocationTrackingStatus.tracking));
@@ -144,6 +155,9 @@ class LocationTrackingBloc
               }
               emit(
                 state.copyWith(
+                  distanceKm:
+                      (data['distanceKm'] as num?)?.toDouble() ??
+                      state.distanceKm,
                   lastLocation: Position(
                     latitude: latitude.toDouble(),
                     longitude: longitude.toDouble(),

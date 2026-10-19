@@ -1,3 +1,4 @@
+import '../../location_tracking/data/datasources/location_service.dart';
 import 'package:school_desk_app/data/exception/app_exceptions.dart';
 import 'package:school_desk_app/data/network/network_api_services.dart';
 import 'package:school_desk_app/services/storage/local_storage.dart';
@@ -26,6 +27,7 @@ class ApiAuthRepository implements AuthRepository {
     };
 
     // Reset previous session
+    await LocationService.stop();
     await StorageHelper.clear();
     authToken = null;
     currentUser = null;
@@ -63,6 +65,7 @@ class ApiAuthRepository implements AuthRepository {
 
   @override
   Future<void> logout() async {
+    await LocationService.stop();
     await StorageHelper.clear();
     authToken = null;
     currentUser = null;

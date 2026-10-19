@@ -13,27 +13,31 @@ class NetworkApiService implements BaseApiServices {
   late final Dio _refreshDio;
   Completer<String?>? _refreshTokenCompleter;
 
-  NetworkApiService() {
-    _dio = Dio(
-      BaseOptions(
-        connectTimeout: const Duration(seconds: 20),
-        receiveTimeout: const Duration(seconds: 20),
-        sendTimeout: const Duration(seconds: 20),
-        responseType: ResponseType.json,
-        validateStatus: (status) => status != null && status < 500,
-      ),
-    );
+  NetworkApiService({Dio? dio, Dio? refreshDio}) {
+    _dio =
+        dio ??
+        Dio(
+          BaseOptions(
+            connectTimeout: const Duration(seconds: 20),
+            receiveTimeout: const Duration(seconds: 20),
+            sendTimeout: const Duration(seconds: 20),
+            responseType: ResponseType.json,
+            validateStatus: (status) => status != null && status < 500,
+          ),
+        );
 
-    _refreshDio = Dio(
-      BaseOptions(
-        connectTimeout: const Duration(seconds: 15),
-        receiveTimeout: const Duration(seconds: 15),
-        responseType: ResponseType.json,
-      ),
-    );
+    _refreshDio =
+        refreshDio ??
+        Dio(
+          BaseOptions(
+            connectTimeout: const Duration(seconds: 15),
+            receiveTimeout: const Duration(seconds: 15),
+            responseType: ResponseType.json,
+          ),
+        );
 
     _dio.interceptors.add(
-      QueuedInterceptorsWrapper(
+      InterceptorsWrapper(
         onRequest: (options, handler) async {
           final token = await StorageHelper.getAccessToken();
           if (token != null && token.isNotEmpty) {
@@ -45,36 +49,25 @@ class NetworkApiService implements BaseApiServices {
           if (kDebugMode) {
             print("\n==========================================");
             print("➡️ API REQUEST [${options.method}] => ${options.uri}");
-            print("Headers: ${options.headers}");
-            if (options.data != null) print("Body: ${options.data}");
+            print("Headers: ${_redact(options.headers)}");
+            if (options.data != null) print("Body: ${_redact(options.data)}");
             print("==========================================\n");
           }
           handler.next(options);
         },
         onResponse: (response, handler) async {
           if (kDebugMode) {
-            log("✅ API RESPONSE [${response.statusCode}] ${response.requestOptions.uri} => ${response.data}");
+            log(
+              "✅ API RESPONSE [${response.statusCode}] ${response.requestOptions.uri} => ${_redact(response.data)}",
+            );
           }
 
-          // Handle 401 Unauthorized for token refresh
           if (response.statusCode == 401) {
-            final path = response.requestOptions.path;
-            if (!path.contains('/auth/login') && !path.contains('/auth/refresh')) {
-              try {
-                final newToken = await _handleTokenRefresh();
-                if (newToken != null && newToken.isNotEmpty) {
-                  final options = response.requestOptions;
-                  options.headers['Authorization'] = 'Bearer $newToken';
-                  options.headers['token'] = newToken;
-
-                  final retryResponse = await _dio.fetch(options);
-                  return handler.resolve(retryResponse);
-                }
-              } catch (e) {
-                if (kDebugMode) {
-                  print("❌ Refresh token error during 401 retry: $e");
-                }
-              }
+            try {
+              final retry = await _retryUnauthorized(response.requestOptions);
+              if (retry != null) return handler.resolve(retry);
+            } on DioException catch (error) {
+              return handler.reject(error);
             }
           }
 
@@ -82,24 +75,20 @@ class NetworkApiService implements BaseApiServices {
         },
         onError: (DioException e, handler) async {
           if (kDebugMode) {
-            print("❌ API ERROR [${e.response?.statusCode ?? 'NETWORK_ERR'}] ${e.requestOptions.uri} => ${e.message}");
-            if (e.response != null) print("Error Details: ${e.response?.data}");
+            print(
+              "❌ API ERROR [${e.response?.statusCode ?? 'NETWORK_ERR'}] ${e.requestOptions.uri} => ${e.message}",
+            );
+            if (e.response != null) {
+              print("Error Details: ${_redact(e.response?.data)}");
+            }
           }
 
           if (e.response?.statusCode == 401) {
-            final path = e.requestOptions.path;
-            if (!path.contains('/auth/login') && !path.contains('/auth/refresh')) {
-              try {
-                final newToken = await _handleTokenRefresh();
-                if (newToken != null && newToken.isNotEmpty) {
-                  final options = e.requestOptions;
-                  options.headers['Authorization'] = 'Bearer $newToken';
-                  options.headers['token'] = newToken;
-
-                  final retryResponse = await _dio.fetch(options);
-                  return handler.resolve(retryResponse);
-                }
-              } catch (_) {}
+            try {
+              final retry = await _retryUnauthorized(e.requestOptions);
+              if (retry != null) return handler.resolve(retry);
+            } on DioException catch (error) {
+              return handler.next(error);
             }
           }
 
@@ -109,60 +98,101 @@ class NetworkApiService implements BaseApiServices {
     );
   }
 
-  /// Synchronized refresh token execution using a Completer lock
-  Future<String?> _handleTokenRefresh() async {
-    if (_refreshTokenCompleter != null) {
-      return await _refreshTokenCompleter!.future;
+  static const _authRetryKey = 'auth_retry_attempted';
+
+  Future<Response<dynamic>?> _retryUnauthorized(RequestOptions request) async {
+    if (request.extra[_authRetryKey] == true ||
+        request.path.contains('/auth/login') ||
+        request.path.contains('/auth/refresh')) {
+      return null;
     }
+    // Another request may already have refreshed this expired access token.
+    final storedToken = await StorageHelper.getAccessToken();
+    final token =
+        storedToken != null &&
+            storedToken.isNotEmpty &&
+            request.headers['Authorization'] != 'Bearer $storedToken'
+        ? storedToken
+        : await _handleTokenRefresh();
+    if (token == null || token.isEmpty) return null;
+    return _dio.fetch<dynamic>(
+      request.copyWith(
+        headers: {
+          ...request.headers,
+          'Authorization': 'Bearer $token',
+          'token': token,
+        },
+        extra: {...request.extra, _authRetryKey: true},
+      ),
+    );
+  }
 
-    _refreshTokenCompleter = Completer<String?>();
+  static dynamic _redact(dynamic value) {
+    if (value is Map) {
+      return value.map(
+        (key, item) => MapEntry(
+          key,
+          const {
+                'authorization',
+                'token',
+                'accesstoken',
+                'refreshtoken',
+                'password',
+              }.contains(key.toString().toLowerCase())
+              ? '[redacted]'
+              : _redact(item),
+        ),
+      );
+    }
+    if (value is List) return value.map(_redact).toList();
+    return value;
+  }
 
+  /// Share one refresh among concurrent requests, and always release waiters.
+  Future<String?> _handleTokenRefresh() async {
+    final pending = _refreshTokenCompleter;
+    if (pending != null) return pending.future;
+    final completer = Completer<String?>();
+    _refreshTokenCompleter = completer;
+    String? token;
     try {
       final refreshToken = await StorageHelper.getRefreshToken();
-      if (refreshToken == null || refreshToken.isEmpty) {
-        await StorageHelper.clear();
-        _refreshTokenCompleter!.complete(null);
-        _refreshTokenCompleter = null;
-        return null;
-      }
-
+      if (refreshToken == null || refreshToken.isEmpty) return null;
       final response = await _refreshDio.post(
         AppUrl.refresh,
         data: {'refreshToken': refreshToken},
         options: Options(headers: {'Content-Type': 'application/json'}),
       );
-
-      if ((response.statusCode == 200 || response.statusCode == 201) && response.data != null) {
-        final data = response.data;
-        final newAccessToken = data['accessToken'] ?? data['token'];
-        final newRefreshToken = data['refreshToken'];
-        final expiresAt = data['expiresAt'];
-
-        if (newAccessToken != null) {
-          await StorageHelper.setAccessToken(newAccessToken.toString());
-          if (newRefreshToken != null) {
-            await StorageHelper.setRefreshToken(newRefreshToken.toString());
+      if ((response.statusCode == 200 || response.statusCode == 201) &&
+          response.data is Map) {
+        final data = response.data as Map;
+        final access = data['accessToken'] ?? data['token'];
+        if (access != null && access.toString().isNotEmpty) {
+          token = access.toString();
+          await StorageHelper.setAccessToken(token);
+          if (data['refreshToken'] != null) {
+            await StorageHelper.setRefreshToken(
+              data['refreshToken'].toString(),
+            );
           }
-          if (expiresAt != null) {
-            final expInt = expiresAt is int ? expiresAt : int.tryParse(expiresAt.toString()) ?? 0;
-            await StorageHelper.setExpiresAt(expInt);
-          }
-
-          _refreshTokenCompleter!.complete(newAccessToken.toString());
-          _refreshTokenCompleter = null;
-          return newAccessToken.toString();
+          final expiresAt = int.tryParse(data['expiresAt']?.toString() ?? '');
+          if (expiresAt != null) await StorageHelper.setExpiresAt(expiresAt);
         }
+      } else if ([400, 401, 403].contains(response.statusCode)) {
+        await StorageHelper.clear();
       }
-
-      await StorageHelper.clear();
-      _refreshTokenCompleter!.complete(null);
-      _refreshTokenCompleter = null;
+      return token;
+    } on DioException catch (error) {
+      // A temporary network failure must not erase an offline driver's session.
+      if ([400, 401, 403].contains(error.response?.statusCode)) {
+        await StorageHelper.clear();
+      }
       return null;
-    } catch (e) {
-      await StorageHelper.clear();
-      _refreshTokenCompleter!.complete(null);
-      _refreshTokenCompleter = null;
+    } catch (_) {
       return null;
+    } finally {
+      completer.complete(token);
+      _refreshTokenCompleter = null;
     }
   }
 
@@ -232,16 +262,32 @@ class NetworkApiService implements BaseApiServices {
       case 201:
         return response.data;
       case 400:
-        throw BadRequestException(_extractErrorMessage(response, "Invalid request"));
+        throw BadRequestException(
+          _extractErrorMessage(response, "Invalid request"),
+        );
       case 401:
       case 403:
-        throw UnauthorisedException(_extractErrorMessage(response, "Invalid credentials or unauthorized access"));
+        throw UnauthorisedException(
+          _extractErrorMessage(
+            response,
+            "Invalid credentials or unauthorized access",
+          ),
+        );
       case 404:
-        throw FetchDataException(_extractErrorMessage(response, "API Resource not found"));
+        throw FetchDataException(
+          _extractErrorMessage(response, "API Resource not found"),
+        );
       case 500:
-        throw FetchDataException(_extractErrorMessage(response, "Internal Server Error"));
+        throw FetchDataException(
+          _extractErrorMessage(response, "Internal Server Error"),
+        );
       default:
-        throw FetchDataException(_extractErrorMessage(response, "HTTP Error status code: ${response.statusCode}"));
+        throw FetchDataException(
+          _extractErrorMessage(
+            response,
+            "HTTP Error status code: ${response.statusCode}",
+          ),
+        );
     }
   }
 
@@ -257,7 +303,8 @@ class NetworkApiService implements BaseApiServices {
       if (data['detail'] != null && data['detail'].toString().isNotEmpty) {
         return data['detail'].toString();
       }
-    } else if (response.data is String && (response.data as String).isNotEmpty) {
+    } else if (response.data is String &&
+        (response.data as String).isNotEmpty) {
       return response.data as String;
     }
     return fallback;
@@ -276,5 +323,3 @@ class NetworkApiService implements BaseApiServices {
     }
   }
 }
-
-
