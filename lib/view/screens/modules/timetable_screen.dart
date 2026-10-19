@@ -1,3 +1,4 @@
+import '../../widgets/module_error.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
@@ -10,7 +11,8 @@ import '../../../logic/school/school_state.dart';
 import '../../../data/models/user_model.dart';
 
 class TimetableScreen extends StatefulWidget {
-  const TimetableScreen({super.key});
+  final String? admissionNo;
+  const TimetableScreen({super.key, this.admissionNo});
 
   @override
   State<TimetableScreen> createState() => _TimetableScreenState();
@@ -38,9 +40,12 @@ class _TimetableScreenState extends State<TimetableScreen> {
   void _fetchTimetable(String day) {
     final authState = context.read<AuthBloc>().state;
     final currentUser = authState.user;
+    final args = ModalRoute.of(context)?.settings.arguments;
+    final admissionNo = widget.admissionNo ?? (args is Map ? args['admissionNo']?.toString() : null);
     context.read<SchoolBloc>().add(
       FetchTimetableRequested(
-        userId: currentUser?.id ?? '1',
+        admissionNo: admissionNo,
+        userId: currentUser?.id ?? '',
         className: currentUser?.className,
         day: day,
       ),
@@ -60,7 +65,7 @@ class _TimetableScreenState extends State<TimetableScreen> {
 
     if (userRole == UserRole.student) {
       screenTitle = 'Class Timetable';
-      contextSubtitle = '${currentUser?.className ?? 'Class 6-A'} • Student Schedule';
+      contextSubtitle = '${currentUser?.className ?? ''} • Student Schedule';
       roleIcon = Icons.school_rounded;
     } else if (userRole == UserRole.teacher) {
       screenTitle = 'Teacher Timetable';
@@ -124,6 +129,7 @@ class _TimetableScreenState extends State<TimetableScreen> {
       ),
       body: BlocBuilder<SchoolBloc, SchoolState>(
         builder: (context, state) {
+            if (state.errorMessage != null) return ModuleError(message: state.errorMessage!, retry: () => _fetchTimetable(_days[_selectedDayIndex]));
           // Filter slots by selected day (case-insensitive prefix match)
           final daySlots = state.timetable.where((s) {
             if (s.dayOfWeek.trim().isEmpty) return true;

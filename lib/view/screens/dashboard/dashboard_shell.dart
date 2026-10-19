@@ -1,7 +1,13 @@
+import 'dart:async';
+
+import '../../../services/push_notifications.dart';
+import '../../widgets/linked_child_scope.dart';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:school_desk_app/data/models/user_model.dart';
+
 import '../../../core/theme/app_colors.dart';
 import '../../../core/extensions/context_extensions.dart';
 import '../../../logic/auth/auth_bloc.dart';
@@ -29,6 +35,33 @@ class DashboardShell extends StatefulWidget {
 
 class _DashboardShellState extends State<DashboardShell> {
   int _currentIndex = 0;
+  StreamSubscription? _push;
+  @override
+  void initState() {
+    super.initState();
+    _push = PushNotifications.instance.messages.listen((message) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            message.notification?.title ?? 'New school notification',
+          ),
+          action: SnackBarAction(
+            label: 'View',
+            onPressed: () =>
+                Navigator.pushNamed(context, '/portal/notifications'),
+          ),
+        ),
+      );
+    });
+  }
+
+  @override
+  void dispose() {
+    _push?.cancel();
+    super.dispose();
+  }
+
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
 
   @override
@@ -88,13 +121,25 @@ class _DashboardShellState extends State<DashboardShell> {
             case 'home':
               return homeDashboard;
             case 'homework':
-              return const HomeworkScreen(isInline: true);
+              return LinkedChildScope(
+                builder: (admission) =>
+                    HomeworkScreen(isInline: true, admissionNo: admission),
+              );
             case 'exams':
-              return const ExamScreen(isInline: true);
+              return LinkedChildScope(
+                builder: (admission) =>
+                    ExamScreen(isInline: true, admissionNo: admission),
+              );
             case 'fees':
-              return const FeesScreen(isInline: true);
+              return LinkedChildScope(
+                builder: (admission) =>
+                    FeesScreen(isInline: true, admissionNo: admission),
+              );
             case 'attendance':
-              return const AttendanceScreen(isInline: true);
+              return LinkedChildScope(
+                builder: (admission) =>
+                    AttendanceScreen(isInline: true, admissionNo: admission),
+              );
             case 'leaves':
               return const LeaveScreen(isInline: true);
             case 'notices':
@@ -115,7 +160,7 @@ class _DashboardShellState extends State<DashboardShell> {
           backgroundColor: AppColors.background,
           drawer: const CustomDrawer(),
           extendBody: true,
-          body: IndexedStack(index: safeIndex, children: pages),
+          body: KeyedSubtree(key: ValueKey(safeIndex), child: pages[safeIndex]),
           bottomNavigationBar: _FloatingBottomNavBar(
             currentIndex: safeIndex,
             items: navItems,

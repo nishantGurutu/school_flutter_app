@@ -8,6 +8,7 @@ import '../../../data/models/home_dashboard_model.dart';
 import '../../../data/repositories/api_school_repository.dart';
 import '../../widgets/smooth_skeleton.dart';
 import '../modules/subject_curriculum_screen.dart';
+import '../modules/homework_screen.dart';
 
 class StudentDashboard extends StatefulWidget {
   final UserModel? user;
@@ -134,21 +135,21 @@ class _StudentDashboardState extends State<StudentDashboard> {
         widget.overrideStudentName ??
         (profile != null && profile.name.isNotEmpty
             ? profile.name
-            : (widget.user?.name ?? 'Kauan Sousa'));
+            : (widget.user?.name ?? ''));
     final displayClass =
         widget.overrideClassName ??
         (profile != null && profile.className.isNotEmpty
             ? profile.className
-            : (widget.user?.className ?? 'Class : 10 - A English'));
+            : (widget.user?.className ?? ''));
     final displayRoll = profile != null && profile.rollNo.isNotEmpty
         ? profile.rollNo
-        : '31';
+        : '';
     final displayAvatar =
         widget.overrideAvatarUrl ??
         (profile != null && profile.avatarUrl.isNotEmpty
             ? profile.avatarUrl
             : (widget.user?.avatarUrl ??
-                  'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=400&auto=format&fit=crop&q=80'));
+                  ''));
 
     return Scaffold(
       backgroundColor: const Color(0xFFF8FAFC),
@@ -212,6 +213,24 @@ class _StudentDashboardState extends State<StudentDashboard> {
                           ),
                           6.h.height,
                         ],
+
+                        Padding(
+                          padding: EdgeInsets.symmetric(horizontal: 20.w),
+                          child: ListTile(
+                            leading: const Icon(Icons.assignment_outlined),
+                            title: const Text('Homework & Assignments'),
+                            trailing: const Icon(Icons.chevron_right),
+                            onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => HomeworkScreen(admissionNo: widget.studentAdmissionNo))),
+                          ),
+                        ),
+
+                        Padding(
+                          padding: EdgeInsets.symmetric(horizontal: 20.w),
+                          child: Wrap(spacing: 8, children: [
+                            for (final item in [(RoutesName.attendance, 'Attendance'), (RoutesName.fees, 'Fees'), (RoutesName.exam, 'Exams & Results'), (RoutesName.timetable, 'Timetable')])
+                              ActionChip(label: Text(item.$2), onPressed: () => Navigator.pushNamed(context, item.$1, arguments: {'admissionNo': widget.studentAdmissionNo})),
+                          ]),
+                        ),
 
                         // 4. Latest Notices Section (Screenshot 2)
                         if (config.showLatestNotices &&

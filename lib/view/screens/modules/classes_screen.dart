@@ -7,6 +7,8 @@ import '../../../core/extensions/context_extensions.dart';
 import '../../../logic/auth/auth_bloc.dart';
 import '../../../data/models/school_models.dart';
 import '../../../data/repositories/api_school_repository.dart';
+import '../../../data/network/network_api_services.dart';
+import '../../../utils/app_url.dart';
 import '../../widgets/glass_card.dart';
 import '../../widgets/smooth_skeleton.dart';
 
@@ -192,7 +194,7 @@ class _ClassesScreenState extends State<ClassesScreen> {
                       scrollDirection: Axis.horizontal,
                       physics: const BouncingScrollPhysics(),
                       child: Row(
-                        children: ['All', 'Class Teacher', 'Class 9', 'Class 10'].map((chip) {
+                        children: ['All', ..._classes.map((c) => c.className).toSet()].map((chip) {
                           final isSelected = _selectedFilter == chip;
                           return Padding(
                             padding: EdgeInsets.only(right: 8.w),
@@ -585,6 +587,18 @@ class _ClassStudentsSheetState extends State<_ClassStudentsSheet> {
                               ),
                             ],
                           ),
+                        ),
+                        PopupMenuButton<String>(
+                          tooltip: 'Mark attendance', icon: const Icon(Icons.fact_check_outlined),
+                          itemBuilder: (_) => ['present', 'absent', 'late'].map((status) => PopupMenuItem(value: status, child: Text(status))).toList(),
+                          onSelected: (status) async {
+                            final date = await showDatePicker(context: context, initialDate: DateTime.now(), firstDate: DateTime(2000), lastDate: DateTime.now());
+                            if (date == null) return;
+                            try {
+                              await NetworkApiService().postApi(AppUrl.markAttendance, {'attendanceType': 'STUDENT', 'admissionNo': s.admissionNo, 'status': status, 'date': date.toIso8601String().split('T').first});
+                              if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('${s.name}: $status saved')));
+                            } catch (e) { if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Attendance was not saved. Please retry.'))); }
+                          },
                         ),
                         ElevatedButton(
                           onPressed: () => _assignToStudent(context, s),

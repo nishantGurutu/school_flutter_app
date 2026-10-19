@@ -8,7 +8,7 @@ abstract class SchoolRepository {
   Future<SubjectCurriculumModel?> getSubjectCurriculum(String subjectId);
   Future<TopicNotesResponseModel?> getChapterNotes(String chapterId);
   Future<TopicNotesResponseModel?> getTopicNotes(String topicId);
-  Future<List<AttendanceRecord>> getAttendance(String userId, {String? type, String? date, String? className});
+  Future<List<AttendanceRecord>> getAttendance(String userId, {String? type, String? date, String? className, String? admissionNo});
   Future<List<HolidayModel>> getHolidays();
   Future<List<AttendanceRecord>> markAttendance(AttendanceRecord record);
   Future<List<AttendanceRecord>> checkIn({required String userId, required String name, String? className, String? role});
@@ -17,13 +17,13 @@ abstract class SchoolRepository {
   Future<List<HomeworkItem>> getHomework(String userId, {String? className});
   Future<List<HomeworkItem>> submitHomework(String userId, String homeworkId);
   
-  Future<List<FeeRecord>> getFees(String userId);
+  Future<List<FeeRecord>> getFees(String userId, {String? admissionNo});
   Future<List<FeeRecord>> payFees(String userId, String feeId);
   
-  Future<List<TimetableSlot>> getTimetable(String userId, {String? className, String? day});
-  Future<List<ExamItem>> getExams(String userId, {String? className});
+  Future<List<TimetableSlot>> getTimetable(String userId, {String? className, String? day, String? admissionNo});
+  Future<List<ExamItem>> getExams(String userId, {String? className, String? admissionNo});
   Future<List<ExamItem>> createExam(ExamItem exam);
-  Future<List<ExamItem>> uploadExamScore(String examId, double score);
+  Future<List<ExamItem>> uploadExamScore(String examId, double score, {String? admissionNo});
   Future<List<ExpenseItem>> getExpenses(String userId);
   Future<List<ExpenseItem>> addExpense(ExpenseItem expense);
   Future<List<ExpenseItem>> approveExpense(String userId, String expenseId);
@@ -58,6 +58,7 @@ abstract class SchoolRepository {
   Future<bool> deleteLesson(String lessonId);
   Future<List<HomeworkItem>> getTeacherAssignments({String? className, String? subject});
   Future<HomeworkItem?> createTeacherAssignment({
+    String? assignmentId,
     required String title,
     required String description,
     required String subject,

@@ -16,12 +16,15 @@ dependencies:
   flutter_bloc: ^9.1.1
   get_it: ^8.2.0
   dio: ^5.9.0
+  file_picker: ^13.1.0
   flutter_screenutil: ^5.9.3 
   flutter_secure_storage: ^10.0.0
   geolocator: ^14.1.1
   google_maps_flutter: ^2.18.1
   url_launcher: ^6.3.3
   flutter_html: ^3.0.0
+  firebase_core: 4.0.0
+  firebase_messaging: 16.0.0
  
 dev_dependencies:
   flutter_test:

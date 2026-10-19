@@ -5,6 +5,7 @@ enum AttendanceStatus { present, absent, holiday, late }
 class AttendanceRecord {
   final String id;
   final String? userId;
+  final String? admissionNo;
   final DateTime date;
   final AttendanceStatus status;
   final String? notes;
@@ -20,6 +21,7 @@ class AttendanceRecord {
   const AttendanceRecord({
     this.id = '',
     this.userId,
+    this.admissionNo,
     required this.date,
     required this.status,
     this.notes,
@@ -43,6 +45,7 @@ class AttendanceRecord {
     return AttendanceRecord(
       id: (json['id'] ?? '').toString(),
       userId: json['userId'] ?? json['user_id'],
+      admissionNo: json['admissionNo'],
       date: DateTime.tryParse(json['date'] ?? json['attendanceDate'] ?? '') ?? DateTime.now(),
       status: stat,
       notes: json['notes'] ?? json['note'],
@@ -61,6 +64,7 @@ class AttendanceRecord {
     return {
       'id': id,
       'userId': userId,
+      'admissionNo': admissionNo,
       'date': '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}',
       'status': status.name,
       'notes': notes,
@@ -93,6 +97,7 @@ class AttendanceRecord {
     return AttendanceRecord(
       id: id ?? this.id,
       userId: userId ?? this.userId,
+      admissionNo: admissionNo,
       date: date ?? this.date,
       status: status ?? this.status,
       notes: notes ?? this.notes,
@@ -453,16 +458,16 @@ class TeacherClassModel {
   factory TeacherClassModel.fromJson(Map<String, dynamic> json) {
     return TeacherClassModel(
       id: (json['id'] ?? '').toString(),
-      className: json['className'] ?? 'Class',
-      section: json['section'] ?? 'A',
-      subject: json['subject'] ?? 'General',
+      className: json['className'] ?? '',
+      section: json['section'] ?? '',
+      subject: json['subject'] ?? '',
       totalStudents: (json['totalStudents'] ?? 0) is int
           ? json['totalStudents']
           : int.tryParse(json['totalStudents'].toString()) ?? 0,
-      room: json['room'] ?? 'Room 101',
+      room: json['room'] ?? '',
       isClassTeacher: json['isClassTeacher'] == true,
-      timing: json['timing'] ?? '09:00 AM - 10:00 AM',
-      syllabusProgress: (json['syllabusProgress'] ?? 0.7).toDouble(),
+      timing: json['timing'] ?? '',
+      syllabusProgress: (json['syllabusProgress'] ?? 0.0).toDouble(),
     );
   }
 }
@@ -674,6 +679,7 @@ class ExamItem {
   final double? scoredMarks;
   final ExamStatus status;
   final String className;
+  final String? section;
 
   const ExamItem({
     required this.id,
@@ -688,6 +694,7 @@ class ExamItem {
     this.scoredMarks,
     required this.status,
     required this.className,
+    this.section,
   });
 
   ExamItem copyWith({
@@ -717,6 +724,7 @@ class ExamItem {
       scoredMarks: scoredMarks ?? this.scoredMarks,
       status: status ?? this.status,
       className: className ?? this.className,
+      section: section,
     );
   }
 

@@ -1,6 +1,13 @@
+import 'package:url_launcher/url_launcher.dart';
+
+import '../../../data/network/network_api_services.dart';
+import '../../../utils/app_url.dart';
+import '../../widgets/module_error.dart';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+
 import '../../../core/theme/app_colors.dart';
 import '../../../core/extensions/context_extensions.dart';
 import '../../../logic/school/school_bloc.dart';
@@ -13,7 +20,8 @@ import '../../widgets/smooth_skeleton.dart';
 
 class FeesScreen extends StatefulWidget {
   final bool isInline;
-  const FeesScreen({super.key, this.isInline = false});
+  final String? admissionNo;
+  const FeesScreen({super.key, this.isInline = false, this.admissionNo});
 
   @override
   State<FeesScreen> createState() => _FeesScreenState();
@@ -31,161 +39,116 @@ class _FeesScreenState extends State<FeesScreen> {
   void _loadFees() {
     final authState = context.read<AuthBloc>().state;
     final currentUser = authState.user;
-    context.read<SchoolBloc>().add(FetchFeesRequested(currentUser?.id ?? '1'));
+    final args = ModalRoute.of(context)?.settings.arguments;
+    final admissionNo =
+        widget.admissionNo ??
+        (args is Map ? args['admissionNo']?.toString() : null);
+    context.read<SchoolBloc>().add(
+      FetchFeesRequested(currentUser?.id ?? '', admissionNo: admissionNo),
+    );
   }
 
-  void _showPaymentDialog(BuildContext context, FeeRecord fee) {
-    final cardController = TextEditingController();
-    final expiryController = TextEditingController();
-    final cvvController = TextEditingController();
-    final formKey = GlobalKey<FormState>();
-
-    showDialog(
+  Future<void> _showPaymentDialog(BuildContext context, FeeRecord fee) async {
+    final api = NetworkApiService();
+    Map<String, dynamic>? payment;
+    String? error;
+    bool busy = false;
+    await showDialog<void>(
       context: context,
-      barrierDismissible: false,
-      builder: (dialogCtx) {
-        return StatefulBuilder(
-          builder: (statefulCtx, setModalState) {
-            return AlertDialog(
-              backgroundColor: AppColors.surface,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(20.r),
-              ),
-              title: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  const Text('Payment Details'),
-                  IconButton(
-                    icon: const Icon(
-                      Icons.close_rounded,
-                      color: AppColors.textSecondary,
-                    ),
-                    onPressed: () => Navigator.pop(dialogCtx),
-                  ),
-                ],
-              ),
-              content: Form(
-                key: formKey,
-                child: SingleChildScrollView(
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      Text(
-                        fee.title,
-                        style: TextStyle(
-                          color: AppColors.textSecondary,
-                          fontSize: 13.sp,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                      4.h.height,
-                      Text(
-                        'Total Payable: ₹${fee.amount.toStringAsFixed(0)}',
-                        style: context.h2.copyWith(
-                          color: AppColors.success,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      18.h.height,
-
-                      // Card Number field
-                      TextFormField(
-                        controller: cardController,
-                        keyboardType: TextInputType.number,
-                        style: const TextStyle(color: AppColors.textPrimary),
-                        decoration: const InputDecoration(
-                          labelText: 'Debit/Credit Card Number',
-                          hintText: '4321 0987 6543 2109',
-                          prefixIcon: Icon(Icons.credit_card_rounded),
-                        ),
-                        validator: (v) {
-                          if (v == null || v.trim().isEmpty) {
-                            return 'Enter card number';
-                          }
-                          if (v.trim().replaceAll(" ", "").length < 16) {
-                            return 'Enter valid 16-digit card';
-                          }
-                          return null;
-                        },
-                      ),
-                      12.h.height,
-                      Row(
-                        children: [
-                          Expanded(
-                            child: TextFormField(
-                              controller: expiryController,
-                              keyboardType: TextInputType.datetime,
-                              style: const TextStyle(
-                                color: AppColors.textPrimary,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, update) => AlertDialog(
+          title: const Text('Fee payment'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(fee.title),
+              if (payment == null)
+                const Text(
+                  'Continue to the school payment provider. Return here after payment and verify your receipt.',
+                ),
+              if (payment != null)
+                Text(
+                  'Amount: ${payment!['amount']}\nStatus: ${payment!['status']}',
+                ),
+              if (payment?['receipt'] != null)
+                SelectableText('Receipt: ${payment!['receipt']}'),
+              if (error != null)
+                Text(error!, style: const TextStyle(color: Colors.red)),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: busy ? null : () => Navigator.pop(ctx),
+              child: const Text('Close'),
+            ),
+            if (payment?['status'] != 'PAID')
+              FilledButton(
+                onPressed: busy
+                    ? null
+                    : () async {
+                        update(() {
+                          busy = true;
+                          error = null;
+                        });
+                        try {
+                          if (payment == null) {
+                            final id = fee.id.replaceFirst('fee_', '');
+                            payment = Map<String, dynamic>.from(
+                              await api.postApi(
+                                '${AppUrl.baseUrl}/mobile/payments/fees/$id/checkout',
+                                {},
                               ),
-                              decoration: const InputDecoration(
-                                labelText: 'Expiry Date',
-                                hintText: 'MM/YY',
-                              ),
-                              validator: (v) {
-                                if (v == null || v.trim().isEmpty) {
-                                  return 'Enter expiry';
-                                }
-                                return null;
-                              },
-                            ),
-                          ),
-                          12.w.width,
-                          Expanded(
-                            child: TextFormField(
-                              controller: cvvController,
-                              keyboardType: TextInputType.number,
-                              obscureText: true,
-                              style: const TextStyle(
-                                color: AppColors.textPrimary,
-                              ),
-                              decoration: const InputDecoration(
-                                labelText: 'CVV',
-                                hintText: '•••',
-                              ),
-                              validator: (v) {
-                                if (v == null || v.trim().isEmpty) {
-                                  return 'Enter CVV';
-                                }
-                                if (v.trim().length < 3) {
-                                  return 'Enter 3-digit CVV';
-                                }
-                                return null;
-                              },
-                            ),
-                          ),
-                        ],
-                      ),
-                      20.h.height,
-
-                      ElevatedButton(
-                        onPressed: () {
-                          if (formKey.currentState!.validate()) {
-                            final userId =
-                                context.read<AuthBloc>().state.user?.id ??
-                                'parent_1';
-                            context.read<SchoolBloc>().add(
-                              PayFeeRequested(userId: userId, feeId: fee.id),
                             );
-                            Navigator.pop(dialogCtx);
-                            context.showAppSnackBar(
-                              'Contacting payment gateway. Processing transaction...',
+                            if (payment!['status'] == 'PENDING') {
+                              final uri = Uri.parse(payment!['checkoutUrl']);
+                              if (!await launchUrl(
+                                uri,
+                                mode: LaunchMode.externalApplication,
+                              ))
+                                throw Exception(
+                                  'Unable to open checkout. Please retry.',
+                                );
+                            }
+                          } else {
+                            payment = Map<String, dynamic>.from(
+                              await api.postApi(
+                                '${AppUrl.baseUrl}/mobile/payments/${payment!['id']}/verify',
+                                {},
+                              ),
                             );
                           }
-                        },
-                        child: Text(
-                          'Pay Dues (₹${fee.amount.toStringAsFixed(0)})',
-                        ),
-                      ),
-                    ],
-                  ),
+                          if (payment!['status'] == 'PAID' && mounted)
+                            _loadFees();
+                        } catch (e) {
+                          error = e.toString();
+                        } finally {
+                          if (ctx.mounted) update(() => busy = false);
+                        }
+                      },
+                child: Text(
+                  busy
+                      ? 'Please wait…'
+                      : payment == null
+                      ? 'Continue to payment'
+                      : 'Verify payment',
                 ),
               ),
-            );
-          },
-        );
-      },
+            if (payment?['status'] == 'PENDING')
+              TextButton(
+                onPressed: busy
+                    ? null
+                    : () async {
+                        await launchUrl(
+                          Uri.parse(payment!['checkoutUrl']),
+                          mode: LaunchMode.externalApplication,
+                        );
+                      },
+                child: const Text('Open checkout'),
+              ),
+          ],
+        ),
+      ),
     );
   }
 
@@ -230,6 +193,11 @@ class _FeesScreenState extends State<FeesScreen> {
         },
         child: BlocBuilder<SchoolBloc, SchoolState>(
           builder: (context, state) {
+            if (state.errorMessage != null)
+              return ModuleError(
+                message: state.errorMessage!,
+                retry: _loadFees,
+              );
             if (state.isLoading && state.fees.isEmpty) {
               return const SmoothSkeletonCardList(count: 3);
             }

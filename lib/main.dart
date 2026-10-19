@@ -1,3 +1,4 @@
+import 'services/push_notifications.dart';
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -9,8 +10,9 @@ import 'core/di/locator.dart';
 import 'logic/auth/auth_bloc.dart';
 import 'logic/school/school_bloc.dart';
 
-void main() {
+Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await PushNotifications.instance.initialize();
   setupLocator();
   runApp(const MyApp());
 }

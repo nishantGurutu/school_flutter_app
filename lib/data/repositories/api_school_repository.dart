@@ -58,11 +58,13 @@ class ApiSchoolRepository implements SchoolRepository {
     String? type,
     String? date,
     String? className,
+    String? admissionNo,
   }) async {
     List<AttendanceRecord> records = [];
     try {
       String url = AppUrl.attendance;
       List<String> queryParams = [];
+      if (admissionNo != null) queryParams.add('admissionNo=${Uri.encodeComponent(admissionNo)}');
       if (type != null && type.trim().isNotEmpty) {
         queryParams.add('type=${Uri.encodeComponent(type.trim())}');
       }
@@ -93,6 +95,7 @@ class ApiSchoolRepository implements SchoolRepository {
       if (kDebugMode) {
         print('❌ Error fetching attendance from API: $e');
       }
+      rethrow;
     }
 
     // Merge in holidays so holiday dates reflect status: AttendanceStatus.holiday
@@ -175,6 +178,7 @@ class ApiSchoolRepository implements SchoolRepository {
       if (kDebugMode) {
         print('❌ Error marking attendance: $e');
       }
+      rethrow;
     }
     return getAttendance(record.userId ?? '');
   }
@@ -375,11 +379,12 @@ class ApiSchoolRepository implements SchoolRepository {
     return getHomework(userId);
   }
   @override
-  Future<List<FeeRecord>> getFees(String userId) async {
+  Future<List<FeeRecord>> getFees(String userId, {String? admissionNo}) async {
     try {
       String url = AppUrl.fees;
+      if (admissionNo != null) url += '?admissionNo=${Uri.encodeComponent(admissionNo)}';
       if (userId.trim().isNotEmpty) {
-        url += '?userId=${Uri.encodeComponent(userId.trim())}';
+        url += '${url.contains('?') ? '&' : '?'}userId=${Uri.encodeComponent(userId.trim())}';
       }
       final res = await _apiService.getApi(url);
       final rawList = _extractList(res);
@@ -407,7 +412,7 @@ class ApiSchoolRepository implements SchoolRepository {
       if (kDebugMode) {
         print('❌ Error fetching fees from API: $e');
       }
-      return [];
+      rethrow;
     }
   }
 
@@ -419,6 +424,7 @@ class ApiSchoolRepository implements SchoolRepository {
       if (kDebugMode) {
         print('❌ Error paying fee: $e');
       }
+      rethrow;
     }
     return getFees(userId);
   }
@@ -428,10 +434,12 @@ class ApiSchoolRepository implements SchoolRepository {
     String userId, {
     String? className,
     String? day,
+    String? admissionNo,
   }) async {
     try {
       String url = AppUrl.timetable;
       final queryParams = <String, String>{};
+      if (admissionNo != null) queryParams['admissionNo'] = admissionNo;
       if (className != null && className.trim().isNotEmpty) {
         queryParams['className'] = className.trim();
       }
@@ -470,16 +478,17 @@ class ApiSchoolRepository implements SchoolRepository {
       if (kDebugMode) {
         print('❌ Error fetching timetable from API: $e');
       }
-      return [];
+      rethrow;
     }
   }
 
   @override
-  Future<List<ExamItem>> getExams(String userId, {String? className}) async {
+  Future<List<ExamItem>> getExams(String userId, {String? className, String? admissionNo}) async {
     try {
       String url = AppUrl.exams;
+      if (admissionNo != null) url += '?admissionNo=${Uri.encodeComponent(admissionNo)}';
       if (className != null && className.trim().isNotEmpty) {
-        url += '?className=${Uri.encodeComponent(className.trim())}';
+        url += '${url.contains('?') ? '&' : '?'}className=${Uri.encodeComponent(className.trim())}';
       }
       final res = await _apiService.getApi(url);
       final rawList = _extractList(res);
@@ -510,6 +519,7 @@ class ApiSchoolRepository implements SchoolRepository {
             status: status,
             className:
                 item['className'] ?? item['class_name'] ?? (className ?? ''),
+            section: item['section'],
           );
         }).toList();
       }
@@ -518,7 +528,7 @@ class ApiSchoolRepository implements SchoolRepository {
       if (kDebugMode) {
         print('❌ Error fetching exams from API: $e');
       }
-      return [];
+      rethrow;
     }
   }
 
@@ -535,25 +545,29 @@ class ApiSchoolRepository implements SchoolRepository {
         'room': exam.room,
         'maxMarks': exam.maxMarks,
         'className': exam.className,
+        'section': exam.section,
       });
     } catch (e) {
       if (kDebugMode) {
         print('❌ Error creating exam: $e');
       }
+      rethrow;
     }
     return getExams('system', className: exam.className);
   }
 
   @override
-  Future<List<ExamItem>> uploadExamScore(String examId, double score) async {
+  Future<List<ExamItem>> uploadExamScore(String examId, double score, {String? admissionNo}) async {
     try {
       await _apiService.postApi(AppUrl.uploadExamScore(examId), {
         'scoredMarks': score,
+        'admissionNo': admissionNo,
       });
     } catch (e) {
       if (kDebugMode) {
         print('❌ Error uploading exam score: $e');
       }
+      rethrow;
     }
     return getExams('system');
   }
@@ -621,6 +635,7 @@ class ApiSchoolRepository implements SchoolRepository {
       if (kDebugMode) {
         print('❌ Error adding expense: $e');
       }
+      rethrow;
     }
     return getExpenses('');
   }
@@ -636,6 +651,7 @@ class ApiSchoolRepository implements SchoolRepository {
       if (kDebugMode) {
         print('❌ Error approving expense: $e');
       }
+      rethrow;
     }
     return getExpenses(userId);
   }
@@ -645,7 +661,7 @@ class ApiSchoolRepository implements SchoolRepository {
     try {
       String url = AppUrl.payroll;
       if (userId.trim().isNotEmpty) {
-        url += '?userId=${Uri.encodeComponent(userId.trim())}';
+        url += '${url.contains('?') ? '&' : '?'}userId=${Uri.encodeComponent(userId.trim())}';
       }
       final res = await _apiService.getApi(url);
       final rawList = _extractList(res);
@@ -683,7 +699,7 @@ class ApiSchoolRepository implements SchoolRepository {
     try {
       String url = AppUrl.leaves;
       if (userId.trim().isNotEmpty) {
-        url += '?userId=${Uri.encodeComponent(userId.trim())}';
+        url += '${url.contains('?') ? '&' : '?'}userId=${Uri.encodeComponent(userId.trim())}';
       }
       final res = await _apiService.getApi(url);
       final rawList = _extractList(res);
@@ -727,6 +743,7 @@ class ApiSchoolRepository implements SchoolRepository {
       if (kDebugMode) {
         print('❌ Error applying leave: $e');
       }
+      rethrow;
     }
     return getLeaves('');
   }
@@ -739,6 +756,7 @@ class ApiSchoolRepository implements SchoolRepository {
       if (kDebugMode) {
         print('❌ Error approving leave: $e');
       }
+      rethrow;
     }
     return getLeaves(userId);
   }
@@ -751,6 +769,7 @@ class ApiSchoolRepository implements SchoolRepository {
       if (kDebugMode) {
         print('❌ Error rejecting leave: $e');
       }
+      rethrow;
     }
     return getLeaves(userId);
   }
@@ -803,16 +822,21 @@ class ApiSchoolRepository implements SchoolRepository {
 
   @override
   Future<List<ChatChannel>> getChatChannels(String userId) async {
-    return [];
+    final response = await _apiService.getApi('${AppUrl.baseUrl}/mobile/chat/channels');
+    return _extractList(response).whereType<Map>().map((channel) => ChatChannel(
+      id: channel['id'].toString(), name: channel['name'] ?? '',
+      lastMessage: channel['lastMessage'] ?? '', time: channel['time'] ?? '', avatarUrl: channel['avatarUrl'] ?? '',
+      messages: (channel['messages'] as List? ?? []).whereType<Map>().map((message) => Message(
+        id: message['id'].toString(), senderId: message['senderId'].toString(), senderName: message['senderName'] ?? '',
+        content: message['content'] ?? '', timestamp: DateTime.parse(message['timestamp']),
+      )).toList(),
+    )).toList();
   }
 
   @override
-  Future<List<ChatChannel>> sendMessage(
-    String userId,
-    String channelId,
-    String text,
-  ) async {
-    return [];
+  Future<List<ChatChannel>> sendMessage(String userId, String channelId, String text) async {
+    await _apiService.postApi('${AppUrl.baseUrl}/mobile/chat/channels/$channelId/messages', {'text': text});
+    return getChatChannels(userId);
   }
 
   @override
@@ -994,12 +1018,13 @@ class ApiSchoolRepository implements SchoolRepository {
       if (kDebugMode) {
         print('❌ Error fetching teacher assignments: $e');
       }
-      return [];
+      rethrow;
     }
   }
 
   @override
   Future<HomeworkItem?> createTeacherAssignment({
+    String? assignmentId,
     required String title,
     required String description,
     required String subject,
@@ -1016,14 +1041,16 @@ class ApiSchoolRepository implements SchoolRepository {
         'description': description,
         'subject': subject,
         'className': className,
-        'section': section ?? 'A',
+        'section': section ?? '',
         'dueDate': dueDate,
         'points': points,
         if (targetStudentId != null) 'targetStudentId': targetStudentId,
         if (fileAttachmentUrl != null && fileAttachmentUrl.isNotEmpty)
           'fileAttachmentUrl': fileAttachmentUrl,
       };
-      final res = await _apiService.postApi(AppUrl.createTeacherAssignment, payload);
+      final res = assignmentId == null
+          ? await _apiService.postApi(AppUrl.createTeacherAssignment, payload)
+          : await _apiService.putApi('${AppUrl.createTeacherAssignment}/$assignmentId', payload);
       if (res is Map) {
         return HomeworkItem.fromJson(Map<String, dynamic>.from(res));
       }
@@ -1031,6 +1058,7 @@ class ApiSchoolRepository implements SchoolRepository {
       if (kDebugMode) {
         print('❌ Error creating teacher assignment: $e');
       }
+      rethrow;
     }
     return null;
   }
@@ -1049,7 +1077,7 @@ class ApiSchoolRepository implements SchoolRepository {
       if (kDebugMode) {
         print('❌ Error fetching assignment submissions: $e');
       }
-      return [];
+      rethrow;
     }
   }
 
@@ -1066,7 +1094,7 @@ class ApiSchoolRepository implements SchoolRepository {
       final payload = {
         'status': status,
         if (points != null) 'points': points,
-        if (feedback != null && feedback.isNotEmpty) 'feedback': feedback,
+        if (feedback != null) 'feedback': feedback,
       };
       await _apiService.postApi(url, payload);
       return true;
@@ -1096,7 +1124,7 @@ class ApiSchoolRepository implements SchoolRepository {
       if (kDebugMode) {
         print('❌ Error fetching student assignments: $e');
       }
-      return [];
+      rethrow;
     }
   }
 

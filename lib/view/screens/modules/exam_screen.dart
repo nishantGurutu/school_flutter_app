@@ -1,4 +1,8 @@
+import '../../widgets/module_error.dart';
 import 'package:flutter/material.dart';
+import '../../../data/repositories/api_school_repository.dart';
+import '../../../data/network/network_api_services.dart';
+import '../../../utils/app_url.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import '../../../core/theme/app_colors.dart';
@@ -14,8 +18,9 @@ import '../../widgets/smooth_skeleton.dart';
 class ExamScreen extends StatefulWidget {
   final int initialTab;
   final bool isInline;
+  final String? admissionNo;
 
-  const ExamScreen({super.key, this.initialTab = 0, this.isInline = false});
+  const ExamScreen({super.key, this.initialTab = 0, this.isInline = false, this.admissionNo});
 
   @override
   State<ExamScreen> createState() => _ExamScreenState();
@@ -37,9 +42,12 @@ class _ExamScreenState extends State<ExamScreen>
   void _loadExams() {
     final authState = context.read<AuthBloc>().state;
     final currentUser = authState.user;
+    final args = ModalRoute.of(context)?.settings.arguments;
+    final admissionNo = widget.admissionNo ?? (args is Map ? args['admissionNo']?.toString() : null);
     context.read<SchoolBloc>().add(
       FetchExamsRequested(
-        userId: currentUser?.id ?? '1',
+        admissionNo: admissionNo,
+        userId: currentUser?.id ?? '',
         className: currentUser?.className,
       ),
     );
@@ -156,6 +164,7 @@ class _ExamScreenState extends State<ExamScreen>
         },
         child: BlocBuilder<SchoolBloc, SchoolState>(
           builder: (context, state) {
+            if (state.errorMessage != null) return ModuleError(message: state.errorMessage!, retry: _loadExams);
             if (state.isLoading && state.exams.isEmpty) {
               return const SmoothSkeletonCardList(count: 4);
             }
@@ -707,23 +716,23 @@ class _CreateExamSheetState extends State<_CreateExamSheet> {
   TimeOfDay? _selectedStartTime;
   TimeOfDay? _selectedEndTime;
 
-  final List<String> _subjects = [
-    'Mathematics',
-    'Science',
-    'English',
-    'Social Studies',
-    'Physics',
-    'Chemistry',
-    'Computer Science',
-  ];
-
-  final List<String> _classes = [
-    'Class 10-A',
-    'Class 10-B',
-    'Class 9-A',
-    'Class 9-B',
-    'Class 8-A',
-  ];
+  List<String> _subjects = [];
+  List<String> _classes = [];
+  List<TeacherClassModel> _classOptions = [];
+  String? _selectedSection;
+  @override
+  void initState() { super.initState(); _loadOptions(); }
+  Future<void> _loadOptions() async {
+    final classes = await ApiSchoolRepository().getTeacherClasses();
+    try {
+      final subjects = await NetworkApiService().getApi('${AppUrl.baseUrl}/teacher/curriculum/subjects');
+      if (mounted) setState(() {
+        _classOptions = classes;
+        _classes = classes.map((c) => c.className).toSet().toList();
+        _subjects = subjects is List ? subjects.whereType<Map>().map((s) => s['name'].toString()).toSet().toList() : [];
+      });
+    } catch (e) { if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Unable to load assigned subjects.'))); }
+  }
 
   @override
   void dispose() {
@@ -805,6 +814,7 @@ class _CreateExamSheetState extends State<_CreateExamSheet> {
 
   void _submit() {
     if (_formKey.currentState!.validate()) {
+      if (_selectedClass == null || _selectedSubject == null) return;
       final exam = ExamItem(
         id: 'exam_${DateTime.now().millisecondsSinceEpoch}',
         subject: _selectedSubject ?? 'General',
@@ -817,6 +827,7 @@ class _CreateExamSheetState extends State<_CreateExamSheet> {
         maxMarks: double.tryParse(_maxMarksController.text.trim()) ?? 100,
         status: ExamStatus.upcoming,
         className: _selectedClass ?? '',
+        section: _selectedSection,
       );
 
       context.read<SchoolBloc>().add(CreateExamRequested(exam));
@@ -942,7 +953,7 @@ class _CreateExamSheetState extends State<_CreateExamSheet> {
                           .map((c) => DropdownMenuItem(value: c, child: Text(c)))
                           .toList(),
                       onChanged: (val) {
-                        if (val != null) setState(() => _selectedClass = val);
+                        if (val != null) setState(() { _selectedClass = val; _selectedSection = _classOptions.firstWhere((c) => c.className == val).section; });
                       },
                       validator: (v) =>
                           (v == null || v.trim().isEmpty) ? 'Please select class' : null,
@@ -967,6 +978,13 @@ class _CreateExamSheetState extends State<_CreateExamSheet> {
                 ],
               ),
               12.h.height,
+              if (_selectedClass != null)
+                DropdownButtonFormField<String>(
+                  key: ValueKey(_selectedClass), initialValue: _selectedSection,
+                  decoration: const InputDecoration(labelText: 'Section'),
+                  items: _classOptions.where((c) => c.className == _selectedClass).map((c) => c.section).toSet().map((section) => DropdownMenuItem(value: section, child: Text(section.isEmpty ? 'All sections' : section))).toList(),
+                  onChanged: (value) => setState(() => _selectedSection = value),
+                ),
               Row(
                 children: [
                   Expanded(
@@ -1059,11 +1077,18 @@ class _RecordScoreSheet extends StatefulWidget {
 }
 
 class _RecordScoreSheetState extends State<_RecordScoreSheet> {
+  List<StudentInClassModel> _students = [];
+  String? _admissionNo;
+  Future<void> _loadStudents() async {
+    final students = await ApiSchoolRepository().getClassStudents(widget.exam.className, section: widget.exam.section);
+    if (mounted) setState(() => _students = students);
+  }
   final _scoreController = TextEditingController();
 
   @override
   void initState() {
     super.initState();
+    _loadStudents();
     if (widget.exam.scoredMarks != null) {
       _scoreController.text = widget.exam.scoredMarks!.toInt().toString();
     }
@@ -1079,11 +1104,12 @@ class _RecordScoreSheetState extends State<_RecordScoreSheet> {
     final text = _scoreController.text.trim();
     if (text.isNotEmpty) {
       final score = double.tryParse(text);
-      if (score != null) {
+      if (score != null && score >= 0 && score <= widget.exam.maxMarks && _admissionNo != null) {
         context.read<SchoolBloc>().add(
               UploadExamScoreRequested(
                 examId: widget.exam.id,
                 score: score,
+                admissionNo: _admissionNo,
               ),
             );
         Navigator.pop(context);
@@ -1137,6 +1163,11 @@ class _RecordScoreSheetState extends State<_RecordScoreSheet> {
             ),
           ),
           16.h.height,
+          DropdownButtonFormField<String>(
+            initialValue: _admissionNo, decoration: const InputDecoration(labelText: 'Student'),
+            items: _students.map((student) => DropdownMenuItem(value: student.admissionNo, child: Text('${student.name} (${student.admissionNo})'))).toList(),
+            onChanged: (value) => setState(() => _admissionNo = value),
+          ),
           TextFormField(
             controller: _scoreController,
             keyboardType: TextInputType.number,

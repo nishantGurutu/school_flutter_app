@@ -40,13 +40,13 @@ class NetworkApiService implements BaseApiServices {
             options.headers['Authorization'] = 'Bearer $token';
             options.headers['token'] = token;
           }
-          options.headers['Content-Type'] = 'application/json';
+          options.headers['Content-Type'] = options.data is FormData ? 'multipart/form-data' : 'application/json';
 
           if (kDebugMode) {
             print("\n==========================================");
             print("➡️ API REQUEST [${options.method}] => ${options.uri}");
-            print("Headers: ${options.headers}");
-            if (options.data != null) print("Body: ${options.data}");
+
+
             print("==========================================\n");
           }
           handler.next(options);
@@ -230,6 +230,7 @@ class NetworkApiService implements BaseApiServices {
     switch (response.statusCode) {
       case 200:
       case 201:
+      case 204:
         return response.data;
       case 400:
         throw BadRequestException(_extractErrorMessage(response, "Invalid request"));
@@ -271,6 +272,8 @@ class NetworkApiService implements BaseApiServices {
         return FetchDataException("Request timeout");
       case DioExceptionType.connectionError:
         return NoInternetException("No Internet connection");
+      case DioExceptionType.badResponse:
+        return FetchDataException(error.response == null ? 'Request failed' : _extractErrorMessage(error.response!, 'Request failed'));
       default:
         return FetchDataException("Unexpected network error occurred");
     }

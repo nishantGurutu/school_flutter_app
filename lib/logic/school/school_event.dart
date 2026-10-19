@@ -6,7 +6,8 @@ abstract class SchoolEvent {
 
 class LoadSchoolData extends SchoolEvent {
   final String userId;
-  const LoadSchoolData(this.userId);
+  final String? admissionNo;
+  const LoadSchoolData(this.userId, {this.admissionNo});
 }
 
 class SubmitHomeworkRequested extends SchoolEvent {
@@ -76,11 +77,7 @@ class RejectLeaveRequested extends SchoolEvent {
   const RejectLeaveRequested({required this.userId, required this.leaveId});
 }
 
-class ReceiveMockReply extends SchoolEvent {
-  final String channelId;
-  final String replyText;
-  const ReceiveMockReply({required this.channelId, required this.replyText});
-}
+
 
 class MarkAttendanceRequested extends SchoolEvent {
   final AttendanceRecord record;
@@ -127,15 +124,18 @@ class CreateExamRequested extends SchoolEvent {
 class UploadExamScoreRequested extends SchoolEvent {
   final String examId;
   final double score;
-  const UploadExamScoreRequested({required this.examId, required this.score});
+  final String? admissionNo;
+  const UploadExamScoreRequested({required this.examId, required this.score, this.admissionNo});
 }
 
 class FetchTimetableRequested extends SchoolEvent {
   final String userId;
+  final String? admissionNo;
   final String? className;
   final String? day;
   const FetchTimetableRequested({
     required this.userId,
+    this.admissionNo,
     this.className,
     this.day,
   });
@@ -143,11 +143,13 @@ class FetchTimetableRequested extends SchoolEvent {
 
 class FetchAttendanceRequested extends SchoolEvent {
   final String userId;
+  final String? admissionNo;
   final String? type;
   final String? date;
   final String? className;
   const FetchAttendanceRequested({
     required this.userId,
+    this.admissionNo,
     this.type,
     this.date,
     this.className,
@@ -156,8 +158,9 @@ class FetchAttendanceRequested extends SchoolEvent {
 
 class FetchExamsRequested extends SchoolEvent {
   final String userId;
+  final String? admissionNo;
   final String? className;
-  const FetchExamsRequested({required this.userId, this.className});
+  const FetchExamsRequested({required this.userId, this.className, this.admissionNo});
 }
 
 class FetchHomeworkRequested extends SchoolEvent {
@@ -168,7 +171,8 @@ class FetchHomeworkRequested extends SchoolEvent {
 
 class FetchFeesRequested extends SchoolEvent {
   final String userId;
-  const FetchFeesRequested(this.userId);
+  final String? admissionNo;
+  const FetchFeesRequested(this.userId, {this.admissionNo});
 }
 
 class FetchExpensesRequested extends SchoolEvent {

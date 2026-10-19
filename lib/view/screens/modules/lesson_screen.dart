@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import '../../../data/network/network_api_services.dart';
+import '../../../utils/app_url.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/extensions/context_extensions.dart';
@@ -17,6 +19,7 @@ class LessonScreen extends StatefulWidget {
 class _LessonScreenState extends State<LessonScreen> {
   final ApiSchoolRepository _repository = ApiSchoolRepository();
   List<TeacherLessonModel> _lessons = [];
+  List<TeacherClassModel> _classes = [];
   bool _isLoading = true;
   String _selectedClass = 'All Classes';
   final Set<dynamic> _expandedLessons = {};
@@ -29,22 +32,32 @@ class _LessonScreenState extends State<LessonScreen> {
 
   Future<void> _loadLessons() async {
     setState(() => _isLoading = true);
+    final classes = await _repository.getTeacherClasses();
     final data = await _repository.getTeacherLessons(
       className: _selectedClass == 'All Classes' ? null : _selectedClass,
     );
     if (mounted) {
       setState(() {
         _lessons = data;
+        _classes = classes;
         _isLoading = false;
       });
     }
   }
 
-  void _showAddLessonDialog() {
+  Future<void> _showAddLessonDialog() async {
+    final raw = await NetworkApiService().getApi('${AppUrl.baseUrl}/teacher/curriculum/subjects');
+    if (!mounted) return;
+    final subjects = raw is List ? raw.whereType<Map>().toList() : <Map>[];
+    if (_classes.isEmpty || subjects.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Assign classes and subjects before adding lessons.')));
+      return;
+    }
+    dynamic chosenSubjectId = subjects.first['id'];
     final chapterNoCtrl = TextEditingController(text: 'Chapter ${_lessons.length + 1}');
     final titleCtrl = TextEditingController();
     final descCtrl = TextEditingController();
-    String chosenClass = _selectedClass == 'All Classes' ? 'Class 10' : _selectedClass;
+    String chosenClass = _selectedClass == 'All Classes' ? _classes.first.className : _selectedClass;
 
     showModalBottomSheet(
       context: context,
@@ -105,19 +118,26 @@ class _LessonScreenState extends State<LessonScreen> {
                     ),
                     12.h.height,
                     DropdownButtonFormField<String>(
-                      value: ['Class 9', 'Class 10', 'Class 8'].contains(chosenClass) ? chosenClass : 'Class 10',
+                      value: chosenClass,
                       decoration: InputDecoration(
                         labelText: 'Select Class',
                         border: OutlineInputBorder(borderRadius: BorderRadius.circular(12.r)),
                         filled: true,
                         fillColor: AppColors.background,
                       ),
-                      items: ['Class 8', 'Class 9', 'Class 10'].map((c) {
+                      items: _classes.map((c) => c.className).toSet().map((c) {
                         return DropdownMenuItem(value: c, child: Text(c));
                       }).toList(),
                       onChanged: (val) {
                         if (val != null) setSheetState(() => chosenClass = val);
                       },
+                    ),
+                    12.h.height,
+                    DropdownButtonFormField<dynamic>(
+                      initialValue: chosenSubjectId,
+                      decoration: const InputDecoration(labelText: 'Subject'),
+                      items: subjects.map((subject) => DropdownMenuItem<dynamic>(value: subject['id'], child: Text(subject['name']?.toString() ?? ''))).toList(),
+                      onChanged: (value) => setSheetState(() => chosenSubjectId = value),
                     ),
                     12.h.height,
                     TextField(
@@ -139,6 +159,7 @@ class _LessonScreenState extends State<LessonScreen> {
                         setState(() => _isLoading = true);
                         await _repository.createTeacherLesson(
                           className: chosenClass,
+                          subjectId: int.tryParse(chosenSubjectId.toString()),
                           chapterNumber: chapterNoCtrl.text.trim(),
                           chapterTitle: titleCtrl.text.trim(),
                           description: descCtrl.text.trim(),
@@ -371,7 +392,7 @@ class _LessonScreenState extends State<LessonScreen> {
                       scrollDirection: Axis.horizontal,
                       physics: const BouncingScrollPhysics(),
                       child: Row(
-                        children: ['All Classes', 'Class 9', 'Class 10', 'Class 8'].map((c) {
+                        children: ['All Classes', ..._classes.map((c) => c.className).toSet()].map((c) {
                           final isSelected = _selectedClass == c;
                           return Padding(
                             padding: EdgeInsets.only(right: 8.w),

@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
@@ -19,6 +20,7 @@ class ChatDetailScreen extends StatefulWidget {
 }
 
 class _ChatDetailScreenState extends State<ChatDetailScreen> {
+  Timer? _refreshTimer;
   final _messageController = TextEditingController();
   final _scrollController = ScrollController();
 
@@ -26,10 +28,14 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToBottom());
+    _refreshTimer = Timer.periodic(const Duration(seconds: 10), (_) {
+      if (mounted) context.read<SchoolBloc>().add(FetchChatChannelsRequested(context.read<AuthBloc>().state.user?.id ?? ''));
+    });
   }
 
   @override
   void dispose() {
+    _refreshTimer?.cancel();
     _messageController.dispose();
     _scrollController.dispose();
     super.dispose();
@@ -49,7 +55,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
     final text = _messageController.text.trim();
     if (text.isEmpty) return;
 
-    final userId = context.read<AuthBloc>().state.user?.id ?? 'parent_1';
+    final userId = context.read<AuthBloc>().state.user?.id ?? '';
     context.read<SchoolBloc>().add(
           SendMessageRequested(
             userId: userId,
@@ -89,9 +95,8 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
                 border: Border.all(color: AppColors.primary, width: 1),
-                image: DecorationImage(
-                  image: NetworkImage(widget.channel.avatarUrl),
-                  fit: BoxFit.cover,
+                image: widget.channel.avatarUrl.isEmpty ? null : DecorationImage(
+                  image: NetworkImage(widget.channel.avatarUrl), fit: BoxFit.cover,
                 ),
               ),
             ),
@@ -105,7 +110,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
                     style: TextStyle(color: AppColors.textPrimary, fontSize: 14.sp, fontWeight: FontWeight.bold),
                   ),
                   Text(
-                    'Online',
+                    'School messages',
                     style: TextStyle(color: AppColors.success, fontSize: 10.sp, fontWeight: FontWeight.w600),
                   ),
                 ],
@@ -116,7 +121,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
       ),
       body: BlocConsumer<SchoolBloc, SchoolState>(
         listener: (context, state) {
-          // Scroll to bottom when new messages arrive (including simulated replies)
+          // Scroll to bottom when new messages arrive (from the server)
           Future.delayed(const Duration(milliseconds: 150), _scrollToBottom);
         },
         builder: (context, state) {

@@ -1,18 +1,24 @@
 import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/extensions/context_extensions.dart';
 import '../../../data/models/user_model.dart';
+import '../../../data/network/network_api_services.dart';
+import '../../../utils/app_url.dart';
+import '../../../data/models/home_dashboard_model.dart';
 import '../../../data/models/school_models.dart';
 import '../../../data/repositories/api_school_repository.dart';
 import '../../../logic/auth/auth_bloc.dart';
 import '../../widgets/glass_card.dart';
+import '../../widgets/assignment_attachment_picker.dart';
 import '../../widgets/smooth_skeleton.dart';
 
 class HomeworkScreen extends StatefulWidget {
   final bool isInline;
-  const HomeworkScreen({super.key, this.isInline = false});
+  final String? admissionNo;
+  const HomeworkScreen({super.key, this.isInline = false, this.admissionNo});
 
   @override
   State<HomeworkScreen> createState() => _HomeworkScreenState();
@@ -24,6 +30,11 @@ class _HomeworkScreenState extends State<HomeworkScreen> with SingleTickerProvid
   List<HomeworkItem> _homeworkList = [];
   bool _isLoading = true;
   bool _hasCheckedArgs = false;
+  String? _error;
+  String? _subjectFilter;
+  String? _classFilter;
+  String? _selectedChild;
+  List<DashboardChild> _children = [];
 
   @override
   void initState() {
@@ -40,7 +51,7 @@ class _HomeworkScreenState extends State<HomeworkScreen> with SingleTickerProvid
     if (!_hasCheckedArgs) {
       _hasCheckedArgs = true;
       final args = ModalRoute.of(context)?.settings.arguments;
-      if (args is Map) {
+      if (args is Map && args['targetStudentId'] != null && context.read<AuthBloc>().state.user?.role == UserRole.teacher) {
         WidgetsBinding.instance.addPostFrameCallback((_) {
           _showCreateAssignmentSheet(
             prefilledStudentId: args['targetStudentId'],
@@ -64,47 +75,66 @@ class _HomeworkScreenState extends State<HomeworkScreen> with SingleTickerProvid
     final authState = context.read<AuthBloc>().state;
     final currentUser = authState.user;
 
-    List<HomeworkItem> list = [];
-    if (currentUser?.role == UserRole.teacher) {
-      list = await _repository.getTeacherAssignments();
-    } else {
-      String? childAdm = (currentUser?.role == UserRole.parent)
-          ? currentUser?.admissionNo
-          : null;
-      list = await _repository.getStudentAssignments(admissionNo: childAdm);
-      if (list.isEmpty) {
-        list = await _repository.getHomework(currentUser?.id ?? '1', className: currentUser?.className);
+    try {
+      List<HomeworkItem> list;
+      if (currentUser?.role == UserRole.teacher) {
+        list = await _repository.getTeacherAssignments();
+      } else {
+        if (currentUser?.role == UserRole.parent && _children.isEmpty) {
+          final home = await _repository.getHomeDashboard();
+          _children = home?.children ?? [];
+          _selectedChild ??= widget.admissionNo;
+          if (_selectedChild == null && _children.isNotEmpty) _selectedChild = _children.first.admissionNo;
+        }
+        if (currentUser?.role == UserRole.parent && _selectedChild == null) {
+          list = [];
+        } else {
+          list = await _repository.getStudentAssignments(admissionNo: _selectedChild ?? widget.admissionNo);
+        }
       }
-    }
-
-    if (mounted) {
-      setState(() {
-        _homeworkList = list;
-        _isLoading = false;
-      });
+      if (mounted) setState(() { _homeworkList = list; _error = null; });
+    } catch (e) {
+      if (mounted) setState(() { _homeworkList = []; _error = 'Unable to load assignments. Please retry.'; });
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 
-  void _showCreateAssignmentSheet({
+  Future<void> _showCreateAssignmentSheet({
+    HomeworkItem? editing,
     dynamic prefilledStudentId,
     String? prefilledStudentName,
     String? prefilledClass,
     String? prefilledSection,
-  }) {
-    final titleCtrl = TextEditingController();
-    final descCtrl = TextEditingController();
-    final subjectCtrl = TextEditingController(text: 'Science');
-    final pointsCtrl = TextEditingController(text: '100');
-    final fileUrlCtrl = TextEditingController();
-    DateTime chosenDueDate = DateTime.now().add(const Duration(days: 3));
-    String selectedClass = prefilledClass ?? 'Class 10';
-    String selectedSection = prefilledSection ?? 'A';
+  }) async {
+    prefilledStudentId ??= editing?.targetStudentId;
+    prefilledStudentName ??= editing?.targetStudentName;
+    prefilledClass ??= editing?.className;
+    prefilledSection ??= editing?.section;
+    final classes = await _repository.getTeacherClasses();
+    if (!mounted) return;
+    if (classes.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('No classes assigned. Ask your school administrator.')));
+      return;
+    }
+    final selected = classes.firstWhere((c) => c.className == prefilledClass && c.section == prefilledSection, orElse: () => classes.first);
+    final titleCtrl = TextEditingController(text: editing?.title ?? '');
+    final descCtrl = TextEditingController(text: editing?.description ?? '');
+    final subjectCtrl = TextEditingController(text: editing?.subject ?? selected.subject);
+    final pointsCtrl = TextEditingController(text: (editing?.points ?? 100).toString());
+    final fileUrlCtrl = TextEditingController(text: editing?.fileAttachmentUrl ?? '');
+    DateTime chosenDueDate = editing?.dueDate ?? DateTime.now().add(const Duration(days: 3));
+    String selectedClass = selected.className;
+    String selectedSection = selected.section;
 
     bool isTargeted = prefilledStudentId != null;
     dynamic selectedStudentId = prefilledStudentId;
     String? selectedStudentName = prefilledStudentName;
-    List<StudentInClassModel> classStudents = [];
+    List<StudentInClassModel> classStudents = prefilledStudentId != null
+        ? await _repository.getClassStudents(selectedClass, section: selectedSection) : [];
+    if (!mounted) return;
     bool loadingStudents = false;
+    bool uploadingAttachment = false;
 
     showModalBottomSheet(
       context: context,
@@ -141,7 +171,7 @@ class _HomeworkScreenState extends State<HomeworkScreen> with SingleTickerProvid
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         Text(
-                          'Create New Assignment',
+                          editing == null ? 'Create New Assignment' : 'Edit Assignment',
                           style: TextStyle(fontSize: 18.sp, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
                         ),
                         IconButton(
@@ -290,17 +320,25 @@ class _HomeworkScreenState extends State<HomeworkScreen> with SingleTickerProvid
                       children: [
                         Expanded(
                           child: DropdownButtonFormField<String>(
-                            value: ['Class 8', 'Class 9', 'Class 10'].contains(selectedClass) ? selectedClass : 'Class 10',
+                            value: selectedClass,
                             decoration: InputDecoration(
                               labelText: 'Class',
                               border: OutlineInputBorder(borderRadius: BorderRadius.circular(12.r)),
                               filled: true,
                               fillColor: AppColors.background,
                             ),
-                            items: ['Class 8', 'Class 9', 'Class 10'].map((c) => DropdownMenuItem(value: c, child: Text(c))).toList(),
+                            items: classes.map((c) => c.className).toSet().map((c) => DropdownMenuItem(value: c, child: Text(c))).toList(),
                             onChanged: (val) {
                               if (val != null) {
-                                setSheetState(() => selectedClass = val);
+                                setSheetState(() {
+                                  selectedClass = val;
+                                  final cls = classes.firstWhere((c) => c.className == val);
+                                  selectedSection = cls.section;
+                                  subjectCtrl.text = cls.subject;
+                                  selectedStudentId = null;
+                                  selectedStudentName = null;
+                                  classStudents = [];
+                                });
                                 if (isTargeted) fetchClassStudents(val, selectedSection);
                               }
                             },
@@ -316,10 +354,10 @@ class _HomeworkScreenState extends State<HomeworkScreen> with SingleTickerProvid
                               filled: true,
                               fillColor: AppColors.background,
                             ),
-                            items: ['A', 'B', 'C'].map((s) => DropdownMenuItem(value: s, child: Text(s))).toList(),
+                            items: classes.where((c) => c.className == selectedClass).map((c) => c.section).toSet().map((s) => DropdownMenuItem(value: s, child: Text(s.isEmpty ? 'All sections' : s))).toList(),
                             onChanged: (val) {
                               if (val != null) {
-                                setSheetState(() => selectedSection = val);
+                                setSheetState(() { selectedSection = val; selectedStudentId = null; selectedStudentName = null; classStudents = []; });
                                 if (isTargeted) fetchClassStudents(selectedClass, val);
                               }
                             },
@@ -372,6 +410,7 @@ class _HomeworkScreenState extends State<HomeworkScreen> with SingleTickerProvid
                     ),
                     10.h.height,
 
+                    AssignmentAttachmentPicker(controller: fileUrlCtrl, onUploadingChanged: (busy) => setSheetState(() => uploadingAttachment = busy)),
                     TextField(
                       controller: fileUrlCtrl,
                       decoration: InputDecoration(
@@ -384,12 +423,25 @@ class _HomeworkScreenState extends State<HomeworkScreen> with SingleTickerProvid
                     ),
                     14.h.height,
 
-                    ElevatedButton(
+                    TextButton.icon(
+                      icon: const Icon(Icons.calendar_today),
+                      label: Text('Due: ${chosenDueDate.toIso8601String().split('T').first}'),
                       onPressed: () async {
-                        if (titleCtrl.text.trim().isEmpty) return;
+                        final date = await showDatePicker(context: ctx, initialDate: chosenDueDate.isBefore(DateTime.now()) ? DateTime.now() : chosenDueDate, firstDate: DateTime.now(), lastDate: DateTime.now().add(const Duration(days: 3650)));
+                        if (date != null) setSheetState(() => chosenDueDate = date);
+                      },
+                    ),
+                    ElevatedButton(
+                      onPressed: uploadingAttachment ? null : () async {
+                        if (titleCtrl.text.trim().isEmpty || subjectCtrl.text.trim().isEmpty || (isTargeted && selectedStudentId == null)) {
+                          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Enter a title, subject and selected student when targeting.')));
+                          return;
+                        }
                         Navigator.pop(ctx);
                         setState(() => _isLoading = true);
+                        try {
                         await _repository.createTeacherAssignment(
+                          assignmentId: editing?.id,
                           title: titleCtrl.text.trim(),
                           description: descCtrl.text.trim(),
                           subject: subjectCtrl.text.trim(),
@@ -400,6 +452,9 @@ class _HomeworkScreenState extends State<HomeworkScreen> with SingleTickerProvid
                           targetStudentId: isTargeted ? selectedStudentId : null,
                           fileAttachmentUrl: fileUrlCtrl.text.trim(),
                         );
+                        } catch (e) {
+                          if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Assignment was not published. Please retry.')));
+                        }
                         _loadData();
                       },
                       style: ElevatedButton.styleFrom(
@@ -443,6 +498,7 @@ class _HomeworkScreenState extends State<HomeworkScreen> with SingleTickerProvid
   void _showStudentSubmitSheet(HomeworkItem hw) {
     final textCtrl = TextEditingController();
     final linkCtrl = TextEditingController();
+    bool uploadingAttachment = false;
 
     showModalBottomSheet(
       context: context,
@@ -451,7 +507,7 @@ class _HomeworkScreenState extends State<HomeworkScreen> with SingleTickerProvid
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(22.r)),
       ),
-      builder: (ctx) {
+      builder: (ctx) => StatefulBuilder(builder: (ctx, setSheetState) {
         return Padding(
           padding: EdgeInsets.only(
             left: 20.w,
@@ -492,6 +548,7 @@ class _HomeworkScreenState extends State<HomeworkScreen> with SingleTickerProvid
                 ),
               ),
               12.h.height,
+              AssignmentAttachmentPicker(controller: linkCtrl, onUploadingChanged: (busy) => setSheetState(() => uploadingAttachment = busy)),
               TextField(
                 controller: linkCtrl,
                 decoration: InputDecoration(
@@ -504,14 +561,19 @@ class _HomeworkScreenState extends State<HomeworkScreen> with SingleTickerProvid
               ),
               16.h.height,
               ElevatedButton(
-                onPressed: () async {
+                onPressed: uploadingAttachment ? null : () async {
+                  if (textCtrl.text.trim().isEmpty && linkCtrl.text.trim().isEmpty) {
+                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Enter an answer or attach your work.')));
+                    return;
+                  }
                   Navigator.pop(ctx);
                   setState(() => _isLoading = true);
-                  await _repository.submitStudentAssignmentWork(
+                  final success = await _repository.submitStudentAssignmentWork(
                     assignmentId: hw.id,
                     submissionText: textCtrl.text.trim(),
                     fileUrl: linkCtrl.text.trim(),
                   );
+                  if (!success && mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Submission failed. Please retry.')));
                   _loadData();
                 },
                 style: ElevatedButton.styleFrom(
@@ -527,7 +589,7 @@ class _HomeworkScreenState extends State<HomeworkScreen> with SingleTickerProvid
             ],
           ),
         );
-      },
+      }),
     );
   }
 
@@ -536,12 +598,13 @@ class _HomeworkScreenState extends State<HomeworkScreen> with SingleTickerProvid
     final user = context.watch<AuthBloc>().state.user;
     final isTeacher = user?.role == UserRole.teacher;
 
-    final pendingList = _homeworkList.where((h) {
+    final visible = _homeworkList.where((h) => (_subjectFilter == null || h.subject == _subjectFilter) && (_classFilter == null || h.className == _classFilter)).toList();
+    final pendingList = visible.where((h) {
       final s = (h.submissionStatus ?? '').toLowerCase();
       return s == 'pending' || s == 'overdue' || s == 'rejected';
     }).toList();
 
-    final completedList = _homeworkList.where((h) {
+    final completedList = visible.where((h) {
       final s = (h.submissionStatus ?? '').toLowerCase();
       return s == 'submitted' || s == 'accepted' || s == 'graded';
     }).toList();
@@ -591,21 +654,42 @@ class _HomeworkScreenState extends State<HomeworkScreen> with SingleTickerProvid
           : null,
       body: _isLoading
           ? const SmoothSkeletonCardList(count: 3)
-          : TabBarView(
+          : Column(children: [
+              if (_children.isNotEmpty)
+                Padding(padding: const EdgeInsets.all(12), child: DropdownButtonFormField<String>(
+                  initialValue: _selectedChild,
+                  decoration: const InputDecoration(labelText: 'Child'),
+                  items: _children.map((c) => DropdownMenuItem(value: c.admissionNo, child: Text('${c.name} (${c.className})'))).toList(),
+                  onChanged: (value) { setState(() => _selectedChild = value); _loadData(); },
+                )),
+              SingleChildScrollView(scrollDirection: Axis.horizontal, child: Row(children: [
+                ChoiceChip(label: const Text('All Subjects'), selected: _subjectFilter == null, onSelected: (_) => setState(() => _subjectFilter = null)),
+                for (final subject in _homeworkList.map((h) => h.subject).toSet())
+                  Padding(padding: const EdgeInsets.only(left: 8), child: ChoiceChip(label: Text(subject), selected: _subjectFilter == subject, onSelected: (_) => setState(() => _subjectFilter = subject))),
+              ])),
+              if (isTeacher && _homeworkList.isNotEmpty)
+                Padding(padding: const EdgeInsets.all(12), child: DropdownButton<String>(
+                  value: _classFilter, hint: const Text('All Classes'), isExpanded: true,
+                  items: [const DropdownMenuItem<String>(value: null, child: Text('All Classes')), ..._homeworkList.map((h) => h.className).toSet().map((name) => DropdownMenuItem(value: name, child: Text(name)))],
+                  onChanged: (value) => setState(() => _classFilter = value),
+                )),
+              if (_error != null) Padding(padding: const EdgeInsets.all(12), child: Text(_error!)),
+              Expanded(child: TabBarView(
               controller: _tabController,
               children: [
                 _buildListView(
-                  isTeacher ? _homeworkList : pendingList,
+                  isTeacher ? visible : pendingList,
                   isTeacher: isTeacher,
                   isPending: true,
                 ),
                 _buildListView(
-                  isTeacher ? _homeworkList.where((h) => h.status != HomeworkStatus.overdue).toList() : completedList,
+                  isTeacher ? visible.where((h) => h.status != HomeworkStatus.overdue).toList() : completedList,
                   isTeacher: isTeacher,
                   isPending: false,
                 ),
               ],
-            ),
+            )),
+          ]),
     );
   }
 
@@ -752,6 +836,15 @@ class _HomeworkScreenState extends State<HomeworkScreen> with SingleTickerProvid
               ),
             ),
 
+          if (hw.fileAttachmentUrl?.isNotEmpty == true)
+            TextButton.icon(
+              icon: const Icon(Icons.attachment), label: const Text('Open assignment resource'),
+              onPressed: () async {
+                final uri = Uri.tryParse(hw.fileAttachmentUrl!);
+                if (uri != null && ['https', 'http'].contains(uri.scheme)) await launchUrl(uri, mode: LaunchMode.externalApplication);
+              },
+            ),
+
           // Evaluation details for student
           if (!isTeacher && hw.teacherFeedback != null && hw.teacherFeedback!.isNotEmpty)
             Container(
@@ -780,6 +873,21 @@ class _HomeworkScreenState extends State<HomeworkScreen> with SingleTickerProvid
                 ],
               ),
             ),
+
+          if (isTeacher)
+            Wrap(children: [
+              TextButton.icon(icon: const Icon(Icons.edit_outlined), label: const Text('Edit'), onPressed: () => _showCreateAssignmentSheet(editing: hw)),
+              TextButton.icon(icon: const Icon(Icons.delete_outline), label: const Text('Delete'), onPressed: () async {
+                final confirmed = await showDialog<bool>(context: context, builder: (ctx) => AlertDialog(
+                  title: const Text('Delete assignment?'), content: const Text('This also removes its submissions and reviews.'),
+                  actions: [TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')), TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Delete'))],
+                ));
+                if (confirmed != true) return;
+                try { await NetworkApiService().deleteApi('${AppUrl.createTeacherAssignment}/${hw.id}'); }
+                catch (e) { if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Assignment was not deleted.'))); }
+                _loadData();
+              }),
+            ]),
 
           // Footer info: Due date, Points, and Actions
           Row(
@@ -818,7 +926,7 @@ class _HomeworkScreenState extends State<HomeworkScreen> with SingleTickerProvid
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8.r)),
                   ),
                 )
-              else if (statusStr == 'pending' || statusStr == 'rejected')
+              else if (context.read<AuthBloc>().state.user?.role == UserRole.student && (statusStr == 'pending' || statusStr == 'rejected' || statusStr == 'overdue'))
                 ElevatedButton.icon(
                   onPressed: () => _showStudentSubmitSheet(hw),
                   icon: Icon(Icons.upload_file_rounded, size: 14.sp, color: Colors.white),
@@ -864,19 +972,21 @@ class _SubmissionsReviewSheetState extends State<_SubmissionsReviewSheet> {
   }
 
   Future<void> _fetchSubmissions() async {
-    final list = await widget.repository.getAssignmentSubmissions(widget.assignment.id);
-    if (mounted) {
-      setState(() {
-        _submissions = list;
-        _loading = false;
-      });
+    try {
+      final list = await widget.repository.getAssignmentSubmissions(widget.assignment.id);
+      if (mounted) setState(() { _submissions = list; _loading = false; });
+    } catch (e) {
+      if (mounted) {
+        setState(() => _loading = false);
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Unable to load submissions. Please retry.')));
+      }
     }
   }
 
   void _showGradeDialog(AssignmentSubmissionItem sub) {
     final pointsCtrl = TextEditingController(text: sub.points != null ? sub.points.toString() : '${widget.assignment.points}');
     final feedbackCtrl = TextEditingController(text: sub.teacherFeedback ?? '');
-    String chosenStatus = sub.status == 'PENDING' ? 'ACCEPTED' : sub.status;
+    String chosenStatus = ['ACCEPTED', 'GRADED', 'REJECTED'].contains(sub.status) ? sub.status : 'GRADED';
 
     showDialog(
       context: context,
@@ -899,6 +1009,11 @@ class _SubmissionsReviewSheetState extends State<_SubmissionsReviewSheet> {
                         child: Text('Submitted Work:\n${sub.submissionText}', style: TextStyle(fontSize: 12.sp)),
                       ),
                     ],
+                    if (sub.fileUrl?.isNotEmpty == true)
+                      TextButton(onPressed: () async {
+                        final uri = Uri.tryParse(sub.fileUrl!);
+                        if (uri != null && ['https', 'http'].contains(uri.scheme)) await launchUrl(uri, mode: LaunchMode.externalApplication);
+                      }, child: const Text('Open submitted attachment')),
                     12.h.height,
                     TextField(
                       controller: pointsCtrl,
@@ -939,15 +1054,16 @@ class _SubmissionsReviewSheetState extends State<_SubmissionsReviewSheet> {
                   onPressed: () async {
                     Navigator.pop(ctx);
                     if (sub.submissionId != null) {
-                      await widget.repository.reviewSubmission(
+                      final success = await widget.repository.reviewSubmission(
                         assignmentId: widget.assignment.id,
                         submissionId: sub.submissionId,
                         status: chosenStatus,
                         points: int.tryParse(pointsCtrl.text.trim()),
                         feedback: feedbackCtrl.text.trim(),
                       );
+                      if (!success && mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Grade was not saved. Please retry.')));
                       _fetchSubmissions();
-                      widget.onReviewDone();
+                      if (success) widget.onReviewDone();
                     }
                   },
                   child: const Text('Save Grade'),

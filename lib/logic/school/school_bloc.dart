@@ -1,5 +1,6 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:school_desk_app/data/models/school_models.dart';
+
 import '../../core/di/locator.dart';
 import '../../data/repositories/school_repository.dart';
 import '../../data/models/chat_models.dart';
@@ -8,6 +9,10 @@ import 'school_state.dart';
 
 class SchoolBloc extends Bloc<SchoolEvent, SchoolState> {
   final SchoolRepository _schoolRepository = getIt<SchoolRepository>();
+
+  final Map<String, int> _generations = {};
+  int _begin(String module) =>
+      _generations.update(module, (v) => v + 1, ifAbsent: () => 1);
 
   SchoolBloc() : super(const SchoolState()) {
     on<LoadSchoolData>(_onLoadSchoolData);
@@ -28,7 +33,6 @@ class SchoolBloc extends Bloc<SchoolEvent, SchoolState> {
     on<SubmitHomeworkRequested>(_onSubmitHomeworkRequested);
     on<PayFeeRequested>(_onPayFeeRequested);
     on<SendMessageRequested>(_onSendMessageRequested);
-    on<ReceiveMockReply>(_onReceiveMockReply);
     on<AddExpenseRequested>(_onAddExpenseRequested);
     on<ApproveExpenseRequested>(_onApproveExpenseRequested);
     on<ApplyLeaveRequested>(_onApplyLeaveRequested);
@@ -48,7 +52,7 @@ class SchoolBloc extends Bloc<SchoolEvent, SchoolState> {
       final results = await Future.wait([
         _schoolRepository.getAttendance(event.userId),
         _schoolRepository.getHomework(event.userId),
-        _schoolRepository.getFees(event.userId),
+        _schoolRepository.getFees(event.userId, admissionNo: event.admissionNo),
         _schoolRepository.getTimetable(event.userId),
         _schoolRepository.getExams(event.userId),
         _schoolRepository.getExpenses(event.userId),
@@ -91,21 +95,20 @@ class SchoolBloc extends Bloc<SchoolEvent, SchoolState> {
     FetchTimetableRequested event,
     Emitter<SchoolState> emit,
   ) async {
-    emit(state.copyWith(isLoading: true, errorMessage: null));
+    final generation = _begin('timetable');
+    emit(state.copyWith(isLoading: true, errorMessage: null, timetable: []));
 
     try {
       final timetable = await _schoolRepository.getTimetable(
         event.userId,
         className: event.className,
         day: event.day,
+        admissionNo: event.admissionNo,
       );
-      emit(
-        state.copyWith(
-          isLoading: false,
-          timetable: timetable,
-        ),
-      );
+      if (_generations['timetable'] != generation) return;
+      emit(state.copyWith(isLoading: false, timetable: timetable));
     } catch (e) {
+      if (_generations['timetable'] != generation) return;
       emit(
         state.copyWith(
           isLoading: false,
@@ -119,21 +122,37 @@ class SchoolBloc extends Bloc<SchoolEvent, SchoolState> {
     FetchAttendanceRequested event,
     Emitter<SchoolState> emit,
   ) async {
-    emit(state.copyWith(isLoading: true, errorMessage: null));
+    final generation = _begin('attendance');
+    emit(state.copyWith(isLoading: true, errorMessage: null, attendance: []));
     try {
       final results = await Future.wait([
-        _schoolRepository.getAttendance(event.userId, type: event.type, date: event.date, className: event.className),
+        _schoolRepository.getAttendance(
+          event.userId,
+          type: event.type,
+          date: event.date,
+          className: event.className,
+          admissionNo: event.admissionNo,
+        ),
         _schoolRepository.getHolidays(),
         _schoolRepository.getAttendanceStats(),
       ]);
-      emit(state.copyWith(
-        isLoading: false,
-        attendance: results[0] as List<AttendanceRecord>,
-        holidays: results[1] as List<HolidayModel>,
-        attendanceStats: results[2] as AttendanceStats,
-      ));
+      if (_generations['attendance'] != generation) return;
+      emit(
+        state.copyWith(
+          isLoading: false,
+          attendance: results[0] as List<AttendanceRecord>,
+          holidays: results[1] as List<HolidayModel>,
+          attendanceStats: results[2] as AttendanceStats,
+        ),
+      );
     } catch (e) {
-      emit(state.copyWith(isLoading: false, errorMessage: 'Failed to load attendance: ${e.toString()}'));
+      if (_generations['attendance'] != generation) return;
+      emit(
+        state.copyWith(
+          isLoading: false,
+          errorMessage: 'Failed to load attendance: ${e.toString()}',
+        ),
+      );
     }
   }
 
@@ -141,12 +160,24 @@ class SchoolBloc extends Bloc<SchoolEvent, SchoolState> {
     FetchExamsRequested event,
     Emitter<SchoolState> emit,
   ) async {
-    emit(state.copyWith(isLoading: true, errorMessage: null));
+    final generation = _begin('exams');
+    emit(state.copyWith(isLoading: true, errorMessage: null, exams: []));
     try {
-      final exams = await _schoolRepository.getExams(event.userId, className: event.className);
+      final exams = await _schoolRepository.getExams(
+        event.userId,
+        className: event.className,
+        admissionNo: event.admissionNo,
+      );
+      if (_generations['exams'] != generation) return;
       emit(state.copyWith(isLoading: false, exams: exams));
     } catch (e) {
-      emit(state.copyWith(isLoading: false, errorMessage: 'Failed to load exams: ${e.toString()}'));
+      if (_generations['exams'] != generation) return;
+      emit(
+        state.copyWith(
+          isLoading: false,
+          errorMessage: 'Failed to load exams: ${e.toString()}',
+        ),
+      );
     }
   }
 
@@ -156,10 +187,18 @@ class SchoolBloc extends Bloc<SchoolEvent, SchoolState> {
   ) async {
     emit(state.copyWith(isLoading: true, errorMessage: null));
     try {
-      final homework = await _schoolRepository.getHomework(event.userId, className: event.className);
+      final homework = await _schoolRepository.getHomework(
+        event.userId,
+        className: event.className,
+      );
       emit(state.copyWith(isLoading: false, homework: homework));
     } catch (e) {
-      emit(state.copyWith(isLoading: false, errorMessage: 'Failed to load homework: ${e.toString()}'));
+      emit(
+        state.copyWith(
+          isLoading: false,
+          errorMessage: 'Failed to load homework: ${e.toString()}',
+        ),
+      );
     }
   }
 
@@ -167,12 +206,23 @@ class SchoolBloc extends Bloc<SchoolEvent, SchoolState> {
     FetchFeesRequested event,
     Emitter<SchoolState> emit,
   ) async {
-    emit(state.copyWith(isLoading: true, errorMessage: null));
+    final generation = _begin('fees');
+    emit(state.copyWith(isLoading: true, errorMessage: null, fees: []));
     try {
-      final fees = await _schoolRepository.getFees(event.userId);
+      final fees = await _schoolRepository.getFees(
+        event.userId,
+        admissionNo: event.admissionNo,
+      );
+      if (_generations['fees'] != generation) return;
       emit(state.copyWith(isLoading: false, fees: fees));
     } catch (e) {
-      emit(state.copyWith(isLoading: false, errorMessage: 'Failed to load fees: ${e.toString()}'));
+      if (_generations['fees'] != generation) return;
+      emit(
+        state.copyWith(
+          isLoading: false,
+          errorMessage: 'Failed to load fees: ${e.toString()}',
+        ),
+      );
     }
   }
 
@@ -185,7 +235,12 @@ class SchoolBloc extends Bloc<SchoolEvent, SchoolState> {
       final expenses = await _schoolRepository.getExpenses(event.userId);
       emit(state.copyWith(isLoading: false, expenses: expenses));
     } catch (e) {
-      emit(state.copyWith(isLoading: false, errorMessage: 'Failed to load expenses: ${e.toString()}'));
+      emit(
+        state.copyWith(
+          isLoading: false,
+          errorMessage: 'Failed to load expenses: ${e.toString()}',
+        ),
+      );
     }
   }
 
@@ -198,7 +253,12 @@ class SchoolBloc extends Bloc<SchoolEvent, SchoolState> {
       final notices = await _schoolRepository.getNotices();
       emit(state.copyWith(isLoading: false, notices: notices));
     } catch (e) {
-      emit(state.copyWith(isLoading: false, errorMessage: 'Failed to load notices: ${e.toString()}'));
+      emit(
+        state.copyWith(
+          isLoading: false,
+          errorMessage: 'Failed to load notices: ${e.toString()}',
+        ),
+      );
     }
   }
 
@@ -211,7 +271,12 @@ class SchoolBloc extends Bloc<SchoolEvent, SchoolState> {
       final payroll = await _schoolRepository.getPayroll(event.userId);
       emit(state.copyWith(isLoading: false, payroll: payroll));
     } catch (e) {
-      emit(state.copyWith(isLoading: false, errorMessage: 'Failed to load payroll: ${e.toString()}'));
+      emit(
+        state.copyWith(
+          isLoading: false,
+          errorMessage: 'Failed to load payroll: ${e.toString()}',
+        ),
+      );
     }
   }
 
@@ -224,7 +289,12 @@ class SchoolBloc extends Bloc<SchoolEvent, SchoolState> {
       final leaves = await _schoolRepository.getLeaves(event.userId);
       emit(state.copyWith(isLoading: false, leaves: leaves));
     } catch (e) {
-      emit(state.copyWith(isLoading: false, errorMessage: 'Failed to load leaves: ${e.toString()}'));
+      emit(
+        state.copyWith(
+          isLoading: false,
+          errorMessage: 'Failed to load leaves: ${e.toString()}',
+        ),
+      );
     }
   }
 
@@ -237,7 +307,12 @@ class SchoolBloc extends Bloc<SchoolEvent, SchoolState> {
       final channels = await _schoolRepository.getChatChannels(event.userId);
       emit(state.copyWith(isLoading: false, chatChannels: channels));
     } catch (e) {
-      emit(state.copyWith(isLoading: false, errorMessage: 'Failed to load chats: ${e.toString()}'));
+      emit(
+        state.copyWith(
+          isLoading: false,
+          errorMessage: 'Failed to load chats: ${e.toString()}',
+        ),
+      );
     }
   }
 
@@ -376,14 +451,38 @@ class SchoolBloc extends Bloc<SchoolEvent, SchoolState> {
         appliedOn: _formatDate(DateTime.now()),
       );
       final updated = await _schoolRepository.applyLeave(leave);
-      emit(state.copyWith(isActionInProgress: false, leaves: updated, actionSuccessMessage: 'Leave applied!'));
+      emit(
+        state.copyWith(
+          isActionInProgress: false,
+          leaves: updated,
+          actionSuccessMessage: 'Leave applied!',
+        ),
+      );
     } catch (e) {
-      emit(state.copyWith(isActionInProgress: false, errorMessage: 'Failed to apply leave.'));
+      emit(
+        state.copyWith(
+          isActionInProgress: false,
+          errorMessage: 'Failed to apply leave.',
+        ),
+      );
     }
   }
 
   String _formatDate(DateTime dt) {
-    final months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    final months = [
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec',
+    ];
     return '${dt.day} ${months[dt.month - 1]} ${dt.year}';
   }
 
@@ -393,10 +492,24 @@ class SchoolBloc extends Bloc<SchoolEvent, SchoolState> {
   ) async {
     emit(state.copyWith(isActionInProgress: true, actionSuccessMessage: null));
     try {
-      final updated = await _schoolRepository.approveLeave(event.userId, event.leaveId);
-      emit(state.copyWith(isActionInProgress: false, leaves: updated, actionSuccessMessage: 'Leave approved!'));
+      final updated = await _schoolRepository.approveLeave(
+        event.userId,
+        event.leaveId,
+      );
+      emit(
+        state.copyWith(
+          isActionInProgress: false,
+          leaves: updated,
+          actionSuccessMessage: 'Leave approved!',
+        ),
+      );
     } catch (e) {
-      emit(state.copyWith(isActionInProgress: false, errorMessage: 'Failed to approve leave.'));
+      emit(
+        state.copyWith(
+          isActionInProgress: false,
+          errorMessage: 'Failed to approve leave.',
+        ),
+      );
     }
   }
 
@@ -406,10 +519,24 @@ class SchoolBloc extends Bloc<SchoolEvent, SchoolState> {
   ) async {
     emit(state.copyWith(isActionInProgress: true, actionSuccessMessage: null));
     try {
-      final updated = await _schoolRepository.rejectLeave(event.userId, event.leaveId);
-      emit(state.copyWith(isActionInProgress: false, leaves: updated, actionSuccessMessage: 'Leave rejected.'));
+      final updated = await _schoolRepository.rejectLeave(
+        event.userId,
+        event.leaveId,
+      );
+      emit(
+        state.copyWith(
+          isActionInProgress: false,
+          leaves: updated,
+          actionSuccessMessage: 'Leave rejected.',
+        ),
+      );
     } catch (e) {
-      emit(state.copyWith(isActionInProgress: false, errorMessage: 'Failed to reject leave.'));
+      emit(
+        state.copyWith(
+          isActionInProgress: false,
+          errorMessage: 'Failed to reject leave.',
+        ),
+      );
     }
   }
 
@@ -424,73 +551,8 @@ class SchoolBloc extends Bloc<SchoolEvent, SchoolState> {
         event.text,
       );
       emit(state.copyWith(chatChannels: updatedChannels));
-
-      // Trigger automatic reply after a short delay for interactive wow factor
-      final String replyText = _getMockReplyText(event.channelId, event.text);
-
-      Future.delayed(const Duration(milliseconds: 1800), () {
-        if (!isClosed) {
-          add(
-            ReceiveMockReply(channelId: event.channelId, replyText: replyText),
-          );
-        }
-      });
     } catch (e) {
       emit(state.copyWith(errorMessage: 'Failed to send message.'));
-    }
-  }
-
-  void _onReceiveMockReply(ReceiveMockReply event, Emitter<SchoolState> emit) {
-    final channelIndex = state.chatChannels.indexWhere(
-      (ch) => ch.id == event.channelId,
-    );
-    if (channelIndex != -1) {
-      final channel = state.chatChannels[channelIndex];
-      final messages = List<Message>.from(channel.messages);
-
-      messages.add(
-        Message(
-          id: 'reply_${DateTime.now().millisecondsSinceEpoch}',
-          senderId: 'contact',
-          senderName: channel.name.split(' ').first,
-          content: event.replyText,
-          timestamp: DateTime.now(),
-        ),
-      );
-
-      final updatedChannels = List<ChatChannel>.from(state.chatChannels);
-      updatedChannels[channelIndex] = channel.copyWith(
-        messages: messages,
-        lastMessage: event.replyText,
-        time: 'Just now',
-      );
-
-      emit(state.copyWith(chatChannels: updatedChannels));
-    }
-  }
-
-  String _getMockReplyText(String channelId, String userMessage) {
-    final lower = userMessage.toLowerCase();
-
-    if (channelId == 'ch_1') {
-      // Ms. Priya (Maths Teacher)
-      if (lower.contains('homework') || lower.contains('submit')) {
-        return 'Thank you for updating me. I will review Rohan\'s algebra exercises today.';
-      } else if (lower.contains('marks') || lower.contains('score')) {
-        return 'Yes, Rohan scored very well. Keep up the encouragement at home!';
-      }
-      return 'Hello Anita! Thanks for your message. I will check this and get back to you soon.';
-    } else if (channelId == 'ch_2') {
-      // Rajesh Sharma (Driver)
-      if (lower.contains('where') ||
-          lower.contains('bus') ||
-          lower.contains('reach')) {
-        return 'We have crossed the main crossroads. We should reach Rohan\'s stop in 5 minutes.';
-      }
-      return 'Okay, noted. Thank you.';
-    } else {
-      // Transport Manager / Others
-      return 'Thank you for contacting school transport desk. We have received your query and will update you.';
     }
   }
 
@@ -507,23 +569,29 @@ class SchoolBloc extends Bloc<SchoolEvent, SchoolState> {
       }
     }
     if (activeHoliday != null) {
-      emit(state.copyWith(
-        isActionInProgress: false,
-        errorMessage: 'Attendance cannot be marked: This date is an official school holiday (${activeHoliday.title}).',
-      ));
+      emit(
+        state.copyWith(
+          isActionInProgress: false,
+          errorMessage:
+              'Attendance cannot be marked: This date is an official school holiday (${activeHoliday.title}).',
+        ),
+      );
       return;
     }
 
     emit(state.copyWith(isActionInProgress: true, actionSuccessMessage: null));
     try {
-      final updatedAttendance = await _schoolRepository.markAttendance(event.record);
+      final updatedAttendance = await _schoolRepository.markAttendance(
+        event.record,
+      );
       final updatedStats = await _schoolRepository.getAttendanceStats();
       emit(
         state.copyWith(
           isActionInProgress: false,
           attendance: updatedAttendance,
           attendanceStats: updatedStats,
-          actionSuccessMessage: 'Attendance marked successfully as ${event.record.status.name.toUpperCase()}!',
+          actionSuccessMessage:
+              'Attendance marked successfully as ${event.record.status.name.toUpperCase()}!',
         ),
       );
     } catch (e) {
@@ -550,10 +618,13 @@ class SchoolBloc extends Bloc<SchoolEvent, SchoolState> {
       }
     }
     if (activeHoliday != null) {
-      emit(state.copyWith(
-        isActionInProgress: false,
-        errorMessage: 'Attendance cannot be marked: Today is an official school holiday (${activeHoliday.title}).',
-      ));
+      emit(
+        state.copyWith(
+          isActionInProgress: false,
+          errorMessage:
+              'Attendance cannot be marked: Today is an official school holiday (${activeHoliday.title}).',
+        ),
+      );
       return;
     }
 
@@ -636,7 +707,8 @@ class SchoolBloc extends Bloc<SchoolEvent, SchoolState> {
         state.copyWith(
           isActionInProgress: false,
           exams: updatedExams,
-          actionSuccessMessage: 'Exam "${event.exam.title}" scheduled successfully!',
+          actionSuccessMessage:
+              'Exam "${event.exam.title}" scheduled successfully!',
         ),
       );
     } catch (e) {
@@ -658,6 +730,7 @@ class SchoolBloc extends Bloc<SchoolEvent, SchoolState> {
       final updatedExams = await _schoolRepository.uploadExamScore(
         event.examId,
         event.score,
+        admissionNo: event.admissionNo,
       );
       emit(
         state.copyWith(

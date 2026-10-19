@@ -1,3 +1,4 @@
+import '../../widgets/module_error.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
@@ -13,8 +14,9 @@ import '../../widgets/glass_card.dart';
 
 class AttendanceScreen extends StatefulWidget {
   final bool isInline;
+  final String? admissionNo;
 
-  const AttendanceScreen({super.key, this.isInline = false});
+  const AttendanceScreen({super.key, this.isInline = false, this.admissionNo});
 
   @override
   State<AttendanceScreen> createState() => _AttendanceScreenState();
@@ -35,9 +37,12 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
   void _loadAttendance() {
     final authState = context.read<AuthBloc>().state;
     final currentUser = authState.user;
+    final args = ModalRoute.of(context)?.settings.arguments;
+    final admissionNo = widget.admissionNo ?? (args is Map ? args['admissionNo']?.toString() : null);
     context.read<SchoolBloc>().add(
       FetchAttendanceRequested(
-        userId: currentUser?.id ?? '1',
+        admissionNo: admissionNo,
+        userId: currentUser?.id ?? '',
         className: currentUser?.className,
       ),
     );
@@ -76,6 +81,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
           ),
           body: BlocBuilder<SchoolBloc, SchoolState>(
             builder: (context, state) {
+            if (state.errorMessage != null) return ModuleError(message: state.errorMessage!, retry: _loadAttendance);
               if (state.isLoading) {
                 return const Center(child: CircularProgressIndicator());
               }

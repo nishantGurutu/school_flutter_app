@@ -2,6 +2,7 @@ import '../../data/models/school_models.dart';
 import '../../data/models/chat_models.dart';
 
 class SchoolState {
+  static const _unchanged = Object();
   final bool isLoading;
   final List<AttendanceRecord> attendance;
   final List<HolidayModel> holidays;
@@ -52,9 +53,9 @@ class SchoolState {
     List<LeaveRecord>? leaves,
     List<ChatChannel>? chatChannels,
     AttendanceStats? attendanceStats,
-    String? errorMessage,
+    Object? errorMessage = _unchanged,
     bool? isActionInProgress,
-    String? actionSuccessMessage,
+    Object? actionSuccessMessage = _unchanged,
   }) {
     return SchoolState(
       isLoading: isLoading ?? this.isLoading,
@@ -70,9 +71,9 @@ class SchoolState {
       leaves: leaves ?? this.leaves,
       chatChannels: chatChannels ?? this.chatChannels,
       attendanceStats: attendanceStats ?? this.attendanceStats,
-      errorMessage: errorMessage ?? this.errorMessage,
+      errorMessage: identical(errorMessage, _unchanged) ? this.errorMessage : errorMessage as String?,
       isActionInProgress: isActionInProgress ?? this.isActionInProgress,
-      actionSuccessMessage: actionSuccessMessage ?? this.actionSuccessMessage,
+      actionSuccessMessage: identical(actionSuccessMessage, _unchanged) ? this.actionSuccessMessage : actionSuccessMessage as String?,
     );
   }
 
@@ -86,7 +87,7 @@ class SchoolState {
   // Get attendance rates
   double get attendancePercentage {
     final activeRecords = attendance.where((r) => r.status != AttendanceStatus.holiday).toList();
-    if (activeRecords.isEmpty) return 100.0;
+    if (activeRecords.isEmpty) return 0.0;
     final presentCount = activeRecords.where((r) => r.status == AttendanceStatus.present).length;
     return (presentCount / activeRecords.length) * 100.0;
   }

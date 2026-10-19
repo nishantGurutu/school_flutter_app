@@ -19,6 +19,7 @@ class ChatScreen extends StatefulWidget {
 }
 
 class _ChatScreenState extends State<ChatScreen> {
+  String _search = '';
   @override
   void initState() {
     super.initState();
@@ -67,7 +68,7 @@ class _ChatScreenState extends State<ChatScreen> {
             return const Center(child: CircularProgressIndicator());
           }
 
-          final channels = state.chatChannels;
+          final channels = state.chatChannels.where((channel) => channel.name.toLowerCase().contains(_search.toLowerCase())).toList();
 
           if (channels.isEmpty) {
             return Center(
@@ -88,6 +89,7 @@ class _ChatScreenState extends State<ChatScreen> {
               Padding(
                 padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 10.h),
                 child: TextField(
+                  onChanged: (value) => setState(() => _search = value),
                   style: const TextStyle(color: AppColors.textPrimary),
                   decoration: InputDecoration(
                     hintText: 'Search chats...',
@@ -123,9 +125,8 @@ class _ChatScreenState extends State<ChatScreen> {
                           decoration: BoxDecoration(
                             shape: BoxShape.circle,
                             border: Border.all(color: AppColors.primary.withValues(alpha: 0.4), width: 1.5),
-                            image: DecorationImage(
-                              image: NetworkImage(ch.avatarUrl),
-                              fit: BoxFit.cover,
+                            image: ch.avatarUrl.isEmpty ? null : DecorationImage(
+                              image: NetworkImage(ch.avatarUrl), fit: BoxFit.cover,
                             ),
                           ),
                         ),

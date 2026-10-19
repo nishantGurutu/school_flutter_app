@@ -402,6 +402,11 @@ class RoleNavigationConfig {
     switch (role) {
       case UserRole.student:
         return const [
+          DrawerMenuItem(icon: Icons.book_outlined, label: 'Student diary', route: '/portal/diary'),
+          DrawerMenuItem(icon: Icons.workspace_premium_outlined, label: 'Certificates', route: '/portal/certificates'),
+          DrawerMenuItem(icon: Icons.assessment_outlined, label: 'Report card', route: '/portal/report'),
+          DrawerMenuItem(icon: Icons.timer_outlined, label: 'Online exams', route: '/portal/onlineExams'),
+          DrawerMenuItem(icon: Icons.notifications_outlined, label: 'Notifications', route: '/portal/notifications'),
           DrawerMenuItem(icon: Icons.directions_bus_rounded, label: 'My School Bus', route: RoutesName.studentTransport),
           DrawerMenuItem(icon: Icons.calendar_month_rounded, label: 'My Attendance', route: RoutesName.attendance),
           DrawerMenuItem(icon: Icons.assignment_outlined, label: 'Homework & Tasks', route: RoutesName.homework),
@@ -414,6 +419,11 @@ class RoleNavigationConfig {
 
       case UserRole.parent:
         return const [
+          DrawerMenuItem(icon: Icons.book_outlined, label: 'Student diary', route: '/portal/diary'),
+          DrawerMenuItem(icon: Icons.workspace_premium_outlined, label: 'Certificates', route: '/portal/certificates'),
+          DrawerMenuItem(icon: Icons.assessment_outlined, label: 'Report card', route: '/portal/report'),
+          DrawerMenuItem(icon: Icons.timer_outlined, label: 'Online exams', route: '/portal/onlineExams'),
+          DrawerMenuItem(icon: Icons.notifications_outlined, label: 'Notifications', route: '/portal/notifications'),
           DrawerMenuItem(icon: Icons.directions_bus_rounded, label: 'Live Bus Tracking', route: RoutesName.parentTransport),
           DrawerMenuItem(icon: Icons.calendar_month_rounded, label: 'Child Attendance', route: RoutesName.attendance),
           DrawerMenuItem(icon: Icons.account_balance_wallet_outlined, label: 'School Fees Payment', route: RoutesName.fees),
@@ -426,6 +436,11 @@ class RoleNavigationConfig {
 
       case UserRole.teacher:
         return const [
+          DrawerMenuItem(icon: Icons.book_outlined, label: 'Student diary', route: '/portal/diary'),
+          DrawerMenuItem(icon: Icons.workspace_premium_outlined, label: 'Certificates', route: '/portal/certificates'),
+          DrawerMenuItem(icon: Icons.assessment_outlined, label: 'Report card', route: '/portal/report'),
+          DrawerMenuItem(icon: Icons.timer_outlined, label: 'Online exams', route: '/portal/onlineExams'),
+          DrawerMenuItem(icon: Icons.notifications_outlined, label: 'Notifications', route: '/portal/notifications'),
           DrawerMenuItem(icon: Icons.assignment_outlined, label: 'Assignment', route: RoutesName.homework),
           DrawerMenuItem(icon: Icons.class_rounded, label: 'Classes', route: RoutesName.classes),
           DrawerMenuItem(icon: Icons.menu_book_rounded, label: 'Lesson', route: RoutesName.lesson),
@@ -437,6 +452,7 @@ class RoleNavigationConfig {
       case UserRole.admin:
       case UserRole.masterAdmin:
         return const [
+          DrawerMenuItem(icon: Icons.notifications_outlined, label: 'Notifications', route: '/portal/notifications'),
           DrawerMenuItem(icon: Icons.calendar_month_rounded, label: 'Staff Attendance Master', route: RoutesName.attendance),
           DrawerMenuItem(icon: Icons.assignment_turned_in_outlined, label: 'Leave Approvals', route: RoutesName.leave),
           DrawerMenuItem(icon: Icons.payments_outlined, label: 'Expense Management', route: RoutesName.expense),
@@ -447,6 +463,7 @@ class RoleNavigationConfig {
 
       case UserRole.driver:
         return const [
+          DrawerMenuItem(icon: Icons.notifications_outlined, label: 'Notifications', route: '/portal/notifications'),
           DrawerMenuItem(icon: Icons.directions_bus_rounded, label: 'My Duty Schedule', route: RoutesName.dashboard),
           DrawerMenuItem(icon: Icons.navigation_rounded, label: 'Active GPS Tracking Trip', route: RoutesName.activeTrip),
           DrawerMenuItem(icon: Icons.campaign_outlined, label: 'School Notices', route: RoutesName.notice),

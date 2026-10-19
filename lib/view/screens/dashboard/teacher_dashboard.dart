@@ -6,6 +6,7 @@ import '../../../core/theme/app_colors.dart';
 import '../../../core/extensions/context_extensions.dart';
 import '../../../data/models/user_model.dart';
 import '../../../data/models/home_dashboard_model.dart';
+import '../../../data/models/school_models.dart';
 import '../../../data/repositories/api_school_repository.dart';
 import '../../../core/config/role_navigation_config.dart';
 import '../../widgets/smooth_skeleton.dart';
@@ -33,83 +34,7 @@ class _TeacherDashboardState extends State<TeacherDashboard> {
   final PageController _bannerController = PageController();
   Timer? _bannerTimer;
 
-  // Fallback banners when offline or dashboard response is empty
-  static final List<DashboardBanner> _defaultBanners = [
-    DashboardBanner(
-      id: 1,
-      title: 'Faculty Excellence & Academic Portal',
-      subtitle: 'Manage classes, attendance & homework seamlessly',
-      badge: 'FACULTY',
-      buttonText: 'View Guides',
-      websiteUrl: 'https://example.com',
-      imageUrl: 'https://cdn-icons-png.flaticon.com/512/3429/3429149.png',
-    ),
-    DashboardBanner(
-      id: 2,
-      title: 'Admissions & Annual Curriculum 2026',
-      subtitle: 'Enrollment updates and syllabus milestones',
-      badge: 'CURRICULUM',
-      buttonText: 'Explore',
-      websiteUrl: 'https://example.com',
-      imageUrl: 'https://cdn-icons-png.flaticon.com/512/2997/2997322.png',
-    ),
-  ];
-
-  // Fallback notices for teacher portal
-  static final List<DashboardNotice> _defaultNotices = [
-    DashboardNotice(
-      id: '1',
-      title: 'Term-1 Assessment & Marks Entry',
-      description:
-          'Please ensure all Class 9 and 10 internal marks and remarks are entered before Friday 5:00 PM.',
-      attachmentName: 'exam_marks_guidelines.pdf',
-      downloadUrl: 'https://example.com/guidelines.pdf',
-      date: '15 Oct 2026',
-    ),
-    DashboardNotice(
-      id: '2',
-      title: 'Monthly Staff & Faculty Conference',
-      description:
-          'All department heads and teaching staff are requested to attend the seminar hall at 3:30 PM.',
-      attachmentName: 'meeting_agenda.pdf',
-      downloadUrl: 'https://example.com/agenda.pdf',
-      date: '14 Oct 2026',
-    ),
-    DashboardNotice(
-      id: '3',
-      title: 'Upcoming Parent-Teacher Meeting (PTM)',
-      description:
-          'PTM for secondary sections scheduled for this Saturday from 9:00 AM to 1:00 PM.',
-      attachmentName: '',
-      downloadUrl: '',
-      date: '12 Oct 2026',
-    ),
-  ];
-
-  // Fallback gallery albums
-  static final List<DashboardGalleryAlbum> _defaultGallery = [
-    DashboardGalleryAlbum(
-      id: 1,
-      title: 'Annual Sports Meet',
-      coverImage:
-          'https://images.unsplash.com/photo-1577896851231-70ef18881754?w=500&auto=format&fit=crop&q=80',
-      photoCount: 24,
-    ),
-    DashboardGalleryAlbum(
-      id: 2,
-      title: 'Science Fair 2026',
-      coverImage:
-          'https://images.unsplash.com/photo-1509062522246-3755977927d7?w=500&auto=format&fit=crop&q=80',
-      photoCount: 18,
-    ),
-    DashboardGalleryAlbum(
-      id: 3,
-      title: 'Cultural Fest Celebrations',
-      coverImage:
-          'https://images.unsplash.com/photo-1523240795612-9a054b0db644?w=500&auto=format&fit=crop&q=80',
-      photoCount: 32,
-    ),
-  ];
+  List<TimetableSlot> _schedule = [];
 
   @override
   void initState() {
@@ -127,9 +52,11 @@ class _TeacherDashboardState extends State<TeacherDashboard> {
   Future<void> _fetchHomeData() async {
     setState(() => _isLoading = true);
     final data = await _repository.getHomeDashboard();
+    final schedule = await _repository.getTimetable(widget.user.id, day: const ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'][DateTime.now().weekday - 1]);
     if (mounted) {
       setState(() {
         _dashboardData = data;
+        _schedule = schedule;
         _isLoading = false;
       });
       _startBannerAutoScroll();
@@ -138,9 +65,7 @@ class _TeacherDashboardState extends State<TeacherDashboard> {
 
   void _startBannerAutoScroll() {
     _bannerTimer?.cancel();
-    final banners = (_dashboardData?.banners.isNotEmpty ?? false)
-        ? _dashboardData!.banners
-        : _defaultBanners;
+    final banners = (_dashboardData?.banners ?? <DashboardBanner>[]);
     final count = banners.length;
     if (count > 1) {
       _bannerTimer = Timer.periodic(const Duration(seconds: 4), (timer) {
@@ -179,17 +104,11 @@ class _TeacherDashboardState extends State<TeacherDashboard> {
         ? profile.avatarUrl
         : widget.user.avatarUrl;
 
-    final banners = (data?.banners.isNotEmpty ?? false)
-        ? data!.banners
-        : _defaultBanners;
+    final banners = (data?.banners ?? <DashboardBanner>[]);
 
-    final notices = (data?.latestNotices.isNotEmpty ?? false)
-        ? data!.latestNotices
-        : _defaultNotices;
+    final notices = (data?.latestNotices ?? <DashboardNotice>[]);
 
-    final gallery = (data?.gallery.isNotEmpty ?? false)
-        ? data!.gallery
-        : _defaultGallery;
+    final gallery = (data?.gallery ?? <DashboardGalleryAlbum>[]);
 
     return Scaffold(
       backgroundColor: const Color(0xFFF8FAFC),
@@ -285,28 +204,17 @@ class _TeacherDashboardState extends State<TeacherDashboard> {
                     Padding(
                       padding: EdgeInsets.symmetric(horizontal: 20.w),
                       child: Column(
-                        children: [
-                          _buildTimelineCard(
-                            subject: 'Class 9-B (Algebra)',
-                            time: '09:00 AM - 09:45 AM',
-                            room: 'Room 8',
-                            color: AppColors.primary,
-                          ),
-                          10.h.height,
-                          _buildTimelineCard(
-                            subject: 'Class 9-A (Geometry)',
-                            time: '10:00 AM - 10:45 AM',
-                            room: 'Room 5',
-                            color: AppColors.info,
-                          ),
-                          10.h.height,
-                          _buildTimelineCard(
-                            subject: 'Class 10-B (Trigonometry)',
-                            time: '11:00 AM - 11:45 AM',
-                            room: 'Room 12',
-                            color: AppColors.warning,
-                          ),
-                        ],
+                        children: _schedule.isEmpty
+                            ? [const Text('No classes scheduled for today.')]
+                            : _schedule.map((slot) => Padding(
+                                padding: EdgeInsets.only(bottom: 10.h),
+                                child: _buildTimelineCard(
+                                  subject: '${slot.className ?? ''} ${slot.section ?? ''} (${slot.subject})',
+                                  time: '${slot.startTime} - ${slot.endTime}',
+                                  room: slot.classroom,
+                                  color: AppColors.primary,
+                                ),
+                              )).toList(),
                       ),
                     ),
 
