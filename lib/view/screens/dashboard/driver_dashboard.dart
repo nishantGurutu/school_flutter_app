@@ -110,10 +110,14 @@ class _DriverDashboardState extends State<DriverDashboard> {
     if (data == null) return;
 
     final rawList = data['safetyChecklist'] ?? data['safetyList'];
-    if (rawList is List && rawList.isNotEmpty) {
+    if (rawList is List) {
       _safetyChecklist = rawList
           .map((e) => Map<String, dynamic>.from(e as Map))
           .toList();
+      final activeIds = _safetyChecklist
+          .map((item) => (item['id'] ?? item.hashCode) as int)
+          .toSet();
+      _checkedItems.removeWhere((id, _) => !activeIds.contains(id));
     }
 
     final isTripInProgress = data['tripStatus'] == 'IN_PROGRESS';

@@ -503,11 +503,13 @@ class _ExpenseScreenState extends State<ExpenseScreen> {
                                   ),
                                 ),
                                 validator: (v) {
-                                  if (v == null || v.trim().isEmpty)
+                                  if (v == null || v.trim().isEmpty) {
                                     return 'Enter amount';
+                                  }
                                   if (double.tryParse(v.trim()) == null ||
-                                      double.parse(v.trim()) <= 0)
+                                      double.parse(v.trim()) <= 0) {
                                     return 'Enter valid amount';
+                                  }
                                   return null;
                                 },
                               ),

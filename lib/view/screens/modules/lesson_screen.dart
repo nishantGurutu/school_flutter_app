@@ -41,10 +41,14 @@ class _LessonScreenState extends State<LessonScreen> {
   }
 
   void _showAddLessonDialog() {
-    final chapterNoCtrl = TextEditingController(text: 'Chapter ${_lessons.length + 1}');
+    final chapterNoCtrl = TextEditingController(
+      text: 'Chapter ${_lessons.length + 1}',
+    );
     final titleCtrl = TextEditingController();
     final descCtrl = TextEditingController();
-    String chosenClass = _selectedClass == 'All Classes' ? 'Class 10' : _selectedClass;
+    String chosenClass = _selectedClass == 'All Classes'
+        ? 'Class 10'
+        : _selectedClass;
 
     showModalBottomSheet(
       context: context,
@@ -73,7 +77,11 @@ class _LessonScreenState extends State<LessonScreen> {
                       children: [
                         Text(
                           'Add New Lesson / Chapter',
-                          style: TextStyle(fontSize: 17.sp, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
+                          style: TextStyle(
+                            fontSize: 17.sp,
+                            fontWeight: FontWeight.bold,
+                            color: AppColors.textPrimary,
+                          ),
                         ),
                         IconButton(
                           icon: const Icon(Icons.close_rounded),
@@ -87,7 +95,9 @@ class _LessonScreenState extends State<LessonScreen> {
                       decoration: InputDecoration(
                         labelText: 'Chapter Number',
                         hintText: 'e.g. Chapter 1',
-                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12.r)),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12.r),
+                        ),
                         filled: true,
                         fillColor: AppColors.background,
                       ),
@@ -98,17 +108,28 @@ class _LessonScreenState extends State<LessonScreen> {
                       decoration: InputDecoration(
                         labelText: 'Lesson / Chapter Title',
                         hintText: 'e.g. Laws of Motion & Gravitation',
-                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12.r)),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12.r),
+                        ),
                         filled: true,
                         fillColor: AppColors.background,
                       ),
                     ),
                     12.h.height,
                     DropdownButtonFormField<String>(
-                      value: ['Class 9', 'Class 10', 'Class 8'].contains(chosenClass) ? chosenClass : 'Class 10',
+                      initialValue:
+                          [
+                            'Class 9',
+                            'Class 10',
+                            'Class 8',
+                          ].contains(chosenClass)
+                          ? chosenClass
+                          : 'Class 10',
                       decoration: InputDecoration(
                         labelText: 'Select Class',
-                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12.r)),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12.r),
+                        ),
                         filled: true,
                         fillColor: AppColors.background,
                       ),
@@ -126,7 +147,9 @@ class _LessonScreenState extends State<LessonScreen> {
                       decoration: InputDecoration(
                         labelText: 'Description / Learning Objectives',
                         hintText: 'Key topics covered in this lesson...',
-                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12.r)),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12.r),
+                        ),
                         filled: true,
                         fillColor: AppColors.background,
                       ),
@@ -148,11 +171,17 @@ class _LessonScreenState extends State<LessonScreen> {
                       style: ElevatedButton.styleFrom(
                         backgroundColor: const Color(0xFF059669),
                         padding: EdgeInsets.symmetric(vertical: 13.h),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.r)),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12.r),
+                        ),
                       ),
                       child: Text(
                         'Save Lesson',
-                        style: TextStyle(color: Colors.white, fontSize: 14.sp, fontWeight: FontWeight.bold),
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 14.sp,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
                     ),
                   ],
@@ -199,7 +228,11 @@ class _LessonScreenState extends State<LessonScreen> {
                         Expanded(
                           child: Text(
                             'Add Topic to ${lesson.chapterNumber}',
-                            style: TextStyle(fontSize: 16.sp, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
+                            style: TextStyle(
+                              fontSize: 16.sp,
+                              fontWeight: FontWeight.bold,
+                              color: AppColors.textPrimary,
+                            ),
                             overflow: TextOverflow.ellipsis,
                           ),
                         ),
@@ -214,8 +247,11 @@ class _LessonScreenState extends State<LessonScreen> {
                       controller: titleCtrl,
                       decoration: InputDecoration(
                         labelText: 'Topic Title',
-                        hintText: 'e.g. Newton\'s Second Law & Practical Problems',
-                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12.r)),
+                        hintText:
+                            'e.g. Newton\'s Second Law & Practical Problems',
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12.r),
+                        ),
                         filled: true,
                         fillColor: AppColors.background,
                       ),
@@ -225,10 +261,12 @@ class _LessonScreenState extends State<LessonScreen> {
                       children: [
                         Expanded(
                           child: DropdownButtonFormField<String>(
-                            value: difficulty,
+                            initialValue: difficulty,
                             decoration: InputDecoration(
                               labelText: 'Difficulty',
-                              border: OutlineInputBorder(borderRadius: BorderRadius.circular(12.r)),
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(12.r),
+                              ),
                               filled: true,
                               fillColor: AppColors.background,
                             ),
@@ -236,7 +274,8 @@ class _LessonScreenState extends State<LessonScreen> {
                               return DropdownMenuItem(value: d, child: Text(d));
                             }).toList(),
                             onChanged: (val) {
-                              if (val != null) setSheetState(() => difficulty = val);
+                              if (val != null)
+                                setSheetState(() => difficulty = val);
                             },
                           ),
                         ),
@@ -248,7 +287,9 @@ class _LessonScreenState extends State<LessonScreen> {
                             decoration: InputDecoration(
                               labelText: 'Est. Duration (Mins)',
                               hintText: '30',
-                              border: OutlineInputBorder(borderRadius: BorderRadius.circular(12.r)),
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(12.r),
+                              ),
                               filled: true,
                               fillColor: AppColors.background,
                             ),
@@ -263,7 +304,9 @@ class _LessonScreenState extends State<LessonScreen> {
                       decoration: InputDecoration(
                         labelText: 'Topic Overview',
                         hintText: 'Summary notes or formula highlights...',
-                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12.r)),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12.r),
+                        ),
                         filled: true,
                         fillColor: AppColors.background,
                       ),
@@ -279,18 +322,25 @@ class _LessonScreenState extends State<LessonScreen> {
                           title: titleCtrl.text.trim(),
                           description: descCtrl.text.trim(),
                           difficulty: difficulty,
-                          estimatedMinutes: int.tryParse(minCtrl.text.trim()) ?? 30,
+                          estimatedMinutes:
+                              int.tryParse(minCtrl.text.trim()) ?? 30,
                         );
                         _loadLessons();
                       },
                       style: ElevatedButton.styleFrom(
                         backgroundColor: const Color(0xFF059669),
                         padding: EdgeInsets.symmetric(vertical: 13.h),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.r)),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12.r),
+                        ),
                       ),
                       child: Text(
                         'Add Topic',
-                        style: TextStyle(color: Colors.white, fontSize: 14.sp, fontWeight: FontWeight.bold),
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 14.sp,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
                     ),
                   ],
@@ -308,9 +358,14 @@ class _LessonScreenState extends State<LessonScreen> {
       context: context,
       builder: (ctx) => AlertDialog(
         title: const Text('Delete Lesson?'),
-        content: Text('Are you sure you want to remove "${lesson.chapterNumber}: ${lesson.chapterTitle}" and its topics?'),
+        content: Text(
+          'Are you sure you want to remove "${lesson.chapterNumber}: ${lesson.chapterTitle}" and its topics?',
+        ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancel'),
+          ),
           FilledButton(
             style: FilledButton.styleFrom(backgroundColor: AppColors.error),
             onPressed: () async {
@@ -334,7 +389,10 @@ class _LessonScreenState extends State<LessonScreen> {
         backgroundColor: Colors.transparent,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new_rounded, color: AppColors.textPrimary),
+          icon: const Icon(
+            Icons.arrow_back_ios_new_rounded,
+            color: AppColors.textPrimary,
+          ),
           onPressed: () => Navigator.pop(context),
         ),
         title: Text(
@@ -344,7 +402,10 @@ class _LessonScreenState extends State<LessonScreen> {
         centerTitle: true,
         actions: [
           IconButton(
-            icon: const Icon(Icons.refresh_rounded, color: AppColors.textPrimary),
+            icon: const Icon(
+              Icons.refresh_rounded,
+              color: AppColors.textPrimary,
+            ),
             tooltip: 'Reload Lessons',
             onPressed: _loadLessons,
           ),
@@ -354,14 +415,23 @@ class _LessonScreenState extends State<LessonScreen> {
         onPressed: _showAddLessonDialog,
         backgroundColor: const Color(0xFF059669),
         icon: const Icon(Icons.add_rounded, color: Colors.white),
-        label: Text('New Lesson', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13.sp)),
+        label: Text(
+          'New Lesson',
+          style: TextStyle(
+            color: Colors.white,
+            fontWeight: FontWeight.bold,
+            fontSize: 13.sp,
+          ),
+        ),
       ),
       body: _isLoading
           ? const SmoothSkeletonCardList(count: 3)
           : RefreshIndicator(
               onRefresh: _loadLessons,
               child: SingleChildScrollView(
-                physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
+                physics: const AlwaysScrollableScrollPhysics(
+                  parent: BouncingScrollPhysics(),
+                ),
                 padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 12.h),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -371,33 +441,45 @@ class _LessonScreenState extends State<LessonScreen> {
                       scrollDirection: Axis.horizontal,
                       physics: const BouncingScrollPhysics(),
                       child: Row(
-                        children: ['All Classes', 'Class 9', 'Class 10', 'Class 8'].map((c) {
-                          final isSelected = _selectedClass == c;
-                          return Padding(
-                            padding: EdgeInsets.only(right: 8.w),
-                            child: ChoiceChip(
-                              label: Text(c),
-                              selected: isSelected,
-                              onSelected: (_) {
-                                setState(() => _selectedClass = c);
-                                _loadLessons();
-                              },
-                              selectedColor: const Color(0xFF059669),
-                              labelStyle: TextStyle(
-                                color: isSelected ? Colors.white : AppColors.textPrimary,
-                                fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
-                                fontSize: 12.sp,
-                              ),
-                              backgroundColor: AppColors.surface,
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(10.r),
-                                side: BorderSide(
-                                  color: isSelected ? const Color(0xFF059669) : AppColors.border,
+                        children:
+                            [
+                              'All Classes',
+                              'Class 9',
+                              'Class 10',
+                              'Class 8',
+                            ].map((c) {
+                              final isSelected = _selectedClass == c;
+                              return Padding(
+                                padding: EdgeInsets.only(right: 8.w),
+                                child: ChoiceChip(
+                                  label: Text(c),
+                                  selected: isSelected,
+                                  onSelected: (_) {
+                                    setState(() => _selectedClass = c);
+                                    _loadLessons();
+                                  },
+                                  selectedColor: const Color(0xFF059669),
+                                  labelStyle: TextStyle(
+                                    color: isSelected
+                                        ? Colors.white
+                                        : AppColors.textPrimary,
+                                    fontWeight: isSelected
+                                        ? FontWeight.w700
+                                        : FontWeight.w500,
+                                    fontSize: 12.sp,
+                                  ),
+                                  backgroundColor: AppColors.surface,
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(10.r),
+                                    side: BorderSide(
+                                      color: isSelected
+                                          ? const Color(0xFF059669)
+                                          : AppColors.border,
+                                    ),
+                                  ),
                                 ),
-                              ),
-                            ),
-                          );
-                        }).toList(),
+                              );
+                            }).toList(),
                       ),
                     ),
                     16.h.height,
@@ -408,16 +490,27 @@ class _LessonScreenState extends State<LessonScreen> {
                           padding: EdgeInsets.symmetric(vertical: 40.h),
                           child: Column(
                             children: [
-                              Icon(Icons.menu_book_rounded, size: 48.sp, color: AppColors.textMuted),
+                              Icon(
+                                Icons.menu_book_rounded,
+                                size: 48.sp,
+                                color: AppColors.textMuted,
+                              ),
                               12.h.height,
                               Text(
                                 'No lessons created yet',
-                                style: TextStyle(fontSize: 14.sp, fontWeight: FontWeight.bold, color: AppColors.textSecondary),
+                                style: TextStyle(
+                                  fontSize: 14.sp,
+                                  fontWeight: FontWeight.bold,
+                                  color: AppColors.textSecondary,
+                                ),
                               ),
                               6.h.height,
                               Text(
                                 'Tap "+ New Lesson" below to create one.',
-                                style: TextStyle(fontSize: 12.sp, color: AppColors.textMuted),
+                                style: TextStyle(
+                                  fontSize: 12.sp,
+                                  color: AppColors.textMuted,
+                                ),
                               ),
                             ],
                           ),
@@ -428,10 +521,12 @@ class _LessonScreenState extends State<LessonScreen> {
                         shrinkWrap: true,
                         physics: const NeverScrollableScrollPhysics(),
                         itemCount: _lessons.length,
-                        separatorBuilder: (_, __) => 14.h.height,
+                        separatorBuilder: (_, _) => 14.h.height,
                         itemBuilder: (context, index) {
                           final lesson = _lessons[index];
-                          final isExpanded = _expandedLessons.contains(lesson.id);
+                          final isExpanded = _expandedLessons.contains(
+                            lesson.id,
+                          );
                           return _buildLessonCard(context, lesson, isExpanded);
                         },
                       ),
@@ -443,7 +538,11 @@ class _LessonScreenState extends State<LessonScreen> {
     );
   }
 
-  Widget _buildLessonCard(BuildContext context, TeacherLessonModel lesson, bool isExpanded) {
+  Widget _buildLessonCard(
+    BuildContext context,
+    TeacherLessonModel lesson,
+    bool isExpanded,
+  ) {
     return GlassCard(
       padding: EdgeInsets.all(16.w),
       child: Column(
@@ -470,12 +569,20 @@ class _LessonScreenState extends State<LessonScreen> {
               Row(
                 children: [
                   IconButton(
-                    icon: Icon(Icons.add_circle_outline_rounded, size: 20.sp, color: const Color(0xFF059669)),
+                    icon: Icon(
+                      Icons.add_circle_outline_rounded,
+                      size: 20.sp,
+                      color: const Color(0xFF059669),
+                    ),
                     tooltip: 'Add Topic',
                     onPressed: () => _showAddTopicDialog(lesson),
                   ),
                   IconButton(
-                    icon: Icon(Icons.delete_outline_rounded, size: 20.sp, color: AppColors.error),
+                    icon: Icon(
+                      Icons.delete_outline_rounded,
+                      size: 20.sp,
+                      color: AppColors.error,
+                    ),
                     tooltip: 'Delete Lesson',
                     onPressed: () => _confirmDeleteLesson(lesson),
                   ),
@@ -486,13 +593,21 @@ class _LessonScreenState extends State<LessonScreen> {
           8.h.height,
           Text(
             lesson.chapterTitle,
-            style: TextStyle(fontSize: 15.sp, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
+            style: TextStyle(
+              fontSize: 15.sp,
+              fontWeight: FontWeight.bold,
+              color: AppColors.textPrimary,
+            ),
           ),
           if (lesson.description.isNotEmpty) ...[
             6.h.height,
             Text(
               lesson.description,
-              style: TextStyle(fontSize: 12.5.sp, color: AppColors.textSecondary, height: 1.3),
+              style: TextStyle(
+                fontSize: 12.5.sp,
+                color: AppColors.textSecondary,
+                height: 1.3,
+              ),
             ),
           ],
           12.h.height,
@@ -519,16 +634,26 @@ class _LessonScreenState extends State<LessonScreen> {
                 children: [
                   Row(
                     children: [
-                      Icon(Icons.list_alt_rounded, size: 16.sp, color: const Color(0xFF059669)),
+                      Icon(
+                        Icons.list_alt_rounded,
+                        size: 16.sp,
+                        color: const Color(0xFF059669),
+                      ),
                       8.w.width,
                       Text(
                         'Topics (${lesson.topics.length})',
-                        style: TextStyle(fontSize: 12.5.sp, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
+                        style: TextStyle(
+                          fontSize: 12.5.sp,
+                          fontWeight: FontWeight.bold,
+                          color: AppColors.textPrimary,
+                        ),
                       ),
                     ],
                   ),
                   Icon(
-                    isExpanded ? Icons.keyboard_arrow_up_rounded : Icons.keyboard_arrow_down_rounded,
+                    isExpanded
+                        ? Icons.keyboard_arrow_up_rounded
+                        : Icons.keyboard_arrow_down_rounded,
                     color: AppColors.textMuted,
                   ),
                 ],
@@ -543,7 +668,11 @@ class _LessonScreenState extends State<LessonScreen> {
                 child: Center(
                   child: Text(
                     'No topics added. Tap "+" to add a topic.',
-                    style: TextStyle(fontSize: 11.5.sp, color: AppColors.textMuted, fontStyle: FontStyle.italic),
+                    style: TextStyle(
+                      fontSize: 11.5.sp,
+                      color: AppColors.textMuted,
+                      fontStyle: FontStyle.italic,
+                    ),
                   ),
                 ),
               )
@@ -552,7 +681,7 @@ class _LessonScreenState extends State<LessonScreen> {
                 shrinkWrap: true,
                 physics: const NeverScrollableScrollPhysics(),
                 itemCount: lesson.topics.length,
-                separatorBuilder: (_, __) => 6.h.height,
+                separatorBuilder: (_, _) => 6.h.height,
                 itemBuilder: (context, i) {
                   final topic = lesson.topics[i];
                   return Container(
@@ -560,17 +689,25 @@ class _LessonScreenState extends State<LessonScreen> {
                     decoration: BoxDecoration(
                       color: AppColors.surface,
                       borderRadius: BorderRadius.circular(8.r),
-                      border: Border.all(color: AppColors.border.withValues(alpha: 0.6)),
+                      border: Border.all(
+                        color: AppColors.border.withValues(alpha: 0.6),
+                      ),
                     ),
                     child: Row(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         CircleAvatar(
                           radius: 12.r,
-                          backgroundColor: const Color(0xFF059669).withValues(alpha: 0.1),
+                          backgroundColor: const Color(
+                            0xFF059669,
+                          ).withValues(alpha: 0.1),
                           child: Text(
                             '${i + 1}',
-                            style: TextStyle(fontSize: 10.sp, fontWeight: FontWeight.bold, color: const Color(0xFF059669)),
+                            style: TextStyle(
+                              fontSize: 10.sp,
+                              fontWeight: FontWeight.bold,
+                              color: const Color(0xFF059669),
+                            ),
                           ),
                         ),
                         10.w.width,
@@ -580,28 +717,42 @@ class _LessonScreenState extends State<LessonScreen> {
                             children: [
                               Text(
                                 topic.title,
-                                style: TextStyle(fontSize: 13.sp, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
+                                style: TextStyle(
+                                  fontSize: 13.sp,
+                                  fontWeight: FontWeight.bold,
+                                  color: AppColors.textPrimary,
+                                ),
                               ),
                               if (topic.description.isNotEmpty) ...[
                                 3.h.height,
                                 Text(
                                   topic.description,
-                                  style: TextStyle(fontSize: 11.5.sp, color: AppColors.textSecondary),
+                                  style: TextStyle(
+                                    fontSize: 11.5.sp,
+                                    color: AppColors.textSecondary,
+                                  ),
                                 ),
                               ],
                               6.h.height,
                               Row(
                                 children: [
                                   Container(
-                                    padding: EdgeInsets.symmetric(horizontal: 6.w, vertical: 2.h),
+                                    padding: EdgeInsets.symmetric(
+                                      horizontal: 6.w,
+                                      vertical: 2.h,
+                                    ),
                                     decoration: BoxDecoration(
-                                      color: _difficultyColor(topic.difficulty).withValues(alpha: 0.1),
+                                      color: _difficultyColor(
+                                        topic.difficulty,
+                                      ).withValues(alpha: 0.1),
                                       borderRadius: BorderRadius.circular(4.r),
                                     ),
                                     child: Text(
                                       topic.difficulty,
                                       style: TextStyle(
-                                        color: _difficultyColor(topic.difficulty),
+                                        color: _difficultyColor(
+                                          topic.difficulty,
+                                        ),
                                         fontSize: 10.sp,
                                         fontWeight: FontWeight.bold,
                                       ),
@@ -610,7 +761,10 @@ class _LessonScreenState extends State<LessonScreen> {
                                   8.w.width,
                                   Text(
                                     '${topic.estimatedMinutes} mins',
-                                    style: TextStyle(fontSize: 11.sp, color: AppColors.textMuted),
+                                    style: TextStyle(
+                                      fontSize: 11.sp,
+                                      color: AppColors.textMuted,
+                                    ),
                                   ),
                                 ],
                               ),

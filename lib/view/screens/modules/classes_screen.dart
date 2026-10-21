@@ -41,7 +41,10 @@ class _ClassesScreenState extends State<ClassesScreen> {
     }
   }
 
-  void _showStudentsBottomSheet(BuildContext context, TeacherClassModel classModel) {
+  void _showStudentsBottomSheet(
+    BuildContext context,
+    TeacherClassModel classModel,
+  ) {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -63,13 +66,15 @@ class _ClassesScreenState extends State<ClassesScreen> {
     final user = context.watch<AuthBloc>().state.user;
 
     final filteredList = _classes.where((c) {
-      final matchesSearch = c.className.toLowerCase().contains(_searchQuery.toLowerCase()) ||
+      final matchesSearch =
+          c.className.toLowerCase().contains(_searchQuery.toLowerCase()) ||
           c.subject.toLowerCase().contains(_searchQuery.toLowerCase()) ||
           c.section.toLowerCase().contains(_searchQuery.toLowerCase());
       if (_selectedFilter == 'Class Teacher') {
         return matchesSearch && c.isClassTeacher;
       } else if (_selectedFilter != 'All') {
-        return matchesSearch && c.className.toLowerCase().contains(_selectedFilter.toLowerCase());
+        return matchesSearch &&
+            c.className.toLowerCase().contains(_selectedFilter.toLowerCase());
       }
       return matchesSearch;
     }).toList();
@@ -80,12 +85,18 @@ class _ClassesScreenState extends State<ClassesScreen> {
         backgroundColor: Colors.transparent,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new_rounded, color: AppColors.textPrimary),
+          icon: const Icon(
+            Icons.arrow_back_ios_new_rounded,
+            color: AppColors.textPrimary,
+          ),
           onPressed: () => Navigator.pop(context),
         ),
         title: Column(
           children: [
-            Text('My Classes', style: context.h2.copyWith(color: AppColors.textPrimary)),
+            Text(
+              'My Classes',
+              style: context.h2.copyWith(color: AppColors.textPrimary),
+            ),
             Text(
               user?.name ?? 'Teacher Dashboard',
               style: context.caption.copyWith(color: AppColors.textMuted),
@@ -95,7 +106,10 @@ class _ClassesScreenState extends State<ClassesScreen> {
         centerTitle: true,
         actions: [
           IconButton(
-            icon: const Icon(Icons.refresh_rounded, color: AppColors.textPrimary),
+            icon: const Icon(
+              Icons.refresh_rounded,
+              color: AppColors.textPrimary,
+            ),
             tooltip: 'Reload Classes',
             onPressed: _loadClasses,
           ),
@@ -106,7 +120,9 @@ class _ClassesScreenState extends State<ClassesScreen> {
           : RefreshIndicator(
               onRefresh: _loadClasses,
               child: SingleChildScrollView(
-                physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
+                physics: const AlwaysScrollableScrollPhysics(
+                  parent: BouncingScrollPhysics(),
+                ),
                 padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 10.h),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -117,19 +133,34 @@ class _ClassesScreenState extends State<ClassesScreen> {
                         Expanded(
                           child: GlassCard(
                             padding: EdgeInsets.all(16.w),
-                            borderColor: AppColors.primary.withValues(alpha: 0.2),
+                            borderColor: AppColors.primary.withValues(
+                              alpha: 0.2,
+                            ),
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Row(
-                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                  mainAxisAlignment:
+                                      MainAxisAlignment.spaceBetween,
                                   children: [
-                                    Text('Total Classes', style: context.caption),
-                                    Icon(Icons.class_rounded, color: AppColors.primary, size: 20.sp),
+                                    Text(
+                                      'Total Classes',
+                                      style: context.caption,
+                                    ),
+                                    Icon(
+                                      Icons.class_rounded,
+                                      color: AppColors.primary,
+                                      size: 20.sp,
+                                    ),
                                   ],
                                 ),
                                 8.h.height,
-                                Text('${_classes.length}', style: context.h1.copyWith(color: AppColors.primary)),
+                                Text(
+                                  '${_classes.length}',
+                                  style: context.h1.copyWith(
+                                    color: AppColors.primary,
+                                  ),
+                                ),
                               ],
                             ),
                           ),
@@ -138,21 +169,33 @@ class _ClassesScreenState extends State<ClassesScreen> {
                         Expanded(
                           child: GlassCard(
                             padding: EdgeInsets.all(16.w),
-                            borderColor: AppColors.success.withValues(alpha: 0.2),
+                            borderColor: AppColors.success.withValues(
+                              alpha: 0.2,
+                            ),
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Row(
-                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                  mainAxisAlignment:
+                                      MainAxisAlignment.spaceBetween,
                                   children: [
-                                    Text('Total Students', style: context.caption),
-                                    Icon(Icons.groups_rounded, color: AppColors.success, size: 20.sp),
+                                    Text(
+                                      'Total Students',
+                                      style: context.caption,
+                                    ),
+                                    Icon(
+                                      Icons.groups_rounded,
+                                      color: AppColors.success,
+                                      size: 20.sp,
+                                    ),
                                   ],
                                 ),
                                 8.h.height,
                                 Text(
                                   '${_classes.fold<int>(0, (sum, c) => sum + c.totalStudents)}',
-                                  style: context.h1.copyWith(color: AppColors.success),
+                                  style: context.h1.copyWith(
+                                    color: AppColors.success,
+                                  ),
                                 ),
                               ],
                             ),
@@ -167,8 +210,14 @@ class _ClassesScreenState extends State<ClassesScreen> {
                       onChanged: (val) => setState(() => _searchQuery = val),
                       decoration: InputDecoration(
                         hintText: 'Search by class, subject, or section...',
-                        prefixIcon: const Icon(Icons.search_rounded, color: AppColors.textMuted),
-                        contentPadding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 12.h),
+                        prefixIcon: const Icon(
+                          Icons.search_rounded,
+                          color: AppColors.textMuted,
+                        ),
+                        contentPadding: EdgeInsets.symmetric(
+                          horizontal: 16.w,
+                          vertical: 12.h,
+                        ),
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(14.r),
                           borderSide: const BorderSide(color: AppColors.border),
@@ -179,7 +228,10 @@ class _ClassesScreenState extends State<ClassesScreen> {
                         ),
                         focusedBorder: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(14.r),
-                          borderSide: const BorderSide(color: AppColors.primary, width: 1.5),
+                          borderSide: const BorderSide(
+                            color: AppColors.primary,
+                            width: 1.5,
+                          ),
                         ),
                         filled: true,
                         fillColor: AppColors.surface,
@@ -192,30 +244,40 @@ class _ClassesScreenState extends State<ClassesScreen> {
                       scrollDirection: Axis.horizontal,
                       physics: const BouncingScrollPhysics(),
                       child: Row(
-                        children: ['All', 'Class Teacher', 'Class 9', 'Class 10'].map((chip) {
-                          final isSelected = _selectedFilter == chip;
-                          return Padding(
-                            padding: EdgeInsets.only(right: 8.w),
-                            child: ChoiceChip(
-                              label: Text(chip),
-                              selected: isSelected,
-                              onSelected: (_) => setState(() => _selectedFilter = chip),
-                              selectedColor: AppColors.primary,
-                              labelStyle: TextStyle(
-                                color: isSelected ? Colors.white : AppColors.textPrimary,
-                                fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
-                                fontSize: 12.sp,
-                              ),
-                              backgroundColor: AppColors.surface,
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(10.r),
-                                side: BorderSide(
-                                  color: isSelected ? AppColors.primary : AppColors.border,
-                                ),
-                              ),
-                            ),
-                          );
-                        }).toList(),
+                        children:
+                            ['All', 'Class Teacher', 'Class 9', 'Class 10'].map(
+                              (chip) {
+                                final isSelected = _selectedFilter == chip;
+                                return Padding(
+                                  padding: EdgeInsets.only(right: 8.w),
+                                  child: ChoiceChip(
+                                    label: Text(chip),
+                                    selected: isSelected,
+                                    onSelected: (_) =>
+                                        setState(() => _selectedFilter = chip),
+                                    selectedColor: AppColors.primary,
+                                    labelStyle: TextStyle(
+                                      color: isSelected
+                                          ? Colors.white
+                                          : AppColors.textPrimary,
+                                      fontWeight: isSelected
+                                          ? FontWeight.w700
+                                          : FontWeight.w500,
+                                      fontSize: 12.sp,
+                                    ),
+                                    backgroundColor: AppColors.surface,
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(10.r),
+                                      side: BorderSide(
+                                        color: isSelected
+                                            ? AppColors.primary
+                                            : AppColors.border,
+                                      ),
+                                    ),
+                                  ),
+                                );
+                              },
+                            ).toList(),
                       ),
                     ),
                     16.h.height,
@@ -227,11 +289,17 @@ class _ClassesScreenState extends State<ClassesScreen> {
                           padding: EdgeInsets.symmetric(vertical: 40.h),
                           child: Column(
                             children: [
-                              Icon(Icons.search_off_rounded, size: 48.sp, color: AppColors.textMuted),
+                              Icon(
+                                Icons.search_off_rounded,
+                                size: 48.sp,
+                                color: AppColors.textMuted,
+                              ),
                               12.h.height,
                               Text(
                                 'No classes match your query',
-                                style: context.bodyBold.copyWith(color: AppColors.textSecondary),
+                                style: context.bodyBold.copyWith(
+                                  color: AppColors.textSecondary,
+                                ),
                               ),
                             ],
                           ),
@@ -242,7 +310,7 @@ class _ClassesScreenState extends State<ClassesScreen> {
                         shrinkWrap: true,
                         physics: const NeverScrollableScrollPhysics(),
                         itemCount: filteredList.length,
-                        separatorBuilder: (_, __) => 14.h.height,
+                        separatorBuilder: (_, _) => 14.h.height,
                         itemBuilder: (context, index) {
                           final item = filteredList[index];
                           return _buildClassCard(context, item);
@@ -272,7 +340,10 @@ class _ClassesScreenState extends State<ClassesScreen> {
                 Row(
                   children: [
                     Container(
-                      padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 6.h),
+                      padding: EdgeInsets.symmetric(
+                        horizontal: 10.w,
+                        vertical: 6.h,
+                      ),
                       decoration: BoxDecoration(
                         color: AppColors.primary.withValues(alpha: 0.1),
                         borderRadius: BorderRadius.circular(8.r),
@@ -295,7 +366,10 @@ class _ClassesScreenState extends State<ClassesScreen> {
                 ),
                 if (item.isClassTeacher)
                   Container(
-                    padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 4.h),
+                    padding: EdgeInsets.symmetric(
+                      horizontal: 8.w,
+                      vertical: 4.h,
+                    ),
                     decoration: BoxDecoration(
                       color: AppColors.success.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(6.r),
@@ -316,13 +390,14 @@ class _ClassesScreenState extends State<ClassesScreen> {
             // Details Row: Students, Room, Time
             Row(
               children: [
-                _infoChip(Icons.people_outline_rounded, '${item.totalStudents} Students'),
+                _infoChip(
+                  Icons.people_outline_rounded,
+                  '${item.totalStudents} Students',
+                ),
                 12.w.width,
                 _infoChip(Icons.meeting_room_outlined, item.room),
                 12.w.width,
-                Expanded(
-                  child: _infoChip(Icons.schedule_rounded, item.timing),
-                ),
+                Expanded(child: _infoChip(Icons.schedule_rounded, item.timing)),
               ],
             ),
             12.h.height,
@@ -337,7 +412,9 @@ class _ClassesScreenState extends State<ClassesScreen> {
                     Text('Syllabus Completion', style: context.mutedText),
                     Text(
                       '${(item.syllabusProgress * 100).toInt()}%',
-                      style: context.captionBold.copyWith(color: AppColors.primary),
+                      style: context.captionBold.copyWith(
+                        color: AppColors.primary,
+                      ),
                     ),
                   ],
                 ),
@@ -347,7 +424,9 @@ class _ClassesScreenState extends State<ClassesScreen> {
                   child: LinearProgressIndicator(
                     value: item.syllabusProgress,
                     backgroundColor: AppColors.border,
-                    valueColor: const AlwaysStoppedAnimation<Color>(AppColors.primary),
+                    valueColor: const AlwaysStoppedAnimation<Color>(
+                      AppColors.primary,
+                    ),
                     minHeight: 6.h,
                   ),
                 ),
@@ -364,15 +443,25 @@ class _ClassesScreenState extends State<ClassesScreen> {
                   flex: 5,
                   child: ElevatedButton.icon(
                     onPressed: () => _showStudentsBottomSheet(context, item),
-                    icon: Icon(Icons.people_alt_rounded, size: 15.sp, color: Colors.white),
+                    icon: Icon(
+                      Icons.people_alt_rounded,
+                      size: 15.sp,
+                      color: Colors.white,
+                    ),
                     label: Text(
                       'View Students (${item.totalStudents})',
-                      style: TextStyle(fontSize: 11.5.sp, fontWeight: FontWeight.bold, color: Colors.white),
+                      style: TextStyle(
+                        fontSize: 11.5.sp,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                      ),
                     ),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: AppColors.primary,
                       padding: EdgeInsets.symmetric(vertical: 8.h),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10.r)),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10.r),
+                      ),
                     ),
                   ),
                 ),
@@ -380,13 +469,30 @@ class _ClassesScreenState extends State<ClassesScreen> {
                 Expanded(
                   flex: 3,
                   child: OutlinedButton.icon(
-                    onPressed: () => Navigator.pushNamed(context, RoutesName.homework),
-                    icon: Icon(Icons.assignment_rounded, size: 14.sp, color: const Color(0xFF0284C7)),
-                    label: Text('Assign', style: TextStyle(fontSize: 11.sp, color: const Color(0xFF0284C7), fontWeight: FontWeight.bold)),
+                    onPressed: () =>
+                        Navigator.pushNamed(context, RoutesName.homework),
+                    icon: Icon(
+                      Icons.assignment_rounded,
+                      size: 14.sp,
+                      color: const Color(0xFF0284C7),
+                    ),
+                    label: Text(
+                      'Assign',
+                      style: TextStyle(
+                        fontSize: 11.sp,
+                        color: const Color(0xFF0284C7),
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
                     style: OutlinedButton.styleFrom(
                       padding: EdgeInsets.symmetric(vertical: 8.h),
-                      side: const BorderSide(color: Color(0xFF0284C7), width: 1),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10.r)),
+                      side: const BorderSide(
+                        color: Color(0xFF0284C7),
+                        width: 1,
+                      ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10.r),
+                      ),
                     ),
                   ),
                 ),
@@ -394,13 +500,30 @@ class _ClassesScreenState extends State<ClassesScreen> {
                 Expanded(
                   flex: 3,
                   child: OutlinedButton.icon(
-                    onPressed: () => Navigator.pushNamed(context, RoutesName.lesson),
-                    icon: Icon(Icons.menu_book_rounded, size: 14.sp, color: const Color(0xFF059669)),
-                    label: Text('Lesson', style: TextStyle(fontSize: 11.sp, color: const Color(0xFF059669), fontWeight: FontWeight.bold)),
+                    onPressed: () =>
+                        Navigator.pushNamed(context, RoutesName.lesson),
+                    icon: Icon(
+                      Icons.menu_book_rounded,
+                      size: 14.sp,
+                      color: const Color(0xFF059669),
+                    ),
+                    label: Text(
+                      'Lesson',
+                      style: TextStyle(
+                        fontSize: 11.sp,
+                        color: const Color(0xFF059669),
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
                     style: OutlinedButton.styleFrom(
                       padding: EdgeInsets.symmetric(vertical: 8.h),
-                      side: const BorderSide(color: Color(0xFF059669), width: 1),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10.r)),
+                      side: const BorderSide(
+                        color: Color(0xFF059669),
+                        width: 1,
+                      ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10.r),
+                      ),
                     ),
                   ),
                 ),
@@ -485,7 +608,9 @@ class _ClassStudentsSheetState extends State<_ClassStudentsSheet> {
   @override
   Widget build(BuildContext context) {
     return Container(
-      constraints: BoxConstraints(maxHeight: MediaQuery.of(context).size.height * 0.8),
+      constraints: BoxConstraints(
+        maxHeight: MediaQuery.of(context).size.height * 0.8,
+      ),
       padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 16.h),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -498,11 +623,18 @@ class _ClassStudentsSheetState extends State<_ClassStudentsSheet> {
                 children: [
                   Text(
                     '${widget.classModel.className} - ${widget.classModel.section}',
-                    style: TextStyle(fontSize: 18.sp, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
+                    style: TextStyle(
+                      fontSize: 18.sp,
+                      fontWeight: FontWeight.bold,
+                      color: AppColors.textPrimary,
+                    ),
                   ),
                   Text(
                     'Enrolled Students (${_students.length}) • ID-Wise Assignment',
-                    style: TextStyle(fontSize: 12.sp, color: AppColors.textMuted),
+                    style: TextStyle(
+                      fontSize: 12.sp,
+                      color: AppColors.textMuted,
+                    ),
                   ),
                 ],
               ),
@@ -520,7 +652,10 @@ class _ClassStudentsSheetState extends State<_ClassStudentsSheet> {
           else if (_students.isEmpty)
             Expanded(
               child: Center(
-                child: Text('No students found in this class', style: TextStyle(color: AppColors.textMuted, fontSize: 13.sp)),
+                child: Text(
+                  'No students found in this class',
+                  style: TextStyle(color: AppColors.textMuted, fontSize: 13.sp),
+                ),
               ),
             )
           else
@@ -528,7 +663,7 @@ class _ClassStudentsSheetState extends State<_ClassStudentsSheet> {
               child: ListView.separated(
                 physics: const BouncingScrollPhysics(),
                 itemCount: _students.length,
-                separatorBuilder: (_, __) => 8.h.height,
+                separatorBuilder: (_, _) => 8.h.height,
                 itemBuilder: (context, i) {
                   final s = _students[i];
                   return Container(
@@ -542,14 +677,25 @@ class _ClassStudentsSheetState extends State<_ClassStudentsSheet> {
                       children: [
                         CircleAvatar(
                           radius: 20.r,
-                          backgroundColor: AppColors.primary.withValues(alpha: 0.1),
-                          backgroundImage: s.studentPhoto != null && s.studentPhoto!.isNotEmpty
+                          backgroundColor: AppColors.primary.withValues(
+                            alpha: 0.1,
+                          ),
+                          backgroundImage:
+                              s.studentPhoto != null &&
+                                  s.studentPhoto!.isNotEmpty
                               ? NetworkImage(s.studentPhoto!)
                               : null,
-                          child: s.studentPhoto == null || s.studentPhoto!.isEmpty
+                          child:
+                              s.studentPhoto == null || s.studentPhoto!.isEmpty
                               ? Text(
-                                  s.name.isNotEmpty ? s.name[0].toUpperCase() : 'S',
-                                  style: TextStyle(color: AppColors.primary, fontWeight: FontWeight.bold, fontSize: 14.sp),
+                                  s.name.isNotEmpty
+                                      ? s.name[0].toUpperCase()
+                                      : 'S',
+                                  style: TextStyle(
+                                    color: AppColors.primary,
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 14.sp,
+                                  ),
                                 )
                               : null,
                         ),
@@ -562,18 +708,29 @@ class _ClassStudentsSheetState extends State<_ClassStudentsSheet> {
                                 children: [
                                   Text(
                                     s.name,
-                                    style: TextStyle(fontSize: 13.5.sp, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
+                                    style: TextStyle(
+                                      fontSize: 13.5.sp,
+                                      fontWeight: FontWeight.bold,
+                                      color: AppColors.textPrimary,
+                                    ),
                                   ),
                                   6.w.width,
                                   Container(
-                                    padding: EdgeInsets.symmetric(horizontal: 6.w, vertical: 2.h),
+                                    padding: EdgeInsets.symmetric(
+                                      horizontal: 6.w,
+                                      vertical: 2.h,
+                                    ),
                                     decoration: BoxDecoration(
                                       color: const Color(0xFFE0E7FF),
                                       borderRadius: BorderRadius.circular(6.r),
                                     ),
                                     child: Text(
                                       'ID: #${s.id}',
-                                      style: TextStyle(color: const Color(0xFF4338CA), fontSize: 10.sp, fontWeight: FontWeight.bold),
+                                      style: TextStyle(
+                                        color: const Color(0xFF4338CA),
+                                        fontSize: 10.sp,
+                                        fontWeight: FontWeight.bold,
+                                      ),
                                     ),
                                   ),
                                 ],
@@ -581,7 +738,10 @@ class _ClassStudentsSheetState extends State<_ClassStudentsSheet> {
                               3.h.height,
                               Text(
                                 'Roll: ${s.rollNo ?? 'N/A'} • Adm: ${s.admissionNo}',
-                                style: TextStyle(fontSize: 11.5.sp, color: AppColors.textSecondary),
+                                style: TextStyle(
+                                  fontSize: 11.5.sp,
+                                  color: AppColors.textSecondary,
+                                ),
                               ),
                             ],
                           ),
@@ -590,13 +750,22 @@ class _ClassStudentsSheetState extends State<_ClassStudentsSheet> {
                           onPressed: () => _assignToStudent(context, s),
                           style: ElevatedButton.styleFrom(
                             backgroundColor: const Color(0xFF0284C7),
-                            padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 6.h),
+                            padding: EdgeInsets.symmetric(
+                              horizontal: 10.w,
+                              vertical: 6.h,
+                            ),
                             minimumSize: Size.zero,
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8.r)),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(8.r),
+                            ),
                           ),
                           child: Text(
                             'Assign Task',
-                            style: TextStyle(color: Colors.white, fontSize: 11.sp, fontWeight: FontWeight.bold),
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 11.sp,
+                              fontWeight: FontWeight.bold,
+                            ),
                           ),
                         ),
                       ],

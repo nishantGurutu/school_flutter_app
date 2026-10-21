@@ -354,7 +354,9 @@ class ApiSchoolRepository implements SchoolRepository {
       if (rawList.isNotEmpty) {
         return rawList
             .where((item) => item != null && item is Map)
-            .map((item) => HomeworkItem.fromJson(Map<String, dynamic>.from(item)))
+            .map(
+              (item) => HomeworkItem.fromJson(Map<String, dynamic>.from(item)),
+            )
             .toList();
       }
       return [];
@@ -374,6 +376,7 @@ class ApiSchoolRepository implements SchoolRepository {
     await _apiService.postApi(AppUrl.submitHomework(homeworkId), {});
     return getHomework(userId);
   }
+
   @override
   Future<List<FeeRecord>> getFees(String userId) async {
     try {
@@ -866,7 +869,10 @@ class ApiSchoolRepository implements SchoolRepository {
       final rawList = _extractList(res);
       return rawList
           .where((item) => item != null && item is Map)
-          .map((item) => TeacherClassModel.fromJson(Map<String, dynamic>.from(item)))
+          .map(
+            (item) =>
+                TeacherClassModel.fromJson(Map<String, dynamic>.from(item)),
+          )
           .toList();
     } catch (e) {
       if (kDebugMode) {
@@ -877,14 +883,20 @@ class ApiSchoolRepository implements SchoolRepository {
   }
 
   @override
-  Future<List<StudentInClassModel>> getClassStudents(String className, {String? section}) async {
+  Future<List<StudentInClassModel>> getClassStudents(
+    String className, {
+    String? section,
+  }) async {
     try {
       final url = AppUrl.classStudents(className, section: section);
       final res = await _apiService.getApi(url);
       final rawList = _extractList(res);
       return rawList
           .where((item) => item != null && item is Map)
-          .map((item) => StudentInClassModel.fromJson(Map<String, dynamic>.from(item)))
+          .map(
+            (item) =>
+                StudentInClassModel.fromJson(Map<String, dynamic>.from(item)),
+          )
           .toList();
     } catch (e) {
       if (kDebugMode) {
@@ -895,14 +907,23 @@ class ApiSchoolRepository implements SchoolRepository {
   }
 
   @override
-  Future<List<TeacherLessonModel>> getTeacherLessons({String? className, int? subjectId}) async {
+  Future<List<TeacherLessonModel>> getTeacherLessons({
+    String? className,
+    int? subjectId,
+  }) async {
     try {
-      final url = AppUrl.teacherLessons(className: className, subjectId: subjectId);
+      final url = AppUrl.teacherLessons(
+        className: className,
+        subjectId: subjectId,
+      );
       final res = await _apiService.getApi(url);
       final rawList = _extractList(res);
       return rawList
           .where((item) => item != null && item is Map)
-          .map((item) => TeacherLessonModel.fromJson(Map<String, dynamic>.from(item)))
+          .map(
+            (item) =>
+                TeacherLessonModel.fromJson(Map<String, dynamic>.from(item)),
+          )
           .toList();
     } catch (e) {
       if (kDebugMode) {
@@ -926,9 +947,12 @@ class ApiSchoolRepository implements SchoolRepository {
         'chapterNumber': chapterNumber,
         'chapterTitle': chapterTitle,
         'description': description ?? '',
-        if (subjectId != null) 'subjectId': subjectId,
+        'subjectId': ?subjectId,
       };
-      final res = await _apiService.postApi(AppUrl.createTeacherLesson, payload);
+      final res = await _apiService.postApi(
+        AppUrl.createTeacherLesson,
+        payload,
+      );
       if (res is Map) {
         return TeacherLessonModel.fromJson(Map<String, dynamic>.from(res));
       }
@@ -955,7 +979,10 @@ class ApiSchoolRepository implements SchoolRepository {
         'difficulty': difficulty ?? 'Medium',
         'estimatedMinutes': estimatedMinutes ?? 30,
       };
-      final res = await _apiService.postApi(AppUrl.addLessonTopic(lessonId), payload);
+      final res = await _apiService.postApi(
+        AppUrl.addLessonTopic(lessonId),
+        payload,
+      );
       if (res is Map) {
         return TeacherTopicModel.fromJson(Map<String, dynamic>.from(res));
       }
@@ -981,9 +1008,15 @@ class ApiSchoolRepository implements SchoolRepository {
   }
 
   @override
-  Future<List<HomeworkItem>> getTeacherAssignments({String? className, String? subject}) async {
+  Future<List<HomeworkItem>> getTeacherAssignments({
+    String? className,
+    String? subject,
+  }) async {
     try {
-      final url = AppUrl.teacherAssignments(className: className, subject: subject);
+      final url = AppUrl.teacherAssignments(
+        className: className,
+        subject: subject,
+      );
       final res = await _apiService.getApi(url);
       final rawList = _extractList(res);
       return rawList
@@ -1019,11 +1052,14 @@ class ApiSchoolRepository implements SchoolRepository {
         'section': section ?? 'A',
         'dueDate': dueDate,
         'points': points,
-        if (targetStudentId != null) 'targetStudentId': targetStudentId,
+        'targetStudentId': ?targetStudentId,
         if (fileAttachmentUrl != null && fileAttachmentUrl.isNotEmpty)
           'fileAttachmentUrl': fileAttachmentUrl,
       };
-      final res = await _apiService.postApi(AppUrl.createTeacherAssignment, payload);
+      final res = await _apiService.postApi(
+        AppUrl.createTeacherAssignment,
+        payload,
+      );
       if (res is Map) {
         return HomeworkItem.fromJson(Map<String, dynamic>.from(res));
       }
@@ -1036,14 +1072,20 @@ class ApiSchoolRepository implements SchoolRepository {
   }
 
   @override
-  Future<List<AssignmentSubmissionItem>> getAssignmentSubmissions(String assignmentId) async {
+  Future<List<AssignmentSubmissionItem>> getAssignmentSubmissions(
+    String assignmentId,
+  ) async {
     try {
       final url = AppUrl.assignmentSubmissions(assignmentId);
       final res = await _apiService.getApi(url);
       final rawList = _extractList(res);
       return rawList
           .where((item) => item != null && item is Map)
-          .map((item) => AssignmentSubmissionItem.fromJson(Map<String, dynamic>.from(item)))
+          .map(
+            (item) => AssignmentSubmissionItem.fromJson(
+              Map<String, dynamic>.from(item),
+            ),
+          )
           .toList();
     } catch (e) {
       if (kDebugMode) {
@@ -1062,10 +1104,13 @@ class ApiSchoolRepository implements SchoolRepository {
     String? feedback,
   }) async {
     try {
-      final url = AppUrl.reviewSubmission(assignmentId, submissionId.toString());
+      final url = AppUrl.reviewSubmission(
+        assignmentId,
+        submissionId.toString(),
+      );
       final payload = {
         'status': status,
-        if (points != null) 'points': points,
+        'points': ?points,
         if (feedback != null && feedback.isNotEmpty) 'feedback': feedback,
       };
       await _apiService.postApi(url, payload);
@@ -1083,7 +1128,9 @@ class ApiSchoolRepository implements SchoolRepository {
   // ============================================================
 
   @override
-  Future<List<HomeworkItem>> getStudentAssignments({String? admissionNo}) async {
+  Future<List<HomeworkItem>> getStudentAssignments({
+    String? admissionNo,
+  }) async {
     try {
       final url = AppUrl.studentAssignments(admissionNo: admissionNo);
       final res = await _apiService.getApi(url);
@@ -1122,4 +1169,3 @@ class ApiSchoolRepository implements SchoolRepository {
     }
   }
 }
-

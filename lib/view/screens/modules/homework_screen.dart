@@ -18,7 +18,8 @@ class HomeworkScreen extends StatefulWidget {
   State<HomeworkScreen> createState() => _HomeworkScreenState();
 }
 
-class _HomeworkScreenState extends State<HomeworkScreen> with SingleTickerProviderStateMixin {
+class _HomeworkScreenState extends State<HomeworkScreen>
+    with SingleTickerProviderStateMixin {
   final ApiSchoolRepository _repository = ApiSchoolRepository();
   late TabController _tabController;
   List<HomeworkItem> _homeworkList = [];
@@ -73,7 +74,10 @@ class _HomeworkScreenState extends State<HomeworkScreen> with SingleTickerProvid
           : null;
       list = await _repository.getStudentAssignments(admissionNo: childAdm);
       if (list.isEmpty) {
-        list = await _repository.getHomework(currentUser?.id ?? '1', className: currentUser?.className);
+        list = await _repository.getHomework(
+          currentUser?.id ?? '1',
+          className: currentUser?.className,
+        );
       }
     }
 
@@ -118,7 +122,10 @@ class _HomeworkScreenState extends State<HomeworkScreen> with SingleTickerProvid
           builder: (ctx, setSheetState) {
             void fetchClassStudents(String cls, String sec) async {
               setSheetState(() => loadingStudents = true);
-              final stList = await _repository.getClassStudents(cls, section: sec);
+              final stList = await _repository.getClassStudents(
+                cls,
+                section: sec,
+              );
               setSheetState(() {
                 classStudents = stList;
                 loadingStudents = false;
@@ -142,7 +149,11 @@ class _HomeworkScreenState extends State<HomeworkScreen> with SingleTickerProvid
                       children: [
                         Text(
                           'Create New Assignment',
-                          style: TextStyle(fontSize: 18.sp, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
+                          style: TextStyle(
+                            fontSize: 18.sp,
+                            fontWeight: FontWeight.bold,
+                            color: AppColors.textPrimary,
+                          ),
                         ),
                         IconButton(
                           icon: const Icon(Icons.close_rounded),
@@ -163,7 +174,14 @@ class _HomeworkScreenState extends State<HomeworkScreen> with SingleTickerProvid
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text('Assignment Scope', style: TextStyle(fontSize: 12.sp, fontWeight: FontWeight.bold, color: AppColors.textSecondary)),
+                          Text(
+                            'Assignment Scope',
+                            style: TextStyle(
+                              fontSize: 12.sp,
+                              fontWeight: FontWeight.bold,
+                              color: AppColors.textSecondary,
+                            ),
+                          ),
                           8.h.height,
                           Row(
                             children: [
@@ -176,17 +194,27 @@ class _HomeworkScreenState extends State<HomeworkScreen> with SingleTickerProvid
                                   }),
                                   borderRadius: BorderRadius.circular(10.r),
                                   child: Container(
-                                    padding: EdgeInsets.symmetric(vertical: 10.h),
+                                    padding: EdgeInsets.symmetric(
+                                      vertical: 10.h,
+                                    ),
                                     decoration: BoxDecoration(
-                                      color: !isTargeted ? const Color(0xFF0284C7) : AppColors.surface,
+                                      color: !isTargeted
+                                          ? const Color(0xFF0284C7)
+                                          : AppColors.surface,
                                       borderRadius: BorderRadius.circular(10.r),
-                                      border: Border.all(color: !isTargeted ? const Color(0xFF0284C7) : AppColors.border),
+                                      border: Border.all(
+                                        color: !isTargeted
+                                            ? const Color(0xFF0284C7)
+                                            : AppColors.border,
+                                      ),
                                     ),
                                     child: Center(
                                       child: Text(
                                         '👥 Whole Class',
                                         style: TextStyle(
-                                          color: !isTargeted ? Colors.white : AppColors.textPrimary,
+                                          color: !isTargeted
+                                              ? Colors.white
+                                              : AppColors.textPrimary,
                                           fontWeight: FontWeight.bold,
                                           fontSize: 12.sp,
                                         ),
@@ -201,22 +229,35 @@ class _HomeworkScreenState extends State<HomeworkScreen> with SingleTickerProvid
                                   onTap: () {
                                     setSheetState(() => isTargeted = true);
                                     if (classStudents.isEmpty) {
-                                      fetchClassStudents(selectedClass, selectedSection);
+                                      fetchClassStudents(
+                                        selectedClass,
+                                        selectedSection,
+                                      );
                                     }
                                   },
                                   borderRadius: BorderRadius.circular(10.r),
                                   child: Container(
-                                    padding: EdgeInsets.symmetric(vertical: 10.h),
+                                    padding: EdgeInsets.symmetric(
+                                      vertical: 10.h,
+                                    ),
                                     decoration: BoxDecoration(
-                                      color: isTargeted ? const Color(0xFF0284C7) : AppColors.surface,
+                                      color: isTargeted
+                                          ? const Color(0xFF0284C7)
+                                          : AppColors.surface,
                                       borderRadius: BorderRadius.circular(10.r),
-                                      border: Border.all(color: isTargeted ? const Color(0xFF0284C7) : AppColors.border),
+                                      border: Border.all(
+                                        color: isTargeted
+                                            ? const Color(0xFF0284C7)
+                                            : AppColors.border,
+                                      ),
                                     ),
                                     child: Center(
                                       child: Text(
                                         '👤 Specific Student (ID-Wise)',
                                         style: TextStyle(
-                                          color: isTargeted ? Colors.white : AppColors.textPrimary,
+                                          color: isTargeted
+                                              ? Colors.white
+                                              : AppColors.textPrimary,
                                           fontWeight: FontWeight.bold,
                                           fontSize: 12.sp,
                                         ),
@@ -230,14 +271,21 @@ class _HomeworkScreenState extends State<HomeworkScreen> with SingleTickerProvid
                           if (isTargeted) ...[
                             12.h.height,
                             if (loadingStudents)
-                              const Center(child: Padding(padding: EdgeInsets.all(8.0), child: CircularProgressIndicator()))
+                              const Center(
+                                child: Padding(
+                                  padding: EdgeInsets.all(8.0),
+                                  child: CircularProgressIndicator(),
+                                ),
+                              )
                             else ...[
                               DropdownButtonFormField<dynamic>(
-                                value: selectedStudentId,
+                                initialValue: selectedStudentId,
                                 isExpanded: true,
                                 decoration: InputDecoration(
                                   labelText: 'Select Student by ID / Name',
-                                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(10.r)),
+                                  border: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(10.r),
+                                  ),
                                   filled: true,
                                   fillColor: AppColors.surface,
                                 ),
@@ -253,7 +301,10 @@ class _HomeworkScreenState extends State<HomeworkScreen> with SingleTickerProvid
                                   );
                                 }).toList(),
                                 onChanged: (val) {
-                                  final match = classStudents.firstWhere((s) => s.id == val, orElse: () => classStudents.first);
+                                  final match = classStudents.firstWhere(
+                                    (s) => s.id == val,
+                                    orElse: () => classStudents.first,
+                                  );
                                   setSheetState(() {
                                     selectedStudentId = val;
                                     selectedStudentName = match.name;
@@ -264,7 +315,11 @@ class _HomeworkScreenState extends State<HomeworkScreen> with SingleTickerProvid
                                 6.h.height,
                                 Text(
                                   'Task will be targeted directly to: $selectedStudentName (ID: #$selectedStudentId)',
-                                  style: TextStyle(color: const Color(0xFF0284C7), fontSize: 11.5.sp, fontWeight: FontWeight.bold),
+                                  style: TextStyle(
+                                    color: const Color(0xFF0284C7),
+                                    fontSize: 11.5.sp,
+                                    fontWeight: FontWeight.bold,
+                                  ),
                                 ),
                               ],
                             ],
@@ -279,7 +334,9 @@ class _HomeworkScreenState extends State<HomeworkScreen> with SingleTickerProvid
                       decoration: InputDecoration(
                         labelText: 'Assignment Title',
                         hintText: 'e.g. Science Chapter 3 Questions',
-                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12.r)),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12.r),
+                        ),
                         filled: true,
                         fillColor: AppColors.background,
                       ),
@@ -290,18 +347,35 @@ class _HomeworkScreenState extends State<HomeworkScreen> with SingleTickerProvid
                       children: [
                         Expanded(
                           child: DropdownButtonFormField<String>(
-                            value: ['Class 8', 'Class 9', 'Class 10'].contains(selectedClass) ? selectedClass : 'Class 10',
+                            initialValue:
+                                [
+                                  'Class 8',
+                                  'Class 9',
+                                  'Class 10',
+                                ].contains(selectedClass)
+                                ? selectedClass
+                                : 'Class 10',
                             decoration: InputDecoration(
                               labelText: 'Class',
-                              border: OutlineInputBorder(borderRadius: BorderRadius.circular(12.r)),
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(12.r),
+                              ),
                               filled: true,
                               fillColor: AppColors.background,
                             ),
-                            items: ['Class 8', 'Class 9', 'Class 10'].map((c) => DropdownMenuItem(value: c, child: Text(c))).toList(),
+                            items: ['Class 8', 'Class 9', 'Class 10']
+                                .map(
+                                  (c) => DropdownMenuItem(
+                                    value: c,
+                                    child: Text(c),
+                                  ),
+                                )
+                                .toList(),
                             onChanged: (val) {
                               if (val != null) {
                                 setSheetState(() => selectedClass = val);
-                                if (isTargeted) fetchClassStudents(val, selectedSection);
+                                if (isTargeted)
+                                  fetchClassStudents(val, selectedSection);
                               }
                             },
                           ),
@@ -309,18 +383,28 @@ class _HomeworkScreenState extends State<HomeworkScreen> with SingleTickerProvid
                         10.w.width,
                         Expanded(
                           child: DropdownButtonFormField<String>(
-                            value: selectedSection,
+                            initialValue: selectedSection,
                             decoration: InputDecoration(
                               labelText: 'Section',
-                              border: OutlineInputBorder(borderRadius: BorderRadius.circular(12.r)),
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(12.r),
+                              ),
                               filled: true,
                               fillColor: AppColors.background,
                             ),
-                            items: ['A', 'B', 'C'].map((s) => DropdownMenuItem(value: s, child: Text(s))).toList(),
+                            items: ['A', 'B', 'C']
+                                .map(
+                                  (s) => DropdownMenuItem(
+                                    value: s,
+                                    child: Text(s),
+                                  ),
+                                )
+                                .toList(),
                             onChanged: (val) {
                               if (val != null) {
                                 setSheetState(() => selectedSection = val);
-                                if (isTargeted) fetchClassStudents(selectedClass, val);
+                                if (isTargeted)
+                                  fetchClassStudents(selectedClass, val);
                               }
                             },
                           ),
@@ -336,7 +420,9 @@ class _HomeworkScreenState extends State<HomeworkScreen> with SingleTickerProvid
                             controller: subjectCtrl,
                             decoration: InputDecoration(
                               labelText: 'Subject',
-                              border: OutlineInputBorder(borderRadius: BorderRadius.circular(12.r)),
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(12.r),
+                              ),
                               filled: true,
                               fillColor: AppColors.background,
                             ),
@@ -349,7 +435,9 @@ class _HomeworkScreenState extends State<HomeworkScreen> with SingleTickerProvid
                             keyboardType: TextInputType.number,
                             decoration: InputDecoration(
                               labelText: 'Max Points',
-                              border: OutlineInputBorder(borderRadius: BorderRadius.circular(12.r)),
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(12.r),
+                              ),
                               filled: true,
                               fillColor: AppColors.background,
                             ),
@@ -364,8 +452,11 @@ class _HomeworkScreenState extends State<HomeworkScreen> with SingleTickerProvid
                       maxLines: 3,
                       decoration: InputDecoration(
                         labelText: 'Instructions / Assignment Details',
-                        hintText: 'Detailed requirements, exercises, or questions...',
-                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12.r)),
+                        hintText:
+                            'Detailed requirements, exercises, or questions...',
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12.r),
+                        ),
                         filled: true,
                         fillColor: AppColors.background,
                       ),
@@ -377,7 +468,9 @@ class _HomeworkScreenState extends State<HomeworkScreen> with SingleTickerProvid
                       decoration: InputDecoration(
                         labelText: 'Resource / Attachment Link (Optional)',
                         hintText: 'https://...',
-                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12.r)),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12.r),
+                        ),
                         filled: true,
                         fillColor: AppColors.background,
                       ),
@@ -395,9 +488,12 @@ class _HomeworkScreenState extends State<HomeworkScreen> with SingleTickerProvid
                           subject: subjectCtrl.text.trim(),
                           className: selectedClass,
                           section: selectedSection,
-                          dueDate: '${chosenDueDate.year}-${chosenDueDate.month.toString().padLeft(2, '0')}-${chosenDueDate.day.toString().padLeft(2, '0')}',
+                          dueDate:
+                              '${chosenDueDate.year}-${chosenDueDate.month.toString().padLeft(2, '0')}-${chosenDueDate.day.toString().padLeft(2, '0')}',
                           points: int.tryParse(pointsCtrl.text.trim()) ?? 100,
-                          targetStudentId: isTargeted ? selectedStudentId : null,
+                          targetStudentId: isTargeted
+                              ? selectedStudentId
+                              : null,
                           fileAttachmentUrl: fileUrlCtrl.text.trim(),
                         );
                         _loadData();
@@ -405,11 +501,19 @@ class _HomeworkScreenState extends State<HomeworkScreen> with SingleTickerProvid
                       style: ElevatedButton.styleFrom(
                         backgroundColor: const Color(0xFF0284C7),
                         padding: EdgeInsets.symmetric(vertical: 14.h),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.r)),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12.r),
+                        ),
                       ),
                       child: Text(
-                        isTargeted ? 'Assign to Student ID: #$selectedStudentId' : 'Publish to Class $selectedClass',
-                        style: TextStyle(color: Colors.white, fontSize: 14.sp, fontWeight: FontWeight.bold),
+                        isTargeted
+                            ? 'Assign to Student ID: #$selectedStudentId'
+                            : 'Publish to Class $selectedClass',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 14.sp,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
                     ),
                   ],
@@ -469,7 +573,11 @@ class _HomeworkScreenState extends State<HomeworkScreen> with SingleTickerProvid
                   Expanded(
                     child: Text(
                       'Submit: ${hw.title}',
-                      style: TextStyle(fontSize: 16.sp, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
+                      style: TextStyle(
+                        fontSize: 16.sp,
+                        fontWeight: FontWeight.bold,
+                        color: AppColors.textPrimary,
+                      ),
                       overflow: TextOverflow.ellipsis,
                     ),
                   ),
@@ -485,8 +593,11 @@ class _HomeworkScreenState extends State<HomeworkScreen> with SingleTickerProvid
                 maxLines: 4,
                 decoration: InputDecoration(
                   labelText: 'Your Solution / Answer Notes',
-                  hintText: 'Write your answers or summary of completed assignment...',
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12.r)),
+                  hintText:
+                      'Write your answers or summary of completed assignment...',
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12.r),
+                  ),
                   filled: true,
                   fillColor: AppColors.background,
                 ),
@@ -497,7 +608,9 @@ class _HomeworkScreenState extends State<HomeworkScreen> with SingleTickerProvid
                 decoration: InputDecoration(
                   labelText: 'Attachment / Google Drive File Link',
                   hintText: 'https://drive.google.com/...',
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12.r)),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12.r),
+                  ),
                   filled: true,
                   fillColor: AppColors.background,
                 ),
@@ -517,11 +630,17 @@ class _HomeworkScreenState extends State<HomeworkScreen> with SingleTickerProvid
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppColors.primary,
                   padding: EdgeInsets.symmetric(vertical: 13.h),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.r)),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12.r),
+                  ),
                 ),
                 child: Text(
                   'Submit Assignment',
-                  style: TextStyle(color: Colors.white, fontSize: 14.sp, fontWeight: FontWeight.bold),
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 14.sp,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
               ),
             ],
@@ -554,7 +673,10 @@ class _HomeworkScreenState extends State<HomeworkScreen> with SingleTickerProvid
         leading: widget.isInline
             ? null
             : IconButton(
-                icon: const Icon(Icons.arrow_back_ios_new_rounded, color: AppColors.textPrimary),
+                icon: const Icon(
+                  Icons.arrow_back_ios_new_rounded,
+                  color: AppColors.textPrimary,
+                ),
                 onPressed: () => Navigator.pop(context),
               ),
         title: Text(
@@ -564,20 +686,33 @@ class _HomeworkScreenState extends State<HomeworkScreen> with SingleTickerProvid
         centerTitle: true,
         actions: [
           IconButton(
-            icon: const Icon(Icons.refresh_rounded, color: AppColors.textPrimary),
+            icon: const Icon(
+              Icons.refresh_rounded,
+              color: AppColors.textPrimary,
+            ),
             tooltip: 'Reload',
             onPressed: _loadData,
           ),
         ],
         bottom: TabBar(
           controller: _tabController,
-          indicatorColor: isTeacher ? const Color(0xFF0284C7) : AppColors.primary,
+          indicatorColor: isTeacher
+              ? const Color(0xFF0284C7)
+              : AppColors.primary,
           labelColor: isTeacher ? const Color(0xFF0284C7) : AppColors.primary,
           unselectedLabelColor: AppColors.textMuted,
           labelStyle: TextStyle(fontSize: 13.5.sp, fontWeight: FontWeight.bold),
           tabs: [
-            Tab(text: isTeacher ? 'All Assignments (${_homeworkList.length})' : 'Pending (${pendingList.length})'),
-            Tab(text: isTeacher ? 'Active Tasks' : 'Submitted & Graded (${completedList.length})'),
+            Tab(
+              text: isTeacher
+                  ? 'All Assignments (${_homeworkList.length})'
+                  : 'Pending (${pendingList.length})',
+            ),
+            Tab(
+              text: isTeacher
+                  ? 'Active Tasks'
+                  : 'Submitted & Graded (${completedList.length})',
+            ),
           ],
         ),
       ),
@@ -586,7 +721,14 @@ class _HomeworkScreenState extends State<HomeworkScreen> with SingleTickerProvid
               onPressed: () => _showCreateAssignmentSheet(),
               backgroundColor: const Color(0xFF0284C7),
               icon: const Icon(Icons.add_rounded, color: Colors.white),
-              label: Text('New Assignment', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13.sp)),
+              label: Text(
+                'New Assignment',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 13.sp,
+                ),
+              ),
             )
           : null,
       body: _isLoading
@@ -600,7 +742,11 @@ class _HomeworkScreenState extends State<HomeworkScreen> with SingleTickerProvid
                   isPending: true,
                 ),
                 _buildListView(
-                  isTeacher ? _homeworkList.where((h) => h.status != HomeworkStatus.overdue).toList() : completedList,
+                  isTeacher
+                      ? _homeworkList
+                            .where((h) => h.status != HomeworkStatus.overdue)
+                            .toList()
+                      : completedList,
                   isTeacher: isTeacher,
                   isPending: false,
                 ),
@@ -609,21 +755,40 @@ class _HomeworkScreenState extends State<HomeworkScreen> with SingleTickerProvid
     );
   }
 
-  Widget _buildListView(List<HomeworkItem> list, {required bool isTeacher, required bool isPending}) {
+  Widget _buildListView(
+    List<HomeworkItem> list, {
+    required bool isTeacher,
+    required bool isPending,
+  }) {
     if (list.isEmpty) {
       return Center(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(Icons.assignment_outlined, size: 48.sp, color: AppColors.textMuted),
+            Icon(
+              Icons.assignment_outlined,
+              size: 48.sp,
+              color: AppColors.textMuted,
+            ),
             12.h.height,
             Text(
-              isTeacher ? 'No assignments created yet' : (isPending ? 'No pending assignments!' : 'No submitted tasks.'),
-              style: TextStyle(color: AppColors.textSecondary, fontSize: 14.sp, fontWeight: FontWeight.bold),
+              isTeacher
+                  ? 'No assignments created yet'
+                  : (isPending
+                        ? 'No pending assignments!'
+                        : 'No submitted tasks.'),
+              style: TextStyle(
+                color: AppColors.textSecondary,
+                fontSize: 14.sp,
+                fontWeight: FontWeight.bold,
+              ),
             ),
             if (isTeacher) ...[
               6.h.height,
-              Text('Tap "+ New Assignment" to create and assign ID-wise.', style: TextStyle(color: AppColors.textMuted, fontSize: 12.sp)),
+              Text(
+                'Tap "+ New Assignment" to create and assign ID-wise.',
+                style: TextStyle(color: AppColors.textMuted, fontSize: 12.sp),
+              ),
             ],
           ],
         ),
@@ -634,7 +799,7 @@ class _HomeworkScreenState extends State<HomeworkScreen> with SingleTickerProvid
       physics: const BouncingScrollPhysics(),
       padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 14.h),
       itemCount: list.length,
-      separatorBuilder: (_, __) => 12.h.height,
+      separatorBuilder: (_, _) => 12.h.height,
       itemBuilder: (context, i) {
         final hw = list[i];
         return _buildAssignmentCard(hw, isTeacher: isTeacher);
@@ -652,7 +817,9 @@ class _HomeworkScreenState extends State<HomeworkScreen> with SingleTickerProvid
       statusLabel = 'Submitted';
     } else if (statusStr == 'accepted' || statusStr == 'graded') {
       statusColor = AppColors.success;
-      statusLabel = hw.scoredPoints != null ? 'Graded: ${hw.scoredPoints}/${hw.maxPoints}' : 'Accepted';
+      statusLabel = hw.scoredPoints != null
+          ? 'Graded: ${hw.scoredPoints}/${hw.maxPoints}'
+          : 'Accepted';
     } else if (statusStr == 'rejected') {
       statusColor = AppColors.error;
       statusLabel = 'Needs Resubmission';
@@ -677,7 +844,11 @@ class _HomeworkScreenState extends State<HomeworkScreen> with SingleTickerProvid
                 ),
                 child: Text(
                   hw.subject,
-                  style: TextStyle(color: AppColors.primary, fontSize: 11.5.sp, fontWeight: FontWeight.bold),
+                  style: TextStyle(
+                    color: AppColors.primary,
+                    fontSize: 11.5.sp,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
               ),
               Container(
@@ -688,7 +859,11 @@ class _HomeworkScreenState extends State<HomeworkScreen> with SingleTickerProvid
                 ),
                 child: Text(
                   statusLabel,
-                  style: TextStyle(color: statusColor, fontSize: 11.sp, fontWeight: FontWeight.bold),
+                  style: TextStyle(
+                    color: statusColor,
+                    fontSize: 11.sp,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
               ),
             ],
@@ -698,13 +873,21 @@ class _HomeworkScreenState extends State<HomeworkScreen> with SingleTickerProvid
           // Title & Description
           Text(
             hw.title,
-            style: TextStyle(fontSize: 15.sp, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
+            style: TextStyle(
+              fontSize: 15.sp,
+              fontWeight: FontWeight.bold,
+              color: AppColors.textPrimary,
+            ),
           ),
           if (hw.description.isNotEmpty) ...[
             4.h.height,
             Text(
               hw.description,
-              style: TextStyle(fontSize: 12.5.sp, color: AppColors.textSecondary, height: 1.3),
+              style: TextStyle(
+                fontSize: 12.5.sp,
+                color: AppColors.textSecondary,
+                height: 1.3,
+              ),
             ),
           ],
           10.h.height,
@@ -721,7 +904,11 @@ class _HomeworkScreenState extends State<HomeworkScreen> with SingleTickerProvid
               ),
               child: Row(
                 children: [
-                  Icon(Icons.person_pin_rounded, size: 16.sp, color: const Color(0xFF2563EB)),
+                  Icon(
+                    Icons.person_pin_rounded,
+                    size: 16.sp,
+                    color: const Color(0xFF2563EB),
+                  ),
                   6.w.width,
                   Expanded(
                     child: Text(
@@ -748,12 +935,18 @@ class _HomeworkScreenState extends State<HomeworkScreen> with SingleTickerProvid
               ),
               child: Text(
                 'Class: ${hw.className}${hw.section != null ? ' - ${hw.section}' : ''} • Whole Class',
-                style: TextStyle(color: AppColors.textMuted, fontSize: 11.sp, fontWeight: FontWeight.w600),
+                style: TextStyle(
+                  color: AppColors.textMuted,
+                  fontSize: 11.sp,
+                  fontWeight: FontWeight.w600,
+                ),
               ),
             ),
 
           // Evaluation details for student
-          if (!isTeacher && hw.teacherFeedback != null && hw.teacherFeedback!.isNotEmpty)
+          if (!isTeacher &&
+              hw.teacherFeedback != null &&
+              hw.teacherFeedback!.isNotEmpty)
             Container(
               padding: EdgeInsets.all(10.w),
               margin: EdgeInsets.only(bottom: 8.h),
@@ -765,15 +958,32 @@ class _HomeworkScreenState extends State<HomeworkScreen> with SingleTickerProvid
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Icon(Icons.comment_rounded, size: 16.sp, color: AppColors.success),
+                  Icon(
+                    Icons.comment_rounded,
+                    size: 16.sp,
+                    color: AppColors.success,
+                  ),
                   8.w.width,
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text('Teacher Remarks:', style: TextStyle(fontSize: 11.sp, fontWeight: FontWeight.bold, color: AppColors.success)),
+                        Text(
+                          'Teacher Remarks:',
+                          style: TextStyle(
+                            fontSize: 11.sp,
+                            fontWeight: FontWeight.bold,
+                            color: AppColors.success,
+                          ),
+                        ),
                         2.h.height,
-                        Text(hw.teacherFeedback!, style: TextStyle(fontSize: 12.sp, color: const Color(0xFF166534))),
+                        Text(
+                          hw.teacherFeedback!,
+                          style: TextStyle(
+                            fontSize: 12.sp,
+                            color: const Color(0xFF166534),
+                          ),
+                        ),
                       ],
                     ),
                   ),
@@ -787,18 +997,32 @@ class _HomeworkScreenState extends State<HomeworkScreen> with SingleTickerProvid
             children: [
               Row(
                 children: [
-                  Icon(Icons.calendar_today_rounded, size: 13.sp, color: AppColors.textMuted),
+                  Icon(
+                    Icons.calendar_today_rounded,
+                    size: 13.sp,
+                    color: AppColors.textMuted,
+                  ),
                   4.w.width,
                   Text(
                     'Due: ${hw.dueDate.day}/${hw.dueDate.month}/${hw.dueDate.year}',
-                    style: TextStyle(color: AppColors.textMuted, fontSize: 11.5.sp),
+                    style: TextStyle(
+                      color: AppColors.textMuted,
+                      fontSize: 11.5.sp,
+                    ),
                   ),
                   12.w.width,
-                  Icon(Icons.star_outline_rounded, size: 14.sp, color: AppColors.textMuted),
+                  Icon(
+                    Icons.star_outline_rounded,
+                    size: 14.sp,
+                    color: AppColors.textMuted,
+                  ),
                   4.w.width,
                   Text(
                     '${hw.points} pts',
-                    style: TextStyle(color: AppColors.textMuted, fontSize: 11.5.sp),
+                    style: TextStyle(
+                      color: AppColors.textMuted,
+                      fontSize: 11.5.sp,
+                    ),
                   ),
                 ],
               ),
@@ -806,28 +1030,57 @@ class _HomeworkScreenState extends State<HomeworkScreen> with SingleTickerProvid
               if (isTeacher)
                 ElevatedButton.icon(
                   onPressed: () => _showSubmissionsSheet(hw),
-                  icon: Icon(Icons.people_alt_outlined, size: 14.sp, color: Colors.white),
+                  icon: Icon(
+                    Icons.people_alt_outlined,
+                    size: 14.sp,
+                    color: Colors.white,
+                  ),
                   label: Text(
                     'Submissions (${hw.submissionCount})',
-                    style: TextStyle(color: Colors.white, fontSize: 11.sp, fontWeight: FontWeight.bold),
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 11.sp,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFF0284C7),
-                    padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 6.h),
+                    padding: EdgeInsets.symmetric(
+                      horizontal: 10.w,
+                      vertical: 6.h,
+                    ),
                     minimumSize: Size.zero,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8.r)),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8.r),
+                    ),
                   ),
                 )
               else if (statusStr == 'pending' || statusStr == 'rejected')
                 ElevatedButton.icon(
                   onPressed: () => _showStudentSubmitSheet(hw),
-                  icon: Icon(Icons.upload_file_rounded, size: 14.sp, color: Colors.white),
-                  label: Text('Submit Work', style: TextStyle(color: Colors.white, fontSize: 11.5.sp, fontWeight: FontWeight.bold)),
+                  icon: Icon(
+                    Icons.upload_file_rounded,
+                    size: 14.sp,
+                    color: Colors.white,
+                  ),
+                  label: Text(
+                    'Submit Work',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 11.5.sp,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppColors.primary,
-                    padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 6.h),
+                    padding: EdgeInsets.symmetric(
+                      horizontal: 12.w,
+                      vertical: 6.h,
+                    ),
                     minimumSize: Size.zero,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8.r)),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8.r),
+                    ),
                   ),
                 ),
             ],
@@ -850,7 +1103,8 @@ class _SubmissionsReviewSheet extends StatefulWidget {
   });
 
   @override
-  State<_SubmissionsReviewSheet> createState() => _SubmissionsReviewSheetState();
+  State<_SubmissionsReviewSheet> createState() =>
+      _SubmissionsReviewSheetState();
 }
 
 class _SubmissionsReviewSheetState extends State<_SubmissionsReviewSheet> {
@@ -864,7 +1118,9 @@ class _SubmissionsReviewSheetState extends State<_SubmissionsReviewSheet> {
   }
 
   Future<void> _fetchSubmissions() async {
-    final list = await widget.repository.getAssignmentSubmissions(widget.assignment.id);
+    final list = await widget.repository.getAssignmentSubmissions(
+      widget.assignment.id,
+    );
     if (mounted) {
       setState(() {
         _submissions = list;
@@ -874,7 +1130,11 @@ class _SubmissionsReviewSheetState extends State<_SubmissionsReviewSheet> {
   }
 
   void _showGradeDialog(AssignmentSubmissionItem sub) {
-    final pointsCtrl = TextEditingController(text: sub.points != null ? sub.points.toString() : '${widget.assignment.points}');
+    final pointsCtrl = TextEditingController(
+      text: sub.points != null
+          ? sub.points.toString()
+          : '${widget.assignment.points}',
+    );
     final feedbackCtrl = TextEditingController(text: sub.teacherFeedback ?? '');
     String chosenStatus = sub.status == 'PENDING' ? 'ACCEPTED' : sub.status;
 
@@ -884,19 +1144,35 @@ class _SubmissionsReviewSheetState extends State<_SubmissionsReviewSheet> {
         return StatefulBuilder(
           builder: (ctx, setDialogState) {
             return AlertDialog(
-              title: Text('Grade Submission • ID: #${sub.studentId}', style: TextStyle(fontSize: 16.sp, fontWeight: FontWeight.bold)),
+              title: Text(
+                'Grade Submission • ID: #${sub.studentId}',
+                style: TextStyle(fontSize: 16.sp, fontWeight: FontWeight.bold),
+              ),
               content: SingleChildScrollView(
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    Text('Student: ${sub.studentName}', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13.sp)),
-                    if (sub.submissionText != null && sub.submissionText!.isNotEmpty) ...[
+                    Text(
+                      'Student: ${sub.studentName}',
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 13.sp,
+                      ),
+                    ),
+                    if (sub.submissionText != null &&
+                        sub.submissionText!.isNotEmpty) ...[
                       8.h.height,
                       Container(
                         padding: EdgeInsets.all(10.w),
-                        decoration: BoxDecoration(color: AppColors.background, borderRadius: BorderRadius.circular(8.r)),
-                        child: Text('Submitted Work:\n${sub.submissionText}', style: TextStyle(fontSize: 12.sp)),
+                        decoration: BoxDecoration(
+                          color: AppColors.background,
+                          borderRadius: BorderRadius.circular(8.r),
+                        ),
+                        child: Text(
+                          'Submitted Work:\n${sub.submissionText}',
+                          style: TextStyle(fontSize: 12.sp),
+                        ),
                       ),
                     ],
                     12.h.height,
@@ -905,19 +1181,28 @@ class _SubmissionsReviewSheetState extends State<_SubmissionsReviewSheet> {
                       keyboardType: TextInputType.number,
                       decoration: InputDecoration(
                         labelText: 'Marks Scored (Max: ${sub.maxPoints})',
-                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(10.r)),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(10.r),
+                        ),
                       ),
                     ),
                     10.h.height,
                     DropdownButtonFormField<String>(
-                      value: chosenStatus,
+                      initialValue: chosenStatus,
                       decoration: InputDecoration(
                         labelText: 'Status',
-                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(10.r)),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(10.r),
+                        ),
                       ),
-                      items: ['ACCEPTED', 'GRADED', 'REJECTED'].map((s) => DropdownMenuItem(value: s, child: Text(s))).toList(),
+                      items: ['ACCEPTED', 'GRADED', 'REJECTED']
+                          .map(
+                            (s) => DropdownMenuItem(value: s, child: Text(s)),
+                          )
+                          .toList(),
                       onChanged: (val) {
-                        if (val != null) setDialogState(() => chosenStatus = val);
+                        if (val != null)
+                          setDialogState(() => chosenStatus = val);
                       },
                     ),
                     10.h.height,
@@ -927,14 +1212,19 @@ class _SubmissionsReviewSheetState extends State<_SubmissionsReviewSheet> {
                       decoration: InputDecoration(
                         labelText: 'Teacher Remarks / Feedback',
                         hintText: 'e.g. Well answered, keep it up!',
-                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(10.r)),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(10.r),
+                        ),
                       ),
                     ),
                   ],
                 ),
               ),
               actions: [
-                TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
+                TextButton(
+                  onPressed: () => Navigator.pop(ctx),
+                  child: const Text('Cancel'),
+                ),
                 FilledButton(
                   onPressed: () async {
                     Navigator.pop(ctx);
@@ -963,7 +1253,9 @@ class _SubmissionsReviewSheetState extends State<_SubmissionsReviewSheet> {
   @override
   Widget build(BuildContext context) {
     return Container(
-      constraints: BoxConstraints(maxHeight: MediaQuery.of(context).size.height * 0.8),
+      constraints: BoxConstraints(
+        maxHeight: MediaQuery.of(context).size.height * 0.8,
+      ),
       padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 16.h),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -977,17 +1269,27 @@ class _SubmissionsReviewSheetState extends State<_SubmissionsReviewSheet> {
                   children: [
                     Text(
                       widget.assignment.title,
-                      style: TextStyle(fontSize: 17.sp, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
+                      style: TextStyle(
+                        fontSize: 17.sp,
+                        fontWeight: FontWeight.bold,
+                        color: AppColors.textPrimary,
+                      ),
                       overflow: TextOverflow.ellipsis,
                     ),
                     Text(
                       'Submissions & ID-Wise Evaluation (${_submissions.length})',
-                      style: TextStyle(fontSize: 12.sp, color: AppColors.textMuted),
+                      style: TextStyle(
+                        fontSize: 12.sp,
+                        color: AppColors.textMuted,
+                      ),
                     ),
                   ],
                 ),
               ),
-              IconButton(icon: const Icon(Icons.close_rounded), onPressed: () => Navigator.pop(context)),
+              IconButton(
+                icon: const Icon(Icons.close_rounded),
+                onPressed: () => Navigator.pop(context),
+              ),
             ],
           ),
           12.h.height,
@@ -998,7 +1300,10 @@ class _SubmissionsReviewSheetState extends State<_SubmissionsReviewSheet> {
           else if (_submissions.isEmpty)
             Expanded(
               child: Center(
-                child: Text('No student records found.', style: TextStyle(color: AppColors.textMuted, fontSize: 13.sp)),
+                child: Text(
+                  'No student records found.',
+                  style: TextStyle(color: AppColors.textMuted, fontSize: 13.sp),
+                ),
               ),
             )
           else
@@ -1006,12 +1311,14 @@ class _SubmissionsReviewSheetState extends State<_SubmissionsReviewSheet> {
               child: ListView.separated(
                 physics: const BouncingScrollPhysics(),
                 itemCount: _submissions.length,
-                separatorBuilder: (_, __) => 8.h.height,
+                separatorBuilder: (_, _) => 8.h.height,
                 itemBuilder: (context, i) {
                   final sub = _submissions[i];
                   Color statusColor = AppColors.textMuted;
-                  if (sub.status == 'SUBMITTED') statusColor = const Color(0xFF0284C7);
-                  if (sub.status == 'ACCEPTED' || sub.status == 'GRADED') statusColor = AppColors.success;
+                  if (sub.status == 'SUBMITTED')
+                    statusColor = const Color(0xFF0284C7);
+                  if (sub.status == 'ACCEPTED' || sub.status == 'GRADED')
+                    statusColor = AppColors.success;
                   if (sub.status == 'REJECTED') statusColor = AppColors.error;
 
                   return Container(
@@ -1031,31 +1338,49 @@ class _SubmissionsReviewSheetState extends State<_SubmissionsReviewSheet> {
                               children: [
                                 Text(
                                   sub.studentName,
-                                  style: TextStyle(fontSize: 13.5.sp, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
+                                  style: TextStyle(
+                                    fontSize: 13.5.sp,
+                                    fontWeight: FontWeight.bold,
+                                    color: AppColors.textPrimary,
+                                  ),
                                 ),
                                 6.w.width,
                                 Container(
-                                  padding: EdgeInsets.symmetric(horizontal: 6.w, vertical: 2.h),
+                                  padding: EdgeInsets.symmetric(
+                                    horizontal: 6.w,
+                                    vertical: 2.h,
+                                  ),
                                   decoration: BoxDecoration(
                                     color: const Color(0xFFE0E7FF),
                                     borderRadius: BorderRadius.circular(4.r),
                                   ),
                                   child: Text(
                                     'ID: #${sub.studentId}',
-                                    style: TextStyle(color: const Color(0xFF4338CA), fontSize: 10.sp, fontWeight: FontWeight.bold),
+                                    style: TextStyle(
+                                      color: const Color(0xFF4338CA),
+                                      fontSize: 10.sp,
+                                      fontWeight: FontWeight.bold,
+                                    ),
                                   ),
                                 ),
                               ],
                             ),
                             Container(
-                              padding: EdgeInsets.symmetric(horizontal: 6.w, vertical: 2.h),
+                              padding: EdgeInsets.symmetric(
+                                horizontal: 6.w,
+                                vertical: 2.h,
+                              ),
                               decoration: BoxDecoration(
                                 color: statusColor.withValues(alpha: 0.1),
                                 borderRadius: BorderRadius.circular(4.r),
                               ),
                               child: Text(
                                 sub.status,
-                                style: TextStyle(color: statusColor, fontSize: 10.sp, fontWeight: FontWeight.bold),
+                                style: TextStyle(
+                                  color: statusColor,
+                                  fontSize: 10.sp,
+                                  fontWeight: FontWeight.bold,
+                                ),
                               ),
                             ),
                           ],
@@ -1063,15 +1388,32 @@ class _SubmissionsReviewSheetState extends State<_SubmissionsReviewSheet> {
                         4.h.height,
                         Text(
                           'Roll: ${sub.studentRollNo ?? 'N/A'} • Adm: ${sub.studentAdmissionNo ?? 'N/A'}',
-                          style: TextStyle(fontSize: 11.5.sp, color: AppColors.textSecondary),
+                          style: TextStyle(
+                            fontSize: 11.5.sp,
+                            color: AppColors.textSecondary,
+                          ),
                         ),
-                        if (sub.submissionText != null && sub.submissionText!.isNotEmpty) ...[
+                        if (sub.submissionText != null &&
+                            sub.submissionText!.isNotEmpty) ...[
                           6.h.height,
-                          Text('Answer: "${sub.submissionText}"', style: TextStyle(fontSize: 11.5.sp, color: AppColors.textPrimary)),
+                          Text(
+                            'Answer: "${sub.submissionText}"',
+                            style: TextStyle(
+                              fontSize: 11.5.sp,
+                              color: AppColors.textPrimary,
+                            ),
+                          ),
                         ],
                         if (sub.points != null) ...[
                           4.h.height,
-                          Text('Marks Scored: ${sub.points} / ${sub.maxPoints}', style: TextStyle(fontSize: 11.5.sp, fontWeight: FontWeight.bold, color: AppColors.success)),
+                          Text(
+                            'Marks Scored: ${sub.points} / ${sub.maxPoints}',
+                            style: TextStyle(
+                              fontSize: 11.5.sp,
+                              fontWeight: FontWeight.bold,
+                              color: AppColors.success,
+                            ),
+                          ),
                         ],
                         8.h.height,
                         Align(
@@ -1080,13 +1422,24 @@ class _SubmissionsReviewSheetState extends State<_SubmissionsReviewSheet> {
                             onPressed: () => _showGradeDialog(sub),
                             style: ElevatedButton.styleFrom(
                               backgroundColor: const Color(0xFF0284C7),
-                              padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 6.h),
+                              padding: EdgeInsets.symmetric(
+                                horizontal: 12.w,
+                                vertical: 6.h,
+                              ),
                               minimumSize: Size.zero,
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6.r)),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(6.r),
+                              ),
                             ),
                             child: Text(
-                              sub.points != null ? 'Edit Grade' : 'Grade / Review',
-                              style: TextStyle(color: Colors.white, fontSize: 11.sp, fontWeight: FontWeight.bold),
+                              sub.points != null
+                                  ? 'Edit Grade'
+                                  : 'Grade / Review',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 11.sp,
+                                fontWeight: FontWeight.bold,
+                              ),
                             ),
                           ),
                         ),
