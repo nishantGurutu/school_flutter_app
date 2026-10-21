@@ -42,7 +42,6 @@ class _DashboardShellState extends State<DashboardShell> {
           );
         }
 
-        // 1. Resolve role-based Home Dashboard layout (Polymorphism / OCP)
         Widget homeDashboard;
         switch (user.role) {
           case UserRole.student:
@@ -79,10 +78,8 @@ class _DashboardShellState extends State<DashboardShell> {
             break;
         }
 
-        // 2. Resolve dynamic bottom nav items for this role
         final navItems = RoleNavigationConfig.getBottomNavItems(user.role);
 
-        // Build dynamic pages corresponding to navItems
         final List<Widget> pages = navItems.map((item) {
           switch (item.key) {
             case 'home':
@@ -131,7 +128,6 @@ class _DashboardShellState extends State<DashboardShell> {
   }
 }
 
-// Floating Bottom Nav Bar Widget
 class _FloatingBottomNavBar extends StatelessWidget {
   final int currentIndex;
   final ValueChanged<int> onTap;
@@ -232,7 +228,6 @@ class _BottomNavItem extends StatelessWidget {
   }
 }
 
-// Profile Tab Inline Screen
 class _ProfileTabScreen extends StatelessWidget {
   final UserModel user;
   final VoidCallback onOpenDrawer;
@@ -301,7 +296,6 @@ class _ProfileTabScreen extends StatelessWidget {
             Text(user.details, style: context.caption),
             30.h.height,
 
-            // Detail Fields
             _ProfileInfoCard(
               title: 'Email Address',
               value: user.email,
@@ -326,7 +320,7 @@ class _ProfileTabScreen extends StatelessWidget {
               icon: Icons.check_circle_outline_rounded,
             ),
 
-            120.h.height, // Spacer for floating nav bar
+            120.h.height,
           ],
         ),
       ),

@@ -34,12 +34,64 @@ class _DriverDashboardState extends State<DriverDashboard> {
   List<Map<String, Object?>> _pendingTrips = [];
   Map<String, dynamic>? _dutyData;
 
-  // Pre-Trip Vehicle Checklist (daily driver inspection)
-  bool _chkBrakes = false;
-  bool _chkLights = false;
-  bool _chkTires = false;
-  bool _chkEmergencyKit = false;
-  bool _chkGpsActive = false;
+  // Pre-Trip Vehicle Checklist (loaded dynamically from Transport API / Admin Config)
+  List<Map<String, dynamic>> _safetyChecklist = [];
+  final Map<int, bool> _checkedItems = {};
+
+  List<Map<String, dynamic>> get _requiredItems => _safetyChecklist
+      .where((item) => (item['required'] == true || item['isRequired'] == true))
+      .toList();
+
+  int get _totalRequiredCount => _requiredItems.length;
+
+  int get _checkedRequiredCount => _requiredItems
+      .where(
+        (item) => _checkedItems[(item['id'] ?? item.hashCode) as int] == true,
+      )
+      .length;
+
+  int get _totalCheckedCount => _safetyChecklist
+      .where(
+        (item) => _checkedItems[(item['id'] ?? item.hashCode) as int] == true,
+      )
+      .length;
+
+  bool get _isChecklistComplete {
+    if (_requiredItems.isEmpty) {
+      return _totalCheckedCount == _safetyChecklist.length;
+    }
+    return _requiredItems.every(
+      (item) => _checkedItems[(item['id'] ?? item.hashCode) as int] == true,
+    );
+  }
+
+  bool get _isLicenseVerified {
+    if (_dutyData?['licenseVerified'] != null) {
+      return _dutyData!['licenseVerified'] == true;
+    }
+    if (_dutyData?['driverLicense'] is Map) {
+      final lic = _dutyData!['driverLicense'] as Map;
+      return lic['isVerified'] == true ||
+          lic['verificationStatus'] == 'VERIFIED';
+    }
+    return _dutyData?['verificationStatus'] == 'VERIFIED';
+  }
+
+  String get _licenseNumber {
+    if (_dutyData?['driverLicense'] is Map &&
+        _dutyData!['driverLicense']['licenseNumber'] != null) {
+      return _dutyData!['driverLicense']['licenseNumber'].toString();
+    }
+    return _dutyData?['licenseNumber']?.toString() ?? 'DL-DRI-7398';
+  }
+
+  String get _licenseExpiryDate {
+    if (_dutyData?['driverLicense'] is Map &&
+        _dutyData!['driverLicense']['licenseExpiryDate'] != null) {
+      return _dutyData!['driverLicense']['licenseExpiryDate'].toString();
+    }
+    return _dutyData?['licenseExpiryDate']?.toString() ?? '2031-10-21';
+  }
 
   @override
   void initState() {
@@ -56,15 +108,22 @@ class _DriverDashboardState extends State<DriverDashboard> {
 
   void _applyDutyChecklistState(Map<String, dynamic>? data) {
     if (data == null) return;
+
+    final rawList = data['safetyChecklist'] ?? data['safetyList'];
+    if (rawList is List && rawList.isNotEmpty) {
+      _safetyChecklist = rawList
+          .map((e) => Map<String, dynamic>.from(e as Map))
+          .toList();
+    }
+
     final isTripInProgress = data['tripStatus'] == 'IN_PROGRESS';
     final isChecklistDone =
         data['todayChecklistCompleted'] == true || isTripInProgress;
     if (isChecklistDone) {
-      _chkBrakes = data['todayChkBrakes'] ?? true;
-      _chkLights = data['todayChkLights'] ?? true;
-      _chkTires = data['todayChkTires'] ?? true;
-      _chkEmergencyKit = data['todayChkEmergencyKit'] ?? true;
-      _chkGpsActive = data['todayChkGpsActive'] ?? true;
+      for (final item in _safetyChecklist) {
+        final key = (item['id'] ?? item.hashCode) as int;
+        _checkedItems[key] = true;
+      }
     }
   }
 
@@ -116,23 +175,13 @@ class _DriverDashboardState extends State<DriverDashboard> {
     }
   }
 
-  int get _checkedCount =>
-      (_chkBrakes ? 1 : 0) +
-      (_chkLights ? 1 : 0) +
-      (_chkTires ? 1 : 0) +
-      (_chkEmergencyKit ? 1 : 0) +
-      (_chkGpsActive ? 1 : 0);
-
-  bool get _isChecklistComplete => _checkedCount == 5;
-
   void _toggleVerifyAll() {
     final target = !_isChecklistComplete;
     setState(() {
-      _chkBrakes = target;
-      _chkLights = target;
-      _chkTires = target;
-      _chkEmergencyKit = target;
-      _chkGpsActive = target;
+      for (final item in _safetyChecklist) {
+        final key = (item['id'] ?? item.hashCode) as int;
+        _checkedItems[key] = target;
+      }
     });
   }
 
@@ -196,16 +245,83 @@ class _DriverDashboardState extends State<DriverDashboard> {
   void _handleStartTrip() async {
     if (_isStarting || widget.user.role != UserRole.driver) return;
     if (_dutyData?['tripStatus'] == 'IN_PROGRESS') return;
-    if (_dutyData?['busId'] == null ||
-        _dutyData?['routeId'] == null ||
-        _pendingTrips.isNotEmpty) {
+
+    if (_dutyData == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Duty data is loading or offline. Pull down to refresh.',
+          ),
+          backgroundColor: AppColors.warning,
+        ),
+      );
       return;
     }
-    if (!_isChecklistComplete) {
+
+    if (_dutyData?['busId'] == null || _dutyData?['routeId'] == null) {
+      final missing =
+          (_dutyData?['busId'] == null && _dutyData?['routeId'] == null)
+          ? 'Bus and Route'
+          : (_dutyData?['busId'] == null ? 'Bus' : 'Route');
+      showDialog(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16.r),
+          ),
+          title: Row(
+            children: [
+              const Icon(Icons.warning_amber_rounded, color: Color(0xFFD97706)),
+              8.w.horizontalSpace,
+              const Text('Duty Not Assigned'),
+            ],
+          ),
+          content: Text(
+            'Cannot start trip because no $missing has been assigned to your driver account.\n\n'
+            'Please ask your school transport administrator to assign a Bus and Route to your profile from the Transport Management dashboard.',
+            style: TextStyle(fontSize: 13.sp, height: 1.4),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text(
+                'OK',
+                style: TextStyle(fontWeight: FontWeight.w700),
+              ),
+            ),
+          ],
+        ),
+      );
+      return;
+    }
+
+    if (_pendingTrips.isNotEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            'Safety Checklist Incomplete ($_checkedCount/5 verified). Please check all 5 vehicle inspection items before departure.',
+            '${_pendingTrips.length} offline trip(s) pending save. Tap "Retry save" above before starting a new trip.',
+          ),
+          backgroundColor: AppColors.warning,
+          duration: const Duration(seconds: 4),
+        ),
+      );
+      return;
+    }
+
+    if (!_isChecklistComplete) {
+      final missingRequired = _requiredItems
+          .where(
+            (item) =>
+                _checkedItems[(item['id'] ?? item.hashCode) as int] != true,
+          )
+          .map((item) => item['title'] ?? 'Required Check')
+          .toList();
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Vehicle Safety Checklist Incomplete ($_checkedRequiredCount/$_totalRequiredCount mandatory checks verified).\n'
+            'Please complete: ${missingRequired.join(', ')}',
           ),
           backgroundColor: AppColors.warning,
           duration: const Duration(seconds: 4),
@@ -270,7 +386,7 @@ class _DriverDashboardState extends State<DriverDashboard> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'All 5 pre-trip safety checklist items are verified OK.',
+              'All $_checkedRequiredCount mandatory pre-trip safety checklist items are verified OK.',
               style: TextStyle(
                 fontSize: 13.sp,
                 fontWeight: FontWeight.w600,
@@ -384,14 +500,14 @@ class _DriverDashboardState extends State<DriverDashboard> {
       startLat: startLat,
       startLon: startLon,
       startLocationName: startLocName,
-      chkBrakes: _chkBrakes,
-      chkLights: _chkLights,
-      chkTires: _chkTires,
-      chkEmergencyKit: _chkEmergencyKit,
-      chkGpsActive: _chkGpsActive,
+      chkBrakes: true,
+      chkLights: true,
+      chkTires: true,
+      chkEmergencyKit: true,
+      chkGpsActive: true,
       preTripCheckPassed: true,
       preTripNotes:
-          'All 5 safety checklist items verified by ${widget.user.name}. Departure recorded at $startLocName.',
+          'Safety checklist verified ($_checkedRequiredCount/$_totalRequiredCount required checks) by ${widget.user.name}. Departure recorded at $startLocName.',
     );
 
     if (!mounted) return;
@@ -767,6 +883,46 @@ class _DriverDashboardState extends State<DriverDashboard> {
                         ),
                       ],
                     ),
+                    if (_dutyData?['busId'] == null ||
+                        _dutyData?['routeId'] == null) ...[
+                      14.h.verticalSpace,
+                      Container(
+                        padding: EdgeInsets.symmetric(
+                          horizontal: 12.w,
+                          vertical: 10.h,
+                        ),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFFEF2F2),
+                          borderRadius: BorderRadius.circular(10.r),
+                          border: Border.all(color: const Color(0xFFFCA5A5)),
+                        ),
+                        child: Row(
+                          children: [
+                            const Icon(
+                              Icons.info_outline_rounded,
+                              color: Color(0xFFDC2626),
+                              size: 18,
+                            ),
+                            8.w.horizontalSpace,
+                            Expanded(
+                              child: Text(
+                                _dutyData?['busId'] == null &&
+                                        _dutyData?['routeId'] == null
+                                    ? 'No Bus or Route assigned by admin. Please contact school transport manager.'
+                                    : (_dutyData?['busId'] == null
+                                          ? 'No Bus assigned yet. Contact transport manager.'
+                                          : 'No Route assigned yet. Contact transport manager.'),
+                                style: TextStyle(
+                                  fontSize: 11.5.sp,
+                                  fontWeight: FontWeight.w600,
+                                  color: const Color(0xFFB91C1C),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
                   ],
                 ),
               ),
@@ -801,7 +957,9 @@ class _DriverDashboardState extends State<DriverDashboard> {
                           borderRadius: BorderRadius.circular(12.r),
                         ),
                         child: Text(
-                          '$_checkedCount / 5 Verified',
+                          _isChecklistComplete
+                              ? '$_totalCheckedCount / ${_safetyChecklist.length} Verified'
+                              : '$_checkedRequiredCount / $_totalRequiredCount Required',
                           style: TextStyle(
                             fontSize: 10.sp,
                             fontWeight: FontWeight.w800,
@@ -845,186 +1003,27 @@ class _DriverDashboardState extends State<DriverDashboard> {
                 padding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 6.h),
                 child: Column(
                   children: [
-                    CheckboxListTile(
-                      title: const Text(
-                        'Brakes, Steering & Horn OK',
-                        style: TextStyle(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w700,
+                    if (_safetyChecklist.isEmpty)
+                      Padding(
+                        padding: EdgeInsets.symmetric(vertical: 20.h),
+                        child: Center(
+                          child: Text(
+                            'No vehicle safety checklist items configured.',
+                            style: TextStyle(
+                              fontSize: 12.sp,
+                              color: AppColors.textMuted,
+                            ),
+                          ),
                         ),
-                      ),
-                      subtitle: const Text(
-                        'Hydraulics, brake pedal firmness & horn functional',
-                        style: TextStyle(
-                          fontSize: 10,
-                          color: AppColors.textMuted,
+                      )
+                    else
+                      for (int i = 0; i < _safetyChecklist.length; i++) ...[
+                        if (i > 0) const Divider(height: 1, indent: 40),
+                        _buildChecklistTile(
+                          _safetyChecklist[i],
+                          isTripInProgress,
                         ),
-                      ),
-                      value: _chkBrakes,
-                      activeColor: AppColors.primary,
-                      dense: true,
-                      contentPadding: EdgeInsets.zero,
-                      secondary: Container(
-                        padding: EdgeInsets.all(6.r),
-                        decoration: BoxDecoration(
-                          color: AppColors.primary.withValues(alpha: 0.08),
-                          shape: BoxShape.circle,
-                        ),
-                        child: const Icon(
-                          Icons.speed_rounded,
-                          size: 16,
-                          color: AppColors.primary,
-                        ),
-                      ),
-                      onChanged: isTripInProgress
-                          ? null
-                          : (v) => setState(() => _chkBrakes = v ?? false),
-                    ),
-                    const Divider(height: 1, indent: 40),
-                    CheckboxListTile(
-                      title: const Text(
-                        'Headlights, Indicators & Mirrors OK',
-                        style: TextStyle(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                      subtitle: const Text(
-                        'High/low beams, rear indicators and side mirrors clean',
-                        style: TextStyle(
-                          fontSize: 10,
-                          color: AppColors.textMuted,
-                        ),
-                      ),
-                      value: _chkLights,
-                      activeColor: AppColors.primary,
-                      dense: true,
-                      contentPadding: EdgeInsets.zero,
-                      secondary: Container(
-                        padding: EdgeInsets.all(6.r),
-                        decoration: BoxDecoration(
-                          color: AppColors.primary.withValues(alpha: 0.08),
-                          shape: BoxShape.circle,
-                        ),
-                        child: const Icon(
-                          Icons.light_mode_rounded,
-                          size: 16,
-                          color: AppColors.primary,
-                        ),
-                      ),
-                      onChanged: isTripInProgress
-                          ? null
-                          : (v) => setState(() => _chkLights = v ?? false),
-                    ),
-                    const Divider(height: 1, indent: 40),
-                    CheckboxListTile(
-                      title: const Text(
-                        'Tire Pressure & Fuel / Fluids OK',
-                        style: TextStyle(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                      subtitle: const Text(
-                        'Tire tread condition, coolant, motor oil & fuel tank OK',
-                        style: TextStyle(
-                          fontSize: 10,
-                          color: AppColors.textMuted,
-                        ),
-                      ),
-                      value: _chkTires,
-                      activeColor: AppColors.primary,
-                      dense: true,
-                      contentPadding: EdgeInsets.zero,
-                      secondary: Container(
-                        padding: EdgeInsets.all(6.r),
-                        decoration: BoxDecoration(
-                          color: AppColors.primary.withValues(alpha: 0.08),
-                          shape: BoxShape.circle,
-                        ),
-                        child: const Icon(
-                          Icons.tire_repair_rounded,
-                          size: 16,
-                          color: AppColors.primary,
-                        ),
-                      ),
-                      onChanged: isTripInProgress
-                          ? null
-                          : (v) => setState(() => _chkTires = v ?? false),
-                    ),
-                    const Divider(height: 1, indent: 40),
-                    CheckboxListTile(
-                      title: const Text(
-                        'First Aid Kit & Fire Extinguisher Checked',
-                        style: TextStyle(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                      subtitle: const Text(
-                        'Emergency kit stocked and fire cylinder gauge in green',
-                        style: TextStyle(
-                          fontSize: 10,
-                          color: AppColors.textMuted,
-                        ),
-                      ),
-                      value: _chkEmergencyKit,
-                      activeColor: AppColors.primary,
-                      dense: true,
-                      contentPadding: EdgeInsets.zero,
-                      secondary: Container(
-                        padding: EdgeInsets.all(6.r),
-                        decoration: BoxDecoration(
-                          color: AppColors.primary.withValues(alpha: 0.08),
-                          shape: BoxShape.circle,
-                        ),
-                        child: const Icon(
-                          Icons.medical_services_rounded,
-                          size: 16,
-                          color: AppColors.primary,
-                        ),
-                      ),
-                      onChanged: isTripInProgress
-                          ? null
-                          : (v) =>
-                                setState(() => _chkEmergencyKit = v ?? false),
-                    ),
-                    const Divider(height: 1, indent: 40),
-                    CheckboxListTile(
-                      title: const Text(
-                        'Driver Phone GPS Location Enabled',
-                        style: TextStyle(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                      subtitle: const Text(
-                        'High-accuracy GPS active for live parent & admin tracking',
-                        style: TextStyle(
-                          fontSize: 10,
-                          color: AppColors.textMuted,
-                        ),
-                      ),
-                      value: _chkGpsActive,
-                      activeColor: AppColors.primary,
-                      dense: true,
-                      contentPadding: EdgeInsets.zero,
-                      secondary: Container(
-                        padding: EdgeInsets.all(6.r),
-                        decoration: BoxDecoration(
-                          color: AppColors.primary.withValues(alpha: 0.08),
-                          shape: BoxShape.circle,
-                        ),
-                        child: const Icon(
-                          Icons.gps_fixed_rounded,
-                          size: 16,
-                          color: AppColors.primary,
-                        ),
-                      ),
-                      onChanged: isTripInProgress
-                          ? null
-                          : (v) => setState(() => _chkGpsActive = v ?? false),
-                    ),
+                      ],
                   ],
                 ),
               ),
@@ -1037,14 +1036,13 @@ class _DriverDashboardState extends State<DriverDashboard> {
                     ? null
                     : isTripInProgress
                     ? _handleEndTrip
-                    : (_dutyData?['busId'] == null ||
-                          _dutyData?['routeId'] == null ||
-                          _pendingTrips.isNotEmpty)
-                    ? null
                     : _handleStartTrip,
                 style: ElevatedButton.styleFrom(
                   backgroundColor: isTripInProgress
                       ? const Color(0xFF0D9488)
+                      : (_dutyData?['busId'] == null ||
+                            _dutyData?['routeId'] == null)
+                      ? const Color(0xFF64748B)
                       : (_isChecklistComplete
                             ? AppColors.primary
                             : const Color(0xFFF59E0B)),
@@ -1088,6 +1086,9 @@ class _DriverDashboardState extends State<DriverDashboard> {
                           Icon(
                             isTripInProgress
                                 ? Icons.stop_circle_outlined
+                                : (_dutyData?['busId'] == null ||
+                                      _dutyData?['routeId'] == null)
+                                ? Icons.info_outline_rounded
                                 : (_isChecklistComplete
                                       ? Icons.play_circle_fill_rounded
                                       : Icons.pending_actions_rounded),
@@ -1099,9 +1100,12 @@ class _DriverDashboardState extends State<DriverDashboard> {
                             child: Text(
                               isTripInProgress
                                   ? 'End Trip'
+                                  : (_dutyData?['busId'] == null ||
+                                        _dutyData?['routeId'] == null)
+                                  ? 'No Bus/Route Assigned (Tap Info)'
                                   : (_isChecklistComplete
                                         ? 'Start Scheduled Trip'
-                                        : 'Verify Checklist to Start ($_checkedCount/5)'),
+                                        : 'Verify Required Checks ($_checkedRequiredCount/$_totalRequiredCount)'),
                               style: TextStyle(
                                 fontSize: 15.sp,
                                 fontWeight: FontWeight.w800,
@@ -1114,32 +1118,85 @@ class _DriverDashboardState extends State<DriverDashboard> {
               ),
               24.h.verticalSpace,
 
-              // Quick Info Card
+              // Quick Info Card: Driver License Verification
               Container(
                 padding: EdgeInsets.all(14.r),
                 decoration: BoxDecoration(
-                  color: AppColors.primary.withValues(alpha: 0.06),
+                  color: _isLicenseVerified
+                      ? AppColors.primary.withValues(alpha: 0.06)
+                      : const Color(0xFFFEF3C7),
                   borderRadius: BorderRadius.circular(12.r),
                   border: Border.all(
-                    color: AppColors.primary.withValues(alpha: 0.2),
+                    color: _isLicenseVerified
+                        ? AppColors.primary.withValues(alpha: 0.2)
+                        : const Color(0xFFF59E0B),
                   ),
                 ),
                 child: Row(
                   children: [
-                    const Icon(
-                      Icons.verified_user_rounded,
-                      color: AppColors.primary,
-                      size: 20,
+                    Icon(
+                      _isLicenseVerified
+                          ? Icons.verified_user_rounded
+                          : Icons.warning_amber_rounded,
+                      color: _isLicenseVerified
+                          ? AppColors.primary
+                          : const Color(0xFFD97706),
+                      size: 22,
                     ),
                     12.w.horizontalSpace,
                     Expanded(
-                      child: Text(
-                        'Driver License verified: ${_dutyData?['licenseNumber'] ?? 'DL-0420110056789'}\nValid through ${_dutyData?['licenseExpiryDate'] ?? '2029-06-30'}',
-                        style: TextStyle(
-                          fontSize: 11.sp,
-                          color: AppColors.textSecondary,
-                          height: 1.3,
-                        ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Text(
+                                _isLicenseVerified
+                                    ? 'Driver License Verified'
+                                    : 'Driver License: Verification Pending',
+                                style: TextStyle(
+                                  fontSize: 12.sp,
+                                  fontWeight: FontWeight.w800,
+                                  color: _isLicenseVerified
+                                      ? AppColors.textPrimary
+                                      : const Color(0xFFB45309),
+                                ),
+                              ),
+                              6.w.horizontalSpace,
+                              Container(
+                                padding: EdgeInsets.symmetric(
+                                  horizontal: 6.w,
+                                  vertical: 1.5.h,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: _isLicenseVerified
+                                      ? const Color(0xFFD1FAE5)
+                                      : const Color(0xFFFEE2E2),
+                                  borderRadius: BorderRadius.circular(6.r),
+                                ),
+                                child: Text(
+                                  _isLicenseVerified ? 'VERIFIED' : 'PENDING',
+                                  style: TextStyle(
+                                    fontSize: 9.sp,
+                                    fontWeight: FontWeight.w800,
+                                    color: _isLicenseVerified
+                                        ? const Color(0xFF065F46)
+                                        : const Color(0xFF991B1B),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                          4.h.verticalSpace,
+                          Text(
+                            'License: $_licenseNumber  •  Valid through $_licenseExpiryDate',
+                            style: TextStyle(
+                              fontSize: 11.sp,
+                              color: AppColors.textSecondary,
+                              height: 1.3,
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                   ],
@@ -1150,6 +1207,118 @@ class _DriverDashboardState extends State<DriverDashboard> {
           ),
         ),
       ),
+    );
+  }
+
+  IconData _getChecklistIcon(String? iconKey) {
+    switch (iconKey?.toLowerCase()) {
+      case 'speed':
+      case 'brakes':
+        return Icons.speed_rounded;
+      case 'light':
+      case 'lights':
+        return Icons.light_mode_rounded;
+      case 'tire':
+      case 'tires':
+        return Icons.tire_repair_rounded;
+      case 'medical':
+      case 'firstaid':
+        return Icons.medical_services_rounded;
+      case 'gps':
+      case 'location':
+        return Icons.gps_fixed_rounded;
+      case 'camera':
+        return Icons.videocam_rounded;
+      default:
+        return Icons.verified_user_rounded;
+    }
+  }
+
+  Widget _buildChecklistTile(Map<String, dynamic> item, bool isTripInProgress) {
+    final itemId = (item['id'] ?? item.hashCode) as int;
+    final isChecked = _checkedItems[itemId] ?? false;
+    final isReq = (item['required'] == true || item['isRequired'] == true);
+    final title = item['title']?.toString() ?? 'Safety Check';
+    final description = item['description']?.toString() ?? '';
+    final iconKey = item['iconKey']?.toString();
+
+    return CheckboxListTile(
+      title: Row(
+        children: [
+          Expanded(
+            child: Text(
+              title,
+              style: TextStyle(
+                fontSize: 13.sp,
+                fontWeight: FontWeight.w700,
+                color: AppColors.textPrimary,
+              ),
+            ),
+          ),
+          if (isReq) ...[
+            4.w.horizontalSpace,
+            Container(
+              padding: EdgeInsets.symmetric(horizontal: 6.w, vertical: 1.5.h),
+              decoration: BoxDecoration(
+                color: const Color(0xFFFEE2E2),
+                borderRadius: BorderRadius.circular(6.r),
+                border: Border.all(color: const Color(0xFFFCA5A5)),
+              ),
+              child: Text(
+                'Required',
+                style: TextStyle(
+                  fontSize: 9.sp,
+                  fontWeight: FontWeight.w800,
+                  color: const Color(0xFFDC2626),
+                ),
+              ),
+            ),
+          ] else ...[
+            4.w.horizontalSpace,
+            Container(
+              padding: EdgeInsets.symmetric(horizontal: 6.w, vertical: 1.5.h),
+              decoration: BoxDecoration(
+                color: const Color(0xFFF1F5F9),
+                borderRadius: BorderRadius.circular(6.r),
+              ),
+              child: Text(
+                'Optional',
+                style: TextStyle(
+                  fontSize: 9.sp,
+                  fontWeight: FontWeight.w600,
+                  color: const Color(0xFF64748B),
+                ),
+              ),
+            ),
+          ],
+        ],
+      ),
+      subtitle: description.isNotEmpty
+          ? Text(
+              description,
+              style: TextStyle(fontSize: 10.sp, color: AppColors.textMuted),
+            )
+          : null,
+      value: isChecked,
+      activeColor: isReq ? AppColors.primary : const Color(0xFF0D9488),
+      dense: true,
+      contentPadding: EdgeInsets.zero,
+      secondary: Container(
+        padding: EdgeInsets.all(6.r),
+        decoration: BoxDecoration(
+          color: (isReq ? AppColors.primary : const Color(0xFF0D9488))
+              .withValues(alpha: 0.08),
+          shape: BoxShape.circle,
+        ),
+        child: Icon(
+          _getChecklistIcon(iconKey),
+          size: 16.sp,
+          color: isReq ? AppColors.primary : const Color(0xFF0D9488),
+        ),
+      ),
+      onChanged: isTripInProgress
+          ? null
+          : (v) => setState(() => _checkedItems[itemId] = v ?? false),
     );
   }
 }
