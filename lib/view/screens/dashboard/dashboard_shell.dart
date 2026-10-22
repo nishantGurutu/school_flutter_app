@@ -18,6 +18,8 @@ import '../modules/fees_screen.dart';
 import '../modules/exam_screen.dart';
 import '../modules/attendance_screen.dart';
 import '../modules/leave_screen.dart';
+import '../modules/topics_screen.dart';
+import '../../widgets/student_more_bottom_sheet.dart';
 import '../../../core/config/role_navigation_config.dart';
 
 class DashboardShell extends StatefulWidget {
@@ -84,6 +86,8 @@ class _DashboardShellState extends State<DashboardShell> {
           switch (item.key) {
             case 'home':
               return homeDashboard;
+            case 'topics':
+              return const TopicsScreen(isInline: true);
             case 'homework':
               return const HomeworkScreen(isInline: true);
             case 'exams':
@@ -96,6 +100,8 @@ class _DashboardShellState extends State<DashboardShell> {
               return const LeaveScreen(isInline: true);
             case 'notices':
               return const NoticeScreen(isInline: true);
+            case 'more':
+              return homeDashboard;
             case 'profile':
             default:
               return _ProfileTabScreen(
@@ -117,9 +123,13 @@ class _DashboardShellState extends State<DashboardShell> {
             currentIndex: safeIndex,
             items: navItems,
             onTap: (index) {
-              setState(() {
-                _currentIndex = index;
-              });
+              if (navItems[index].key == 'more') {
+                StudentMoreBottomSheet.show(context, user: user);
+              } else {
+                setState(() {
+                  _currentIndex = index;
+                });
+              }
             },
           ),
         );
@@ -151,9 +161,9 @@ class _FloatingBottomNavBar extends StatelessWidget {
           border: Border.all(color: AppColors.border, width: 1.5),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withValues(alpha: 0.4),
+              color: Colors.black.withValues(alpha: 0.08),
               blurRadius: 20,
-              offset: const Offset(0, 10),
+              offset: const Offset(0, 6),
             ),
           ],
         ),

@@ -9,7 +9,9 @@ import '../../../data/models/home_dashboard_model.dart';
 import '../../../data/repositories/api_school_repository.dart';
 import '../../widgets/smooth_skeleton.dart';
 import '../../widgets/glass_card.dart';
+import '../../widgets/student_more_bottom_sheet.dart';
 import '../modules/subject_curriculum_screen.dart';
+import '../modules/topics_screen.dart';
 
 class StudentDashboard extends StatefulWidget {
   final UserModel? user;
@@ -1067,10 +1069,10 @@ class _StudentDashboardState extends State<StudentDashboard> {
     );
   }
 
-  // 6. Floating 3-Tab Bottom Navigation Bar (Screenshots 1 & 2)
+  // 6. Floating 3-Tab Bottom Navigation Bar (Screenshots matching user spec)
   Widget _buildFloatingBottomNavBar() {
     return Container(
-      height: 60.h,
+      height: 62.h,
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(30.r),
@@ -1094,7 +1096,7 @@ class _StudentDashboardState extends State<StudentDashboard> {
               Text(
                 'Home',
                 style: TextStyle(
-                  color: AppColors.textPrimary,
+                  color: AppColors.primary,
                   fontSize: 10.sp,
                   fontWeight: FontWeight.w700,
                 ),
@@ -1104,26 +1106,82 @@ class _StudentDashboardState extends State<StudentDashboard> {
 
           // Subjects Tab
           GestureDetector(
-            onTap: () =>
-                context.showAppSnackBar('Opening all subjects syllabus...'),
-            child: Icon(
-              Icons.menu_book_rounded,
-              color: const Color(0xFF64748B),
-              size: 24.sp,
+            onTap: () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const TopicsScreen()),
+            ),
+            behavior: HitTestBehavior.opaque,
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(
+                  Icons.menu_book_rounded,
+                  color: const Color(0xFF64748B),
+                  size: 22.sp,
+                ),
+                2.h.height,
+                Text(
+                  'Subjects',
+                  style: TextStyle(
+                    color: const Color(0xFF64748B),
+                    fontSize: 10.sp,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
             ),
           ),
 
-          // Menu / Grid Tab
+          // Menu / More Tab (Opens More BottomSheet)
           GestureDetector(
             onTap: () {
-              if (widget.onOpenDrawer != null) {
-                widget.onOpenDrawer!();
-              }
+              final data = _dashboardData;
+              final profile = data?.profile;
+              final displayName = widget.overrideStudentName ??
+                  (profile != null && profile.name.isNotEmpty
+                      ? profile.name
+                      : (widget.user?.name ?? 'Kauan Sousa'));
+              final displayClass = widget.overrideClassName ??
+                  (profile != null && profile.className.isNotEmpty
+                      ? profile.className
+                      : (widget.user?.className ?? 'Class : 10 - A English'));
+              final displayRoll = profile != null && profile.rollNo.isNotEmpty
+                  ? profile.rollNo
+                  : '31';
+              final displayAvatar = widget.overrideAvatarUrl ??
+                  (profile != null && profile.avatarUrl.isNotEmpty
+                      ? profile.avatarUrl
+                      : (widget.user?.avatarUrl ??
+                            'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=400&auto=format&fit=crop&q=80'));
+
+              StudentMoreBottomSheet.show(
+                context,
+                user: widget.user,
+                overrideName: displayName,
+                overrideClass: displayClass,
+                overrideRollNo: displayRoll,
+                overrideAvatar: displayAvatar,
+              );
             },
-            child: Icon(
-              Icons.grid_view_rounded,
-              color: const Color(0xFF64748B),
-              size: 22.sp,
+            behavior: HitTestBehavior.opaque,
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(
+                  Icons.grid_view_rounded,
+                  color: const Color(0xFF64748B),
+                  size: 22.sp,
+                ),
+                2.h.height,
+                Text(
+                  'Menu',
+                  style: TextStyle(
+                    color: const Color(0xFF64748B),
+                    fontSize: 10.sp,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
             ),
           ),
         ],

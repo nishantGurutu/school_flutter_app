@@ -61,28 +61,16 @@ class RoleNavigationConfig {
             key: 'home',
           ),
           RoleNavItem(
-            icon: Icons.assignment_outlined,
-            activeIcon: Icons.assignment_rounded,
-            label: 'Homework',
-            key: 'homework',
+            icon: Icons.menu_book_outlined,
+            activeIcon: Icons.menu_book_rounded,
+            label: 'Subjects',
+            key: 'topics',
           ),
           RoleNavItem(
-            icon: Icons.quiz_outlined,
-            activeIcon: Icons.quiz_rounded,
-            label: 'Exams',
-            key: 'exams',
-          ),
-          RoleNavItem(
-            icon: Icons.campaign_outlined,
-            activeIcon: Icons.campaign_rounded,
-            label: 'Notices',
-            key: 'notices',
-          ),
-          RoleNavItem(
-            icon: Icons.person_outline_rounded,
-            activeIcon: Icons.person_rounded,
-            label: 'Profile',
-            key: 'profile',
+            icon: Icons.grid_view_rounded,
+            activeIcon: Icons.grid_view_rounded,
+            label: 'Menu',
+            key: 'more',
           ),
         ];
 
@@ -401,16 +389,7 @@ class RoleNavigationConfig {
   static List<DrawerMenuItem> getDrawerItems(UserRole role) {
     switch (role) {
       case UserRole.student:
-        return const [
-          DrawerMenuItem(icon: Icons.directions_bus_rounded, label: 'My School Bus', route: RoutesName.studentTransport),
-          DrawerMenuItem(icon: Icons.calendar_month_rounded, label: 'My Attendance', route: RoutesName.attendance),
-          DrawerMenuItem(icon: Icons.assignment_outlined, label: 'Homework & Tasks', route: RoutesName.homework),
-          DrawerMenuItem(icon: Icons.quiz_outlined, label: 'Exam Schedule & Marks', route: RoutesName.exam),
-          DrawerMenuItem(icon: Icons.account_balance_wallet_outlined, label: 'Fees & Invoices', route: RoutesName.fees),
-          DrawerMenuItem(icon: Icons.campaign_outlined, label: 'Noticeboard', route: RoutesName.notice),
-          DrawerMenuItem(icon: Icons.schedule_rounded, label: 'Class Timetable', route: RoutesName.timetable),
-          DrawerMenuItem(icon: Icons.chat_bubble_outline_rounded, label: 'Messages / Chats', route: RoutesName.chat),
-        ];
+        return const [];
 
       case UserRole.parent:
         return const [

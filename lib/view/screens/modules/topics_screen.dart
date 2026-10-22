@@ -27,7 +27,8 @@ class CurriculumTopic {
 }
 
 class TopicsScreen extends StatefulWidget {
-  const TopicsScreen({super.key});
+  final bool isInline;
+  const TopicsScreen({super.key, this.isInline = false});
 
   @override
   State<TopicsScreen> createState() => _TopicsScreenState();
@@ -246,10 +247,13 @@ class _TopicsScreenState extends State<TopicsScreen> {
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new_rounded, color: AppColors.textPrimary),
-          onPressed: () => Navigator.pop(context),
-        ),
+        automaticallyImplyLeading: !widget.isInline,
+        leading: widget.isInline
+            ? null
+            : IconButton(
+                icon: const Icon(Icons.arrow_back_ios_new_rounded, color: AppColors.textPrimary),
+                onPressed: () => Navigator.pop(context),
+              ),
         title: Text('Curriculum Topics', style: context.h2.copyWith(color: AppColors.textPrimary)),
         centerTitle: true,
         actions: [
@@ -260,15 +264,22 @@ class _TopicsScreenState extends State<TopicsScreen> {
           ),
         ],
       ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: _showAddTopicDialog,
-        backgroundColor: AppColors.primary,
-        icon: const Icon(Icons.add_rounded, color: Colors.white),
-        label: const Text('Add Topic', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-      ),
+      floatingActionButton: widget.isInline
+          ? null
+          : FloatingActionButton.extended(
+              onPressed: _showAddTopicDialog,
+              backgroundColor: AppColors.primary,
+              icon: const Icon(Icons.add_rounded, color: Colors.white),
+              label: const Text('Add Topic', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+            ),
       body: SingleChildScrollView(
         physics: const BouncingScrollPhysics(),
-        padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 10.h),
+        padding: EdgeInsets.only(
+          left: 20.w,
+          right: 20.w,
+          top: 10.h,
+          bottom: widget.isInline ? 110.h : 20.h,
+        ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
