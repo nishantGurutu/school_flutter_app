@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import '../../../core/routes/routes_name.dart';
+import '../../../core/theme/app_colors.dart';
 import '../../../core/extensions/context_extensions.dart';
 import '../../../data/models/user_model.dart';
 import '../../../data/models/home_dashboard_model.dart';
 import '../../../data/repositories/api_school_repository.dart';
 import '../../widgets/smooth_skeleton.dart';
+import '../../widgets/glass_card.dart';
 import 'student_dashboard.dart';
 
 class ParentDashboard extends StatefulWidget {
@@ -48,31 +50,67 @@ class _ParentDashboardState extends State<ParentDashboard> {
   Widget build(BuildContext context) {
     if (_isLoading && _homeData == null) {
       return Scaffold(
-        backgroundColor: Colors.white,
+        backgroundColor: AppColors.background,
+        appBar: AppBar(
+          backgroundColor: Colors.transparent,
+          elevation: 0,
+          scrolledUnderElevation: 0,
+          leading: IconButton(
+            icon: const Icon(Icons.menu_rounded, color: AppColors.textPrimary),
+            onPressed: widget.onOpenDrawer,
+          ),
+          title: Text(
+            'Parent Companion',
+            style: TextStyle(
+              fontSize: 16.sp,
+              fontWeight: FontWeight.w800,
+              color: AppColors.textPrimary,
+            ),
+          ),
+        ),
         body: SafeArea(
-          child: Column(
-            children: [
-              _buildHeaderSkeleton(),
-              Expanded(
-                child: Padding(
-                  padding: EdgeInsets.all(20.w),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      SkeletonBox(width: 140.w, height: 24.h),
-                      20.h.height,
-                      Row(
-                        children: [
-                          SkeletonBox(width: 150.w, height: 180.h, borderRadius: 22),
-                          16.w.width,
-                          SkeletonBox(width: 150.w, height: 180.h, borderRadius: 22),
-                        ],
-                      ),
-                    ],
+          child: Padding(
+            padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 12.h),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                SmoothShimmer(
+                  child: SkeletonBox(
+                    width: double.infinity,
+                    height: 84.h,
+                    borderRadius: 16,
                   ),
                 ),
-              ),
-            ],
+                20.h.height,
+                SmoothShimmer(
+                  child: SkeletonBox(width: 140.w, height: 24.h),
+                ),
+                20.h.height,
+                Row(
+                  children: [
+                    Expanded(
+                      child: SmoothShimmer(
+                        child: SkeletonBox(
+                          width: double.infinity,
+                          height: 180.h,
+                          borderRadius: 20,
+                        ),
+                      ),
+                    ),
+                    16.w.width,
+                    Expanded(
+                      child: SmoothShimmer(
+                        child: SkeletonBox(
+                          width: double.infinity,
+                          height: 180.h,
+                          borderRadius: 20,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
           ),
         ),
       );
@@ -87,25 +125,81 @@ class _ParentDashboardState extends State<ParentDashboard> {
     final children = data?.children ?? <DashboardChild>[];
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF8FAFC),
+      backgroundColor: AppColors.background,
+      appBar: AppBar(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        scrolledUnderElevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.menu_rounded, color: AppColors.textPrimary),
+          onPressed: widget.onOpenDrawer,
+        ),
+        title: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Parent Companion',
+              style: TextStyle(
+                fontSize: 16.sp,
+                fontWeight: FontWeight.w800,
+                color: AppColors.textPrimary,
+              ),
+            ),
+            Text(
+              'Family Care • $parentName',
+              style: TextStyle(
+                fontSize: 11.sp,
+                color: AppColors.textMuted,
+              ),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ],
+        ),
+        actions: [
+          IconButton(
+            icon: const Icon(
+              Icons.chat_bubble_outline_rounded,
+              color: AppColors.textPrimary,
+            ),
+            onPressed: () => Navigator.pushNamed(context, RoutesName.chat),
+          ),
+          IconButton(
+            icon: const Icon(
+              Icons.settings_outlined,
+              color: AppColors.textPrimary,
+            ),
+            onPressed: () => context.showAppSnackBar('Opening Parent Account Settings...'),
+          ),
+          IconButton(
+            icon: const Icon(Icons.refresh_rounded, color: AppColors.primary),
+            onPressed: _fetchParentHomeData,
+          ),
+          12.w.horizontalSpace,
+        ],
+      ),
       body: RefreshIndicator(
         onRefresh: _fetchParentHomeData,
-        color: const Color(0xFF1E3A5F),
+        color: AppColors.primary,
         child: SingleChildScrollView(
           physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
+          padding: EdgeInsets.only(top: 8.h, bottom: 40.h),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // 1. Curved Deep Blue Header (Screenshot 3)
-              _buildParentCurvedHeader(
-                name: parentName,
-                email: parentEmail,
-                avatarUrl: parentAvatar,
+              // 1. Parent Profile GlassCard
+              Padding(
+                padding: EdgeInsets.symmetric(horizontal: 20.w),
+                child: _buildParentProfileCard(
+                  name: parentName,
+                  email: parentEmail,
+                  avatarUrl: parentAvatar,
+                ),
               ),
 
               24.h.height,
 
-              // 2. "My Children" Section (Screenshot 3)
+              // 2. "My Children" Section
               Padding(
                 padding: EdgeInsets.symmetric(horizontal: 20.w),
                 child: Text(
@@ -113,7 +207,7 @@ class _ParentDashboardState extends State<ParentDashboard> {
                   style: TextStyle(
                     fontSize: 18.sp,
                     fontWeight: FontWeight.w800,
-                    color: const Color(0xFF1E293B),
+                    color: AppColors.textPrimary,
                     letterSpacing: -0.3,
                   ),
                 ),
@@ -122,19 +216,25 @@ class _ParentDashboardState extends State<ParentDashboard> {
               16.h.height,
 
               if (children.isEmpty)
-                const Padding(
-                  padding: EdgeInsets.all(20),
-                  child: Text('No children linked to this account. Contact your school administrator.'),
+                Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 12.h),
+                  child: Text(
+                    'No children linked to this account. Contact your school administrator.',
+                    style: TextStyle(
+                      fontSize: 13.sp,
+                      color: AppColors.textMuted,
+                    ),
+                  ),
+                )
+              else
+                Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 20.w),
+                  child: Wrap(
+                    spacing: 16.w,
+                    runSpacing: 22.h,
+                    children: children.map((child) => _buildChildCard(child)).toList(),
+                  ),
                 ),
-              // Horizontal / Grid children cards list
-              Padding(
-                padding: EdgeInsets.symmetric(horizontal: 20.w),
-                child: Wrap(
-                  spacing: 16.w,
-                  runSpacing: 16.h,
-                  children: children.map((child) => _buildChildCard(child)).toList(),
-                ),
-              ),
 
               40.h.height,
             ],
@@ -144,192 +244,114 @@ class _ParentDashboardState extends State<ParentDashboard> {
     );
   }
 
-  // 1. Curved Deep Blue Header matching Screenshot 3
-  Widget _buildParentCurvedHeader({
+  // 1. Parent Profile GlassCard matching Driver UI design
+  Widget _buildParentProfileCard({
     required String name,
     required String email,
     required String avatarUrl,
   }) {
-    return Container(
-      width: double.infinity,
-      decoration: BoxDecoration(
-        color: const Color(0xFF1E3A5F), // Deep petrol blue matching screenshot 3
-        borderRadius: BorderRadius.only(
-          bottomLeft: Radius.circular(32.r),
-          bottomRight: Radius.circular(32.r),
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: const Color(0xFF1E3A5F).withValues(alpha: 0.3),
-            blurRadius: 20,
-            offset: const Offset(0, 8),
+    return GlassCard(
+      padding: EdgeInsets.all(16.r),
+      child: Row(
+        children: [
+          Container(
+            width: 52.w,
+            height: 52.w,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              border: Border.all(
+                color: AppColors.primary.withValues(alpha: 0.3),
+                width: 2,
+              ),
+            ),
+            child: ClipOval(
+              child: avatarUrl.isNotEmpty
+                  ? Image.network(
+                      avatarUrl,
+                      fit: BoxFit.cover,
+                      errorBuilder: (context, error, stackTrace) =>
+                          _buildAvatarFallback(),
+                    )
+                  : _buildAvatarFallback(),
+            ),
+          ),
+          14.w.horizontalSpace,
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  name,
+                  style: TextStyle(
+                    fontSize: 16.sp,
+                    fontWeight: FontWeight.w800,
+                    color: AppColors.textPrimary,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                4.h.verticalSpace,
+                Text(
+                  email,
+                  style: TextStyle(
+                    fontSize: 12.sp,
+                    fontWeight: FontWeight.w500,
+                    color: AppColors.textMuted,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
+            ),
+          ),
+          Container(
+            padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 4.h),
+            decoration: BoxDecoration(
+              color: AppColors.success.withValues(alpha: 0.12),
+              borderRadius: BorderRadius.circular(8.r),
+            ),
+            child: Text(
+              'PARENT',
+              style: TextStyle(
+                fontSize: 11.sp,
+                fontWeight: FontWeight.w800,
+                color: AppColors.success,
+              ),
+            ),
           ),
         ],
-      ),
-      child: SafeArea(
-        bottom: false,
-        child: Stack(
-          children: [
-            // Decorative background concentric circular lines
-            Positioned(
-              top: -60.h,
-              right: -50.w,
-              child: Container(
-                width: 220.w,
-                height: 220.w,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  border: Border.all(color: Colors.white.withValues(alpha: 0.08), width: 1.5),
-                ),
-              ),
-            ),
-            Positioned(
-              top: -20.h,
-              left: 20.w,
-              child: Container(
-                width: 150.w,
-                height: 150.w,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  border: Border.all(color: Colors.white.withValues(alpha: 0.06), width: 1.5),
-                ),
-              ),
-            ),
-
-            // Header Content
-            Padding(
-              padding: EdgeInsets.symmetric(horizontal: 18.w, vertical: 20.h),
-              child: Row(
-                children: [
-                  // Parent Profile Avatar
-                  Container(
-                    width: 54.w,
-                    height: 54.w,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      border: Border.all(color: Colors.white.withValues(alpha: 0.9), width: 1.8),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withValues(alpha: 0.2),
-                          blurRadius: 8,
-                          offset: const Offset(0, 3),
-                        ),
-                      ],
-                    ),
-                    child: ClipOval(
-                      child: avatarUrl.isNotEmpty
-                          ? Image.network(
-                              avatarUrl,
-                              fit: BoxFit.cover,
-                              errorBuilder: (context, error, stackTrace) => _buildAvatarFallback(),
-                            )
-                          : _buildAvatarFallback(),
-                    ),
-                  ),
-
-                  14.w.width,
-
-                  // Parent Name & Email
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          name,
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 18.sp,
-                            fontWeight: FontWeight.w700,
-                            letterSpacing: -0.2,
-                          ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                        4.h.height,
-                        Text(
-                          email,
-                          style: TextStyle(
-                            color: Colors.white.withValues(alpha: 0.85),
-                            fontSize: 12.sp,
-                            fontWeight: FontWeight.w500,
-                          ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ],
-                    ),
-                  ),
-
-                  // Chat Icon
-                  GestureDetector(
-                    onTap: () => Navigator.pushNamed(context, RoutesName.chat),
-                    child: Container(
-                      width: 40.w,
-                      height: 40.w,
-                      decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.12),
-                        borderRadius: BorderRadius.circular(12.r),
-                      ),
-                      child: Icon(
-                        Icons.chat_bubble_outline_rounded,
-                        color: Colors.white,
-                        size: 20.sp,
-                      ),
-                    ),
-                  ),
-
-                  10.w.width,
-
-                  // Settings Gear Icon
-                  GestureDetector(
-                    onTap: () => context.showAppSnackBar('Opening Parent Account Settings...'),
-                    child: Container(
-                      width: 40.w,
-                      height: 40.w,
-                      decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.12),
-                        borderRadius: BorderRadius.circular(12.r),
-                      ),
-                      child: Icon(
-                        Icons.settings_outlined,
-                        color: Colors.white,
-                        size: 22.sp,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
       ),
     );
   }
 
   Widget _buildAvatarFallback() {
     return Container(
-      color: const Color(0xFF0F172A),
+      color: AppColors.primary.withValues(alpha: 0.12),
       child: Center(
-        child: Icon(Icons.person_rounded, color: Colors.white, size: 30.sp),
+        child: Icon(Icons.person_rounded, color: AppColors.primary, size: 28.sp),
       ),
     );
   }
 
-  // 2. Child Card matching Screenshot 3
+  // 2. Child Card matching Driver UI design
   Widget _buildChildCard(DashboardChild child) {
     return GestureDetector(
       onTap: () => _openChildStudentHome(child),
       child: Container(
-        width: 152.w,
-        height: 172.h,
+        width: 156.w,
+        height: 180.h,
         decoration: BoxDecoration(
-          color: const Color(0xFF1E5373), // Deep petrol blue card matching screenshot 3
-          borderRadius: BorderRadius.circular(22.r),
+          color: AppColors.surface,
+          borderRadius: BorderRadius.circular(20.r),
+          border: Border.all(
+            color: AppColors.border.withValues(alpha: 0.8),
+            width: 1,
+          ),
           boxShadow: [
             BoxShadow(
-              color: const Color(0xFF1E5373).withValues(alpha: 0.35),
-              blurRadius: 16,
-              offset: const Offset(0, 8),
+              color: AppColors.cardShadow,
+              blurRadius: 14,
+              offset: const Offset(0, 4),
             ),
           ],
         ),
@@ -345,26 +367,26 @@ class _ParentDashboardState extends State<ParentDashboard> {
                 children: [
                   // Circular Child Photo
                   Container(
-                    width: 52.w,
-                    height: 52.w,
+                    width: 54.w,
+                    height: 54.w,
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
-                      border: Border.all(color: Colors.white, width: 2),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withValues(alpha: 0.2),
-                          blurRadius: 6,
-                          offset: const Offset(0, 3),
-                        ),
-                      ],
+                      border: Border.all(
+                        color: AppColors.primary.withValues(alpha: 0.25),
+                        width: 2,
+                      ),
                     ),
                     child: ClipOval(
                       child: Image.network(
                         child.avatarUrl,
                         fit: BoxFit.cover,
                         errorBuilder: (context, error, stackTrace) => Container(
-                          color: const Color(0xFF2563EB),
-                          child: Icon(Icons.person_rounded, color: Colors.white, size: 28.sp),
+                          color: AppColors.primary.withValues(alpha: 0.1),
+                          child: Icon(
+                            Icons.person_rounded,
+                            color: AppColors.primary,
+                            size: 28.sp,
+                          ),
                         ),
                       ),
                     ),
@@ -376,7 +398,7 @@ class _ParentDashboardState extends State<ParentDashboard> {
                   Text(
                     child.name,
                     style: TextStyle(
-                      color: Colors.white,
+                      color: AppColors.textPrimary,
                       fontSize: 14.sp,
                       fontWeight: FontWeight.w700,
                     ),
@@ -391,8 +413,8 @@ class _ParentDashboardState extends State<ParentDashboard> {
                   Text(
                     child.className,
                     style: TextStyle(
-                      color: Colors.white.withValues(alpha: 0.85),
-                      fontSize: 10.sp,
+                      color: AppColors.textMuted,
+                      fontSize: 11.sp,
                       fontWeight: FontWeight.w500,
                     ),
                     textAlign: TextAlign.center,
@@ -403,27 +425,27 @@ class _ParentDashboardState extends State<ParentDashboard> {
               ),
             ),
 
-            // Forward Arrow Button at Bottom Center of Card (Screenshot 3)
+            // Forward Arrow Button at Bottom Center of Card
             Positioned(
-              bottom: -15.h,
+              bottom: -14.h,
               child: Container(
-                width: 34.w,
-                height: 34.w,
+                width: 32.w,
+                height: 32.w,
                 decoration: BoxDecoration(
-                  color: Colors.white,
+                  color: AppColors.primary,
                   shape: BoxShape.circle,
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.18),
-                      blurRadius: 10,
-                      offset: const Offset(0, 4),
+                      color: AppColors.primary.withValues(alpha: 0.35),
+                      blurRadius: 8,
+                      offset: const Offset(0, 3),
                     ),
                   ],
                 ),
                 child: Icon(
                   Icons.arrow_forward_ios_rounded,
-                  color: const Color(0xFF1E5373),
-                  size: 14.sp,
+                  color: Colors.white,
+                  size: 13.sp,
                 ),
               ),
             ),
@@ -450,18 +472,5 @@ class _ParentDashboardState extends State<ParentDashboard> {
     );
   }
 
-  Widget _buildHeaderSkeleton() {
-    return Container(
-      width: double.infinity,
-      height: 100.h,
-      decoration: BoxDecoration(
-        color: const Color(0xFF1E3A5F),
-        borderRadius: BorderRadius.only(
-          bottomLeft: Radius.circular(32.r),
-          bottomRight: Radius.circular(32.r),
-        ),
-      ),
-    );
-  }
 }
 
