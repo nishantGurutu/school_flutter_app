@@ -2,6 +2,7 @@ import '../models/school_models.dart';
 import '../models/chat_models.dart';
 import '../models/home_dashboard_model.dart';
 import '../models/curriculum_model.dart';
+import '../models/certificate_model.dart';
 
 abstract class SchoolRepository {
   Future<HomeDashboardResponse?> getHomeDashboard({String? admissionNo});
@@ -34,6 +35,7 @@ abstract class SchoolRepository {
   Future<List<LeaveRecord>> rejectLeave(String userId, String leaveId);
   Future<List<NoticeItem>> getNotices();
   Future<List<DashboardGalleryAlbum>> getGalleryAlbums();
+  Future<List<CertificateModel>> getCertificates({String? admissionNo});
   
   Future<List<ChatChannel>> getChatChannels(String userId);
   Future<List<ChatChannel>> sendMessage(String userId, String channelId, String text);

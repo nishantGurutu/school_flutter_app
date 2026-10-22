@@ -2,7 +2,7 @@ class RoutesName {
   static const String splash = 'splash_screen';
   static const String login = 'login_screen';
   static const String dashboard = 'dashboard_screen';
-  
+
   // Modules
   static const String attendance = 'attendance_screen';
   static const String exam = 'exam_screen';
@@ -20,7 +20,7 @@ class RoutesName {
   static const String topics = 'topics_screen';
   static const String academicCalendar = 'academic_calendar_screen';
   static const String gallery = 'gallery_screen';
-  
+
   // Transport Module
   static const String activeTrip = 'active_trip_screen';
   static const String parentTransport = 'parent_transport_screen';

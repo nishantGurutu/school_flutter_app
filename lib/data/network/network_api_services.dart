@@ -208,6 +208,24 @@ class NetworkApiService implements BaseApiServices {
     }
   }
 
+  Future<Uint8List> getPdfBytes(String url) async {
+    try {
+      final response = await _dio.get<List<int>>(
+        url,
+        options: Options(responseType: ResponseType.bytes),
+      );
+      if (response.statusCode != 200 ||
+          !(response.headers.value('content-type') ?? '').contains(
+            'application/pdf',
+          )) {
+        throw FetchDataException('Unable to load certificate PDF');
+      }
+      return Uint8List.fromList(response.data!);
+    } on DioException catch (e) {
+      throw _handleDioError(e);
+    }
+  }
+
   @override
   Future<dynamic> postApi(String url, dynamic data) async {
     try {

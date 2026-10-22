@@ -6,6 +6,7 @@ import '../../core/theme/app_colors.dart';
 import '../../data/models/user_model.dart';
 import '../../core/extensions/context_extensions.dart';
 import '../../logic/school/school_bloc.dart';
+import 'certificate_viewer_dialog.dart';
 
 class MoreMenuItem {
   final String label;
@@ -411,13 +412,13 @@ class StudentMoreBottomSheet extends StatelessWidget {
         },
       ),
 
-      // 12. Certificate
+      // 12. Certificate -> Live from Backend API & Interactive Certificate Viewer
       MoreMenuItem(
         label: 'Certificate',
         icon: Icons.workspace_premium_outlined,
         onTap: () {
           Navigator.pop(context);
-          _showCertificatesDialog(targetCtx);
+          CertificatesDialog.show(targetCtx, user: user);
         },
       ),
 
@@ -751,69 +752,6 @@ class StudentMoreBottomSheet extends StatelessWidget {
             label: const Text('Download PDF'),
             style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary, foregroundColor: Colors.white),
           ),
-        ],
-      ),
-    );
-  }
-
-  static void _showCertificatesDialog(BuildContext context) {
-    final certs = [
-      {'title': 'Bonafide Student Certificate', 'issue': 'Issued: 10 Aug 2026'},
-      {'title': 'Annual Sports Merit (Gold)', 'issue': 'Issued: 02 Feb 2026'},
-      {'title': 'Character & Conduct Certificate', 'issue': 'Issued: 15 Jun 2026'},
-    ];
-
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20.r)),
-        title: Row(
-          children: [
-            const Icon(Icons.workspace_premium_outlined, color: AppColors.warning),
-            8.w.horizontalSpace,
-            const Text('My Certificates'),
-          ],
-        ),
-        content: SizedBox(
-          width: double.maxFinite,
-          child: ListView.separated(
-            shrinkWrap: true,
-            itemCount: certs.length,
-            separatorBuilder: (context, index) => 8.h.verticalSpace,
-            itemBuilder: (context, i) {
-              final c = certs[i];
-              return Container(
-                padding: EdgeInsets.all(10.r),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFF8FAFC),
-                  borderRadius: BorderRadius.circular(10.r),
-                  border: Border.all(color: const Color(0xFFE2E8F0)),
-                ),
-                child: Row(
-                  children: [
-                    const Icon(Icons.verified_rounded, color: AppColors.success, size: 22),
-                    10.w.horizontalSpace,
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(c['title']!, style: TextStyle(fontSize: 12.sp, fontWeight: FontWeight.w700)),
-                          Text(c['issue']!, style: TextStyle(fontSize: 11.sp, color: AppColors.textMuted)),
-                        ],
-                      ),
-                    ),
-                    IconButton(
-                      icon: const Icon(Icons.download_rounded, color: AppColors.primary, size: 20),
-                      onPressed: () => context.showAppSnackBar('Downloading ${c['title']}...'),
-                    ),
-                  ],
-                ),
-              );
-            },
-          ),
-        ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Close')),
         ],
       ),
     );

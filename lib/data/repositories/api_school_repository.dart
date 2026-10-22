@@ -5,6 +5,7 @@ import '../models/school_models.dart';
 import '../models/chat_models.dart';
 import '../models/home_dashboard_model.dart';
 import '../models/curriculum_model.dart';
+import '../models/certificate_model.dart';
 import 'school_repository.dart';
 
 class ApiSchoolRepository implements SchoolRepository {
@@ -832,6 +833,28 @@ class ApiSchoolRepository implements SchoolRepository {
         if (kDebugMode) {
           print('❌ Error fetching all gallery albums from API: $e2');
         }
+      }
+    }
+    return [];
+  }
+
+  @override
+  Future<List<CertificateModel>> getCertificates({String? admissionNo}) async {
+    try {
+      final url = (admissionNo != null && admissionNo.trim().isNotEmpty)
+          ? '${AppUrl.certificates}?admissionNo=${Uri.encodeComponent(admissionNo.trim())}'
+          : AppUrl.certificates;
+      final res = await _apiService.getApi(url);
+      final rawList = _extractList(res);
+      if (rawList.isNotEmpty) {
+        return rawList
+            .where((item) => item != null && item is Map)
+            .map((item) => CertificateModel.fromJson(Map<String, dynamic>.from(item)))
+            .toList();
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        print('❌ Error fetching certificates from API: $e');
       }
     }
     return [];

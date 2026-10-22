@@ -42,6 +42,11 @@ class AppUrl {
   static const String gallery = '$baseUrl/gallery';
   static const String activeGallery = '$baseUrl/gallery/active';
 
+  // Certificates Endpoints (Dynamic from Admin Dashboard & Backend PDF Generator)
+  static const String certificates = '$baseUrl/certificates';
+  static String certificatePdf(dynamic id) => '$baseUrl/certificates/$id/pdf';
+  static String certificateDownload(dynamic id) => '$baseUrl/certificates/$id/download';
+
   // Curriculum & Study Notes
   static String subjectCurriculum(String subjectId) =>
       '$baseUrl/mobile/subjects/$subjectId/curriculum';
