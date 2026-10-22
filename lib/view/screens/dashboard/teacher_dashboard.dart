@@ -10,6 +10,7 @@ import '../../../data/repositories/api_school_repository.dart';
 import '../../../core/config/role_navigation_config.dart';
 import '../../widgets/smooth_skeleton.dart';
 import '../../widgets/attendance_check_in_banner.dart';
+import '../../widgets/glass_card.dart';
 
 class TeacherDashboard extends StatefulWidget {
   final UserModel user;
@@ -192,37 +193,82 @@ class _TeacherDashboardState extends State<TeacherDashboard> {
         : _defaultGallery;
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF8FAFC),
-      body: Column(
-        children: [
-          // 1. Signature Curved Navy/Petrol Blue Header (matching Student & Parent)
-          _buildTeacherCurvedHeader(
-            name: displayName,
-            subtitle: displaySubtitle,
-            avatarUrl: displayAvatar,
+      backgroundColor: AppColors.background,
+      appBar: AppBar(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        scrolledUnderElevation: 0,
+        leading: IconButton(
+          icon: const Icon(
+            Icons.menu_rounded,
+            color: AppColors.textPrimary,
           ),
-
-          // Scrollable Body Content
-          Expanded(
-            child: RefreshIndicator(
-              onRefresh: _fetchHomeData,
-              color: const Color(0xFF1E3A5F),
-              child: SingleChildScrollView(
-                physics: const AlwaysScrollableScrollPhysics(
-                  parent: BouncingScrollPhysics(),
+          onPressed: widget.onOpenDrawer,
+        ),
+        title: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Teacher Companion',
+              style: TextStyle(
+                fontSize: 16.sp,
+                fontWeight: FontWeight.w800,
+                color: AppColors.textPrimary,
+              ),
+            ),
+            Text(
+              'Faculty Portal • $displayName',
+              style: TextStyle(fontSize: 11.sp, color: AppColors.textMuted),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ],
+        ),
+        actions: [
+          IconButton(
+            icon: const Icon(
+              Icons.chat_bubble_outline_rounded,
+              color: AppColors.textPrimary,
+            ),
+            onPressed: () => Navigator.pushNamed(context, RoutesName.chat),
+          ),
+          IconButton(
+            icon: const Icon(Icons.refresh_rounded, color: AppColors.primary),
+            onPressed: _fetchHomeData,
+          ),
+          12.w.horizontalSpace,
+        ],
+      ),
+      body: RefreshIndicator(
+        onRefresh: _fetchHomeData,
+        color: AppColors.primary,
+        child: SingleChildScrollView(
+          physics: const AlwaysScrollableScrollPhysics(
+            parent: BouncingScrollPhysics(),
+          ),
+          padding: EdgeInsets.only(top: 8.h, bottom: 24.h),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // 1. Teacher Profile GlassCard
+              Padding(
+                padding: EdgeInsets.symmetric(horizontal: 20.w),
+                child: _buildTeacherProfileCard(
+                  name: displayName,
+                  subtitle: displaySubtitle,
+                  avatarUrl: displayAvatar,
                 ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    20.h.height,
+              ),
 
-                    // 2. Daily Teacher Attendance Check-In Banner
-                    Padding(
-                      padding: EdgeInsets.symmetric(horizontal: 20.w),
-                      child: AttendanceCheckInBanner(user: widget.user),
-                    ),
+              18.h.height,
 
-                    24.h.height,
+              // 2. Daily Teacher Attendance Check-In Banner
+              Padding(
+                padding: EdgeInsets.symmetric(horizontal: 20.w),
+                child: AttendanceCheckInBanner(user: widget.user),
+              ),
+
+              24.h.height,
 
                     // 3. Promotional Banners Slider (Matching Student Dashboard)
                     if (banners.isNotEmpty) ...[
@@ -394,196 +440,94 @@ class _TeacherDashboardState extends State<TeacherDashboard> {
                       24.h.height,
                     ],
 
-                    110.h.height, // Spacer for floating bottom navigation bar
-                  ],
-                ),
-              ),
-            ),
+              110.h.height, // Spacer for floating bottom navigation bar
+            ],
           ),
-        ],
+        ),
       ),
     );
   }
 
-  // 1. Signature Curved Deep Blue Header
-  Widget _buildTeacherCurvedHeader({
+  // 1. Teacher Profile GlassCard matching Driver UI design
+  Widget _buildTeacherProfileCard({
     required String name,
     required String subtitle,
     required String avatarUrl,
   }) {
-    return Container(
-      width: double.infinity,
-      decoration: BoxDecoration(
-        color: const Color(0xFF1E3A5F), // Deep curved petrol/navy blue matching Student & Parent
-        borderRadius: BorderRadius.only(
-          bottomLeft: Radius.circular(32.r),
-          bottomRight: Radius.circular(32.r),
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: const Color(0xFF1E3A5F).withValues(alpha: 0.3),
-            blurRadius: 20,
-            offset: const Offset(0, 8),
+    return GlassCard(
+      padding: EdgeInsets.all(16.r),
+      child: Row(
+        children: [
+          Container(
+            width: 52.w,
+            height: 52.w,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              border: Border.all(
+                color: AppColors.teacherOrange.withValues(alpha: 0.3),
+                width: 2,
+              ),
+            ),
+            child: ClipOval(
+              child: Image.network(
+                avatarUrl,
+                fit: BoxFit.cover,
+                errorBuilder: (context, error, stackTrace) => Container(
+                  color: AppColors.teacherOrange.withValues(alpha: 0.12),
+                  child: Icon(
+                    Icons.person_rounded,
+                    color: AppColors.teacherOrange,
+                    size: 28.sp,
+                  ),
+                ),
+              ),
+            ),
+          ),
+          14.w.horizontalSpace,
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  name,
+                  style: TextStyle(
+                    fontSize: 16.sp,
+                    fontWeight: FontWeight.w800,
+                    color: AppColors.textPrimary,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                4.h.verticalSpace,
+                Text(
+                  subtitle,
+                  style: TextStyle(
+                    fontSize: 12.sp,
+                    fontWeight: FontWeight.w500,
+                    color: AppColors.textMuted,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
+            ),
+          ),
+          Container(
+            padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 4.h),
+            decoration: BoxDecoration(
+              color: AppColors.teacherOrange.withValues(alpha: 0.12),
+              borderRadius: BorderRadius.circular(8.r),
+            ),
+            child: Text(
+              'TEACHER',
+              style: TextStyle(
+                fontSize: 11.sp,
+                fontWeight: FontWeight.w800,
+                color: AppColors.teacherOrange,
+              ),
+            ),
           ),
         ],
-      ),
-      child: SafeArea(
-        bottom: false,
-        child: Stack(
-          children: [
-            // Decorative background concentric circular lines
-            Positioned(
-              top: -60.h,
-              right: -50.w,
-              child: Container(
-                width: 220.w,
-                height: 220.w,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  border: Border.all(
-                    color: Colors.white.withValues(alpha: 0.08),
-                    width: 1.5,
-                  ),
-                ),
-              ),
-            ),
-            Positioned(
-              top: -20.h,
-              left: 20.w,
-              child: Container(
-                width: 150.w,
-                height: 150.w,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  border: Border.all(
-                    color: Colors.white.withValues(alpha: 0.06),
-                    width: 1.5,
-                  ),
-                ),
-              ),
-            ),
-
-            // Header Content
-            Padding(
-              padding: EdgeInsets.symmetric(horizontal: 18.w, vertical: 18.h),
-              child: Row(
-                children: [
-                  // Profile Avatar with circular white border & shadow
-                  Container(
-                    width: 52.w,
-                    height: 52.w,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      border: Border.all(
-                        color: Colors.white.withValues(alpha: 0.9),
-                        width: 1.8,
-                      ),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withValues(alpha: 0.2),
-                          blurRadius: 8,
-                          offset: const Offset(0, 3),
-                        ),
-                      ],
-                    ),
-                    child: ClipOval(
-                      child: avatarUrl.isNotEmpty
-                          ? Image.network(
-                              avatarUrl,
-                              fit: BoxFit.cover,
-                              errorBuilder: (context, error, stackTrace) =>
-                                  _buildAvatarFallback(),
-                            )
-                          : _buildAvatarFallback(),
-                    ),
-                  ),
-
-                  14.w.width,
-
-                  // Teacher Name & Designation Details
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          name,
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 18.sp,
-                            fontWeight: FontWeight.w700,
-                            letterSpacing: -0.2,
-                          ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                        4.h.height,
-                        Text(
-                          subtitle,
-                          style: TextStyle(
-                            color: Colors.white.withValues(alpha: 0.85),
-                            fontSize: 12.sp,
-                            fontWeight: FontWeight.w500,
-                          ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ],
-                    ),
-                  ),
-
-                  // Drawer Menu Glass Button
-                  GestureDetector(
-                    onTap: widget.onOpenDrawer,
-                    child: Container(
-                      width: 40.w,
-                      height: 40.w,
-                      decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.12),
-                        borderRadius: BorderRadius.circular(12.r),
-                      ),
-                      child: Icon(
-                        Icons.grid_view_rounded,
-                        color: Colors.white,
-                        size: 20.sp,
-                      ),
-                    ),
-                  ),
-
-                  10.w.width,
-
-                  // Chat Message Glass Button
-                  GestureDetector(
-                    onTap: () => Navigator.pushNamed(context, RoutesName.chat),
-                    child: Container(
-                      width: 40.w,
-                      height: 40.w,
-                      decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.12),
-                        borderRadius: BorderRadius.circular(12.r),
-                      ),
-                      child: Icon(
-                        Icons.chat_bubble_outline_rounded,
-                        color: Colors.white,
-                        size: 20.sp,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildAvatarFallback() {
-    return Container(
-      color: const Color(0xFF2563EB),
-      child: Icon(
-        Icons.person_rounded,
-        color: Colors.white,
-        size: 28.sp,
       ),
     );
   }
@@ -760,7 +704,7 @@ class _TeacherDashboardState extends State<TeacherDashboard> {
               height: 6.w,
               decoration: BoxDecoration(
                 color: isActive
-                    ? const Color(0xFF1E3A5F)
+                    ? AppColors.primary
                     : const Color(0xFFCBD5E1),
                 borderRadius: BorderRadius.circular(3.r),
               ),
@@ -994,7 +938,7 @@ class _TeacherDashboardState extends State<TeacherDashboard> {
                   Container(
                     padding: EdgeInsets.all(6.w),
                     decoration: const BoxDecoration(
-                      color: Color(0xFF1E3A5F),
+                      color: AppColors.primary,
                       shape: BoxShape.circle,
                     ),
                     child: Icon(
@@ -1111,73 +1055,55 @@ class _TeacherDashboardState extends State<TeacherDashboard> {
   // Shimmer Skeletons
   Widget _buildLoadingSkeleton() {
     return Scaffold(
-      backgroundColor: Colors.white,
-      body: SafeArea(
-        bottom: false,
-        child: Column(
-          children: [
-            _buildHeaderSkeleton(),
-            Expanded(
-              child: SingleChildScrollView(
-                padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 16.h),
-                child: Column(
-                  children: [
-                    SmoothShimmer(
-                      child: SkeletonBox(
-                        width: double.infinity,
-                        height: 160.h,
-                        borderRadius: 20,
-                      ),
-                    ),
-                    20.h.height,
-                    const SmoothSkeletonCardList(
-                      count: 3,
-                      shrinkWrap: true,
-                      physics: NeverScrollableScrollPhysics(),
-                      padding: EdgeInsets.zero,
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ],
+      backgroundColor: AppColors.background,
+      appBar: AppBar(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        scrolledUnderElevation: 0,
+        leading: IconButton(
+          icon: const Icon(
+            Icons.menu_rounded,
+            color: AppColors.textPrimary,
+          ),
+          onPressed: widget.onOpenDrawer,
         ),
-      ),
-    );
-  }
-
-  Widget _buildHeaderSkeleton() {
-    return SmoothShimmer(
-      child: Container(
-        width: double.infinity,
-        decoration: BoxDecoration(
-          color: const Color(0xFF1E3A5F),
-          borderRadius: BorderRadius.only(
-            bottomLeft: Radius.circular(32.r),
-            bottomRight: Radius.circular(32.r),
+        title: Text(
+          'Teacher Companion',
+          style: TextStyle(
+            fontSize: 16.sp,
+            fontWeight: FontWeight.w800,
+            color: AppColors.textPrimary,
           ),
         ),
-        child: SafeArea(
-          bottom: false,
-          child: Padding(
-            padding: EdgeInsets.symmetric(horizontal: 18.w, vertical: 20.h),
-            child: Row(
-              children: [
-                const SkeletonBox(width: 52, height: 52, borderRadius: 26),
-                14.w.width,
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      SkeletonBox(width: 140.w, height: 18.h, borderRadius: 6),
-                      6.h.height,
-                      SkeletonBox(width: 100.w, height: 12.h, borderRadius: 4),
-                    ],
-                  ),
+      ),
+      body: SafeArea(
+        child: SingleChildScrollView(
+          padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 12.h),
+          child: Column(
+            children: [
+              SmoothShimmer(
+                child: SkeletonBox(
+                  width: double.infinity,
+                  height: 84.h,
+                  borderRadius: 16,
                 ),
-                const SkeletonBox(width: 40, height: 40, borderRadius: 12),
-              ],
-            ),
+              ),
+              16.h.height,
+              SmoothShimmer(
+                child: SkeletonBox(
+                  width: double.infinity,
+                  height: 160.h,
+                  borderRadius: 20,
+                ),
+              ),
+              20.h.height,
+              const SmoothSkeletonCardList(
+                count: 3,
+                shrinkWrap: true,
+                physics: NeverScrollableScrollPhysics(),
+                padding: EdgeInsets.zero,
+              ),
+            ],
           ),
         ),
       ),
