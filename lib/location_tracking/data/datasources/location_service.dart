@@ -9,6 +9,7 @@ import '../../../services/storage/local_storage.dart';
 import '../../../services/transport_service.dart';
 import 'background_service_configurator.dart';
 import 'trip_location_store.dart';
+import '../live_location_scheduler.dart';
 
 /// Driver-only trip tracking. GPS history never uploads while the trip is active.
 class LocationService {
@@ -138,17 +139,16 @@ Future<void> onStart(ServiceInstance service) async {
   StreamSubscription<Map<String, dynamic>?>? stopSubscription;
   Future<void> writes = Future.value();
   bool stopping = false;
-  Timer? liveTimer;
+  LiveLocationScheduler? liveScheduler;
   Map<String, dynamic>? latest;
   int? tripId;
   double distance = 0;
   Position? previous;
-  bool sending = false;
 
   Future<void> stop() async {
     if (stopping) return;
     stopping = true;
-    liveTimer?.cancel();
+    liveScheduler?.stop();
     try {
       await gps?.cancel();
       await writes;
@@ -181,6 +181,24 @@ Future<void> onStart(ServiceInstance service) async {
     final last = savedPoints.isEmpty ? null : savedPoints.last;
     double? previousLat = (last?['latitude'] as num?)?.toDouble();
     double? previousLon = (last?['longitude'] as num?)?.toDouble();
+    liveScheduler = LiveLocationScheduler(
+      latestPoint: () => latest,
+      authorized: () async {
+        final currentUser = await StorageHelper.getUserSession();
+        if (stopping) return false;
+        if (currentUser?.role != UserRole.driver ||
+            currentUser?.email != session['driver_email']) {
+          await stop();
+          return false;
+        }
+        return true;
+      },
+      publish: (point) => TransportService.publishLiveLocation(
+        tripId!,
+        point,
+        email: session['driver_email']?.toString(),
+      ),
+    );
     final settings = defaultTargetPlatform == TargetPlatform.android
         ? AndroidSettings(
             accuracy: LocationAccuracy.high,
@@ -230,7 +248,9 @@ Future<void> onStart(ServiceInstance service) async {
         writes = writes
             .then((_) async {
               await store.append(tripId!, point, distanceAtPoint);
+              final firstFix = latest == null;
               latest = point;
+              if (firstFix) unawaited(liveScheduler!.tick());
               service.invoke('on_location_update', {
                 ...point,
                 'timestamp': position.timestamp.toIso8601String(),
@@ -247,30 +267,19 @@ Future<void> onStart(ServiceInstance service) async {
       },
       onError: (Object error) {
         service.invoke('on_error', {'message': 'GPS unavailable: $error'});
+        unawaited(stop());
+      },
+      onDone: () {
+        if (stopping) return;
+        service.invoke('on_error', {
+          'message': 'GPS stream stopped. Open the active trip and retry GPS.',
+        });
+        unawaited(stop());
       },
     );
-    // Only one transient latest point is sent per 30s; the server never persists it.
-    liveTimer = Timer.periodic(const Duration(seconds: 30), (_) async {
-      if (sending || stopping || latest == null) return;
-      sending = true;
-      try {
-        final currentUser = await StorageHelper.getUserSession();
-        if (currentUser?.role != UserRole.driver ||
-            currentUser?.email != session['driver_email']) {
-          await stop();
-          return;
-        }
-        await TransportService.publishLiveLocation(
-          tripId!,
-          latest!,
-          email: session['driver_email']?.toString() ?? currentUser?.email,
-        );
-      } catch (_) {
-        /* SQLite history remains intact while offline. */
-      } finally {
-        sending = false;
-      }
-    });
+    // First fix publishes immediately; subsequent attempts run every 30 seconds.
+    if (stopping) return;
+    liveScheduler.start();
     service.invoke('tracking_ready', {'tripId': tripId});
   } catch (error) {
     service.invoke('tracking_ready', {'error': error.toString()});

@@ -35,6 +35,14 @@ shared transient store to show consistent telemetry. Server restart loses only
 live cache, never the SQLite journal. The old locations:batch history upload is
 rejected; clients must send history when ending the trip.
 
+The first saved fix publishes immediately. The live scheduler serializes uploads,
+rechecks cancellation after reading the signed-in session, and skips GPS fixes
+older than 120 seconds. A stopped scheduler cannot restart. GPS stream errors or
+unexpected closure stop the service and notify the UI; the driver can retry GPS
+without losing the active trip's SQLite journal. The 15-second Android setting is
+a requested GPS interval, not an exact OS alarm. The live timer is 30 seconds;
+there is no WorkManager job scheduling trip recording.
+
 The selected bus map resolves that bus's route by ID, prioritizes the active
 trip's route, orders its stops, and never uses the viewer's GPS as a bus position.
 The solid line follows an OSRM driving route through the ordered stops. Routing
