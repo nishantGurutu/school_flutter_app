@@ -198,33 +198,22 @@ class TransportService {
   }
 
   // Parent child transport info
-  static Future<Map<String, dynamic>?> getParentChildTransport(
+  static Future<Map<String, dynamic>> getStudentTransport() async {
+    final res = await _apiService.getApi(AppUrl.transportStudentMyTransport());
+    final data = _toMap(res);
+    if (data == null) throw StateError('Invalid transport response');
+    return data;
+  }
+
+  static Future<Map<String, dynamic>> getParentChildTransport(
     int studentId, {
     String? email,
   }) async {
-    try {
-      final url = AppUrl.transportParentChild(studentId, email: email);
-      final res = await _apiService.getApi(url);
-      final map = _toMap(res);
-      if (map != null) return map;
-    } catch (e) {
-      log("TransportService: getParentChildTransport error: $e");
-    }
-
-    return {
-      'studentName': 'Child Transport',
-      'busNumber': 'Bus 04',
-      'driverName': 'Ramesh Kumar',
-      'driverPhone': '+91 98765 43210',
-      'routeName': 'Route 1 - North Campus Loop',
-      'stopName': 'Metro Station Pillar 42',
-      'scheduledPickupTime': '07:25 AM',
-      'scheduledDropTime': '03:20 PM',
-      'pickupStatus': 'PICKED_UP',
-      'tripStatus': 'IN_PROGRESS',
-      'busSpeedKmh': 32.0,
-      'estimatedArrivalMinutes': 6,
-      'currentStopName': 'Central Mall Junction',
-    };
+    final res = await _apiService.getApi(
+      AppUrl.transportParentChild(studentId),
+    );
+    final data = _toMap(res);
+    if (data == null) throw StateError('Invalid transport response');
+    return data;
   }
 }

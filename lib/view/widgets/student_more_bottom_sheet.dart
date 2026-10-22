@@ -63,17 +63,25 @@ class StudentMoreBottomSheet extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final displayName = overrideName ?? (user?.name.isNotEmpty == true ? user!.name : 'Kauan Sousa');
-    
-    String rawClass = overrideClass ?? (user?.className?.isNotEmpty == true ? user!.className! : 'Class : 10 - A English');
+    final displayName =
+        overrideName ??
+        (user?.name.isNotEmpty == true ? user!.name : 'Kauan Sousa');
+
+    String rawClass =
+        overrideClass ??
+        (user?.className?.isNotEmpty == true
+            ? user!.className!
+            : 'Class : 10 - A English');
     if (!rawClass.toLowerCase().contains('class')) {
       rawClass = 'Class : $rawClass';
     }
-    
+
     final displayRoll = overrideRollNo ?? '31';
-    final displayAvatar = overrideAvatar ?? (user?.avatarUrl.isNotEmpty == true
-        ? user!.avatarUrl
-        : 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=400&auto=format&fit=crop&q=80');
+    final displayAvatar =
+        overrideAvatar ??
+        (user?.avatarUrl.isNotEmpty == true
+            ? user!.avatarUrl
+            : 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=400&auto=format&fit=crop&q=80');
 
     final items = _buildMenuItems(context);
 
@@ -212,11 +220,7 @@ class StudentMoreBottomSheet extends StatelessWidget {
           16.h.height,
 
           // Thin Divider matching image
-          const Divider(
-            color: Color(0xFFE2E8F0),
-            thickness: 1,
-            height: 1,
-          ),
+          const Divider(color: Color(0xFFE2E8F0), thickness: 1, height: 1),
 
           16.h.height,
 
@@ -266,10 +270,7 @@ class StudentMoreBottomSheet extends StatelessWidget {
             decoration: BoxDecoration(
               color: const Color(0xFFF0F5FA), // Soft light blue-gray
               borderRadius: BorderRadius.circular(16.r),
-              border: Border.all(
-                color: const Color(0xFFE2E8F0),
-                width: 0.8,
-              ),
+              border: Border.all(color: const Color(0xFFE2E8F0), width: 0.8),
             ),
             child: Center(
               child: Icon(
@@ -392,6 +393,15 @@ class StudentMoreBottomSheet extends StatelessWidget {
         },
       ),
 
+      MoreMenuItem(
+        label: 'Tasks',
+        icon: Icons.task_alt_rounded,
+        onTap: () {
+          Navigator.pop(context);
+          Navigator.pushNamed(targetCtx, RoutesName.homework);
+        },
+      ),
+
       // 10. My Diary
       MoreMenuItem(
         label: 'My Diary',
@@ -456,7 +466,9 @@ class StudentMoreBottomSheet extends StatelessWidget {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20.r)),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20.r),
+        ),
         title: Row(
           children: [
             const Icon(Icons.badge_rounded, color: AppColors.primary),
@@ -472,10 +484,19 @@ class StudentMoreBottomSheet extends StatelessWidget {
               backgroundImage: NetworkImage(avatarUrl),
             ),
             12.h.verticalSpace,
-            Text(name, style: TextStyle(fontSize: 17.sp, fontWeight: FontWeight.bold)),
+            Text(
+              name,
+              style: TextStyle(fontSize: 17.sp, fontWeight: FontWeight.bold),
+            ),
             4.h.verticalSpace,
-            Text(className, style: TextStyle(fontSize: 13.sp, color: AppColors.textMuted)),
-            Text('Roll Number: $rollNo', style: TextStyle(fontSize: 13.sp, color: AppColors.textMuted)),
+            Text(
+              className,
+              style: TextStyle(fontSize: 13.sp, color: AppColors.textMuted),
+            ),
+            Text(
+              'Roll Number: $rollNo',
+              style: TextStyle(fontSize: 13.sp, color: AppColors.textMuted),
+            ),
             12.h.verticalSpace,
             Container(
               padding: EdgeInsets.all(12.r),
@@ -488,20 +509,50 @@ class StudentMoreBottomSheet extends StatelessWidget {
                 children: [
                   Column(
                     children: [
-                      Text('Attendance', style: TextStyle(fontSize: 11, color: Colors.grey)),
-                      Text('94.2%', style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: AppColors.success)),
+                      Text(
+                        'Attendance',
+                        style: TextStyle(fontSize: 11, color: Colors.grey),
+                      ),
+                      Text(
+                        '94.2%',
+                        style: TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.bold,
+                          color: AppColors.success,
+                        ),
+                      ),
                     ],
                   ),
                   Column(
                     children: [
-                      Text('Rank', style: TextStyle(fontSize: 11, color: Colors.grey)),
-                      Text('03 / 42', style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: AppColors.primary)),
+                      Text(
+                        'Rank',
+                        style: TextStyle(fontSize: 11, color: Colors.grey),
+                      ),
+                      Text(
+                        '03 / 42',
+                        style: TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.bold,
+                          color: AppColors.primary,
+                        ),
+                      ),
                     ],
                   ),
                   Column(
                     children: [
-                      Text('GPA', style: TextStyle(fontSize: 11, color: Colors.grey)),
-                      Text('3.9 / 4.0', style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: AppColors.warning)),
+                      Text(
+                        'GPA',
+                        style: TextStyle(fontSize: 11, color: Colors.grey),
+                      ),
+                      Text(
+                        '3.9 / 4.0',
+                        style: TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.bold,
+                          color: AppColors.warning,
+                        ),
+                      ),
                     ],
                   ),
                 ],
@@ -523,7 +574,9 @@ class StudentMoreBottomSheet extends StatelessWidget {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20.r)),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20.r),
+        ),
         title: Row(
           children: [
             const Icon(Icons.family_restroom_rounded, color: AppColors.primary),
@@ -592,9 +645,18 @@ class StudentMoreBottomSheet extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(title, style: TextStyle(fontSize: 13.sp, fontWeight: FontWeight.w700)),
+                Text(
+                  title,
+                  style: TextStyle(
+                    fontSize: 13.sp,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
                 2.h.verticalSpace,
-                Text(subtitle, style: TextStyle(fontSize: 11.sp, color: AppColors.textMuted)),
+                Text(
+                  subtitle,
+                  style: TextStyle(fontSize: 11.sp, color: AppColors.textMuted),
+                ),
               ],
             ),
           ),
@@ -608,28 +670,48 @@ class StudentMoreBottomSheet extends StatelessWidget {
     try {
       final stateHolidays = context.read<SchoolBloc>().state.holidays;
       if (stateHolidays.isNotEmpty) {
-        holidays = stateHolidays.map((h) => {
-          'name': h.title,
-          'date': h.endDate != null && h.endDate!.isNotEmpty ? '${h.date} - ${h.endDate}' : h.date,
-          'days': h.category ?? 'Holiday',
-        }).toList();
+        holidays = stateHolidays
+            .map(
+              (h) => {
+                'name': h.title,
+                'date': h.endDate != null && h.endDate!.isNotEmpty
+                    ? '${h.date} - ${h.endDate}'
+                    : h.date,
+                'days': h.category ?? 'Holiday',
+              },
+            )
+            .toList();
       }
     } catch (_) {}
 
     if (holidays.isEmpty) {
       holidays = [
-        {'name': 'Diwali & New Year Vacation', 'date': '24 Oct - 28 Oct 2026', 'days': '5 Days'},
+        {
+          'name': 'Diwali & New Year Vacation',
+          'date': '24 Oct - 28 Oct 2026',
+          'days': '5 Days',
+        },
         {'name': 'Guru Nanak Jayanti', 'date': '15 Nov 2026', 'days': '1 Day'},
-        {'name': 'Winter Holiday Break', 'date': '24 Dec - 02 Jan 2027', 'days': '10 Days'},
+        {
+          'name': 'Winter Holiday Break',
+          'date': '24 Dec - 02 Jan 2027',
+          'days': '10 Days',
+        },
         {'name': 'Republic Day', 'date': '26 Jan 2027', 'days': '1 Day'},
-        {'name': 'Holi Spring Festival', 'date': '18 Mar 2027', 'days': '1 Day'},
+        {
+          'name': 'Holi Spring Festival',
+          'date': '18 Mar 2027',
+          'days': '1 Day',
+        },
       ];
     }
 
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20.r)),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20.r),
+        ),
         title: Row(
           children: [
             const Icon(Icons.beach_access_rounded, color: AppColors.warning),
@@ -660,27 +742,50 @@ class StudentMoreBottomSheet extends StatelessWidget {
                         color: AppColors.warning.withValues(alpha: 0.15),
                         shape: BoxShape.circle,
                       ),
-                      child: const Icon(Icons.event_rounded, color: AppColors.warning, size: 18),
+                      child: const Icon(
+                        Icons.event_rounded,
+                        color: AppColors.warning,
+                        size: 18,
+                      ),
                     ),
                     12.w.horizontalSpace,
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(h['name']!, style: TextStyle(fontSize: 12.sp, fontWeight: FontWeight.w700)),
-                          Text(h['date']!, style: TextStyle(fontSize: 11.sp, color: AppColors.textMuted)),
+                          Text(
+                            h['name']!,
+                            style: TextStyle(
+                              fontSize: 12.sp,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                          Text(
+                            h['date']!,
+                            style: TextStyle(
+                              fontSize: 11.sp,
+                              color: AppColors.textMuted,
+                            ),
+                          ),
                         ],
                       ),
                     ),
                     Container(
-                      padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 3.h),
+                      padding: EdgeInsets.symmetric(
+                        horizontal: 8.w,
+                        vertical: 3.h,
+                      ),
                       decoration: BoxDecoration(
                         color: AppColors.primary.withValues(alpha: 0.1),
                         borderRadius: BorderRadius.circular(6.r),
                       ),
                       child: Text(
                         h['days']!,
-                        style: TextStyle(fontSize: 10.sp, fontWeight: FontWeight.bold, color: AppColors.primary),
+                        style: TextStyle(
+                          fontSize: 10.sp,
+                          fontWeight: FontWeight.bold,
+                          color: AppColors.primary,
+                        ),
                       ),
                     ),
                   ],
@@ -690,7 +795,10 @@ class StudentMoreBottomSheet extends StatelessWidget {
           ),
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Close')),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Close'),
+          ),
         ],
       ),
     );
@@ -700,7 +808,9 @@ class StudentMoreBottomSheet extends StatelessWidget {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20.r)),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20.r),
+        ),
         title: Row(
           children: [
             const Icon(Icons.assessment_outlined, color: AppColors.primary),
@@ -725,14 +835,27 @@ class StudentMoreBottomSheet extends StatelessWidget {
               ),
               child: const Row(
                 children: [
-                  Icon(Icons.picture_as_pdf_rounded, color: Colors.red, size: 28),
+                  Icon(
+                    Icons.picture_as_pdf_rounded,
+                    color: Colors.red,
+                    size: 28,
+                  ),
                   SizedBox(width: 12),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text('Term_1_Report_Card_2026.pdf', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
-                        Text('Size: 1.4 MB • Certified', style: TextStyle(fontSize: 11, color: Colors.grey)),
+                        Text(
+                          'Term_1_Report_Card_2026.pdf',
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        Text(
+                          'Size: 1.4 MB • Certified',
+                          style: TextStyle(fontSize: 11, color: Colors.grey),
+                        ),
                       ],
                     ),
                   ),
@@ -742,7 +865,10 @@ class StudentMoreBottomSheet extends StatelessWidget {
           ],
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancel'),
+          ),
           ElevatedButton.icon(
             onPressed: () {
               Navigator.pop(ctx);
@@ -750,7 +876,10 @@ class StudentMoreBottomSheet extends StatelessWidget {
             },
             icon: const Icon(Icons.download_rounded, size: 18),
             label: const Text('Download PDF'),
-            style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary, foregroundColor: Colors.white),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.primary,
+              foregroundColor: Colors.white,
+            ),
           ),
         ],
       ),
@@ -759,17 +888,39 @@ class StudentMoreBottomSheet extends StatelessWidget {
 
   static void _showTeachersDialog(BuildContext context) {
     final teachers = [
-      {'name': 'Mr. David Clark', 'subject': 'Mathematics & Algebra (Class Teacher)', 'email': 'd.clark@school.edu'},
-      {'name': 'Mrs. Sarah Jenkins', 'subject': 'English Literature & Grammar', 'email': 's.jenkins@school.edu'},
-      {'name': 'Dr. Robert Miller', 'subject': 'Physics & Natural Sciences', 'email': 'r.miller@school.edu'},
-      {'name': 'Ms. Elena Rostova', 'subject': 'Computer Science & Coding', 'email': 'e.rostova@school.edu'},
-      {'name': 'Mr. Rajesh Sharma', 'subject': 'Social Studies & World History', 'email': 'r.sharma@school.edu'},
+      {
+        'name': 'Mr. David Clark',
+        'subject': 'Mathematics & Algebra (Class Teacher)',
+        'email': 'd.clark@school.edu',
+      },
+      {
+        'name': 'Mrs. Sarah Jenkins',
+        'subject': 'English Literature & Grammar',
+        'email': 's.jenkins@school.edu',
+      },
+      {
+        'name': 'Dr. Robert Miller',
+        'subject': 'Physics & Natural Sciences',
+        'email': 'r.miller@school.edu',
+      },
+      {
+        'name': 'Ms. Elena Rostova',
+        'subject': 'Computer Science & Coding',
+        'email': 'e.rostova@school.edu',
+      },
+      {
+        'name': 'Mr. Rajesh Sharma',
+        'subject': 'Social Studies & World History',
+        'email': 'r.sharma@school.edu',
+      },
     ];
 
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20.r)),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20.r),
+        ),
         title: Row(
           children: [
             const Icon(Icons.school_outlined, color: AppColors.primary),
@@ -795,17 +946,43 @@ class StudentMoreBottomSheet extends StatelessWidget {
                 child: Row(
                   children: [
                     CircleAvatar(
-                      backgroundColor: AppColors.primary.withValues(alpha: 0.15),
-                      child: Text(t['name']![4], style: const TextStyle(fontWeight: FontWeight.bold, color: AppColors.primary)),
+                      backgroundColor: AppColors.primary.withValues(
+                        alpha: 0.15,
+                      ),
+                      child: Text(
+                        t['name']![4],
+                        style: const TextStyle(
+                          fontWeight: FontWeight.bold,
+                          color: AppColors.primary,
+                        ),
+                      ),
                     ),
                     10.w.horizontalSpace,
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(t['name']!, style: TextStyle(fontSize: 12.sp, fontWeight: FontWeight.w700)),
-                          Text(t['subject']!, style: TextStyle(fontSize: 11.sp, color: AppColors.textMuted)),
-                          Text(t['email']!, style: TextStyle(fontSize: 10.sp, color: AppColors.primary)),
+                          Text(
+                            t['name']!,
+                            style: TextStyle(
+                              fontSize: 12.sp,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                          Text(
+                            t['subject']!,
+                            style: TextStyle(
+                              fontSize: 11.sp,
+                              color: AppColors.textMuted,
+                            ),
+                          ),
+                          Text(
+                            t['email']!,
+                            style: TextStyle(
+                              fontSize: 10.sp,
+                              color: AppColors.primary,
+                            ),
+                          ),
                         ],
                       ),
                     ),
@@ -816,7 +993,10 @@ class StudentMoreBottomSheet extends StatelessWidget {
           ),
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Done')),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Done'),
+          ),
         ],
       ),
     );
@@ -826,7 +1006,9 @@ class StudentMoreBottomSheet extends StatelessWidget {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20.r)),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20.r),
+        ),
         title: Row(
           children: [
             const Icon(Icons.settings_outlined, color: AppColors.primary),
@@ -838,13 +1020,25 @@ class StudentMoreBottomSheet extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             ListTile(
-              leading: const Icon(Icons.notifications_active_outlined, color: AppColors.primary),
-              title: const Text('Push Notifications', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
+              leading: const Icon(
+                Icons.notifications_active_outlined,
+                color: AppColors.primary,
+              ),
+              title: const Text(
+                'Push Notifications',
+                style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold),
+              ),
               trailing: Switch(value: true, onChanged: (_) {}),
             ),
             ListTile(
-              leading: const Icon(Icons.lock_outline_rounded, color: AppColors.primary),
-              title: const Text('Change Password', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
+              leading: const Icon(
+                Icons.lock_outline_rounded,
+                color: AppColors.primary,
+              ),
+              title: const Text(
+                'Change Password',
+                style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold),
+              ),
               trailing: const Icon(Icons.chevron_right_rounded),
               onTap: () {
                 Navigator.pop(ctx);
@@ -852,14 +1046,26 @@ class StudentMoreBottomSheet extends StatelessWidget {
               },
             ),
             ListTile(
-              leading: const Icon(Icons.info_outline_rounded, color: AppColors.primary),
-              title: const Text('App Version', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
-              trailing: const Text('v2.4.0', style: TextStyle(color: Colors.grey)),
+              leading: const Icon(
+                Icons.info_outline_rounded,
+                color: AppColors.primary,
+              ),
+              title: const Text(
+                'App Version',
+                style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold),
+              ),
+              trailing: const Text(
+                'v2.4.0',
+                style: TextStyle(color: Colors.grey),
+              ),
             ),
           ],
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Close')),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Close'),
+          ),
         ],
       ),
     );

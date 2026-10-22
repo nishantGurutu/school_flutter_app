@@ -813,7 +813,11 @@ class ApiSchoolRepository implements SchoolRepository {
       if (rawList.isNotEmpty) {
         return rawList
             .where((item) => item != null && item is Map)
-            .map((item) => DashboardGalleryAlbum.fromJson(Map<String, dynamic>.from(item)))
+            .map(
+              (item) => DashboardGalleryAlbum.fromJson(
+                Map<String, dynamic>.from(item),
+              ),
+            )
             .toList();
       }
     } catch (e) {
@@ -826,7 +830,11 @@ class ApiSchoolRepository implements SchoolRepository {
         if (rawAll.isNotEmpty) {
           return rawAll
               .where((item) => item != null && item is Map)
-              .map((item) => DashboardGalleryAlbum.fromJson(Map<String, dynamic>.from(item)))
+              .map(
+                (item) => DashboardGalleryAlbum.fromJson(
+                  Map<String, dynamic>.from(item),
+                ),
+              )
               .toList();
         }
       } catch (e2) {
@@ -849,7 +857,10 @@ class ApiSchoolRepository implements SchoolRepository {
       if (rawList.isNotEmpty) {
         return rawList
             .where((item) => item != null && item is Map)
-            .map((item) => CertificateModel.fromJson(Map<String, dynamic>.from(item)))
+            .map(
+              (item) =>
+                  CertificateModel.fromJson(Map<String, dynamic>.from(item)),
+            )
             .toList();
       }
     } catch (e) {
@@ -1199,7 +1210,7 @@ class ApiSchoolRepository implements SchoolRepository {
       if (kDebugMode) {
         print('❌ Error fetching student assignments: $e');
       }
-      return [];
+      rethrow;
     }
   }
 

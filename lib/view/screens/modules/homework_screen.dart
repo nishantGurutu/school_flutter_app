@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
@@ -19,17 +20,22 @@ class HomeworkScreen extends StatefulWidget {
 }
 
 class _HomeworkScreenState extends State<HomeworkScreen>
-    with SingleTickerProviderStateMixin {
+    with SingleTickerProviderStateMixin, WidgetsBindingObserver {
   final ApiSchoolRepository _repository = ApiSchoolRepository();
   late TabController _tabController;
   List<HomeworkItem> _homeworkList = [];
   bool _isLoading = true;
   bool _hasCheckedArgs = false;
+  bool _fetching = false;
+  String? _loadError;
+  Timer? _refreshTimer;
 
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
+    WidgetsBinding.instance.addObserver(this);
+    _startRefresh();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _loadData();
     });
@@ -56,36 +62,59 @@ class _HomeworkScreenState extends State<HomeworkScreen>
 
   @override
   void dispose() {
+    _refreshTimer?.cancel();
+    WidgetsBinding.instance.removeObserver(this);
     _tabController.dispose();
     super.dispose();
   }
 
-  Future<void> _loadData() async {
-    setState(() => _isLoading = true);
-    final authState = context.read<AuthBloc>().state;
-    final currentUser = authState.user;
+  void _startRefresh() {
+    _refreshTimer?.cancel();
+    _refreshTimer = Timer.periodic(const Duration(seconds: 15), (_) {
+      if (ModalRoute.of(context)?.isCurrent != false) _loadData(silent: true);
+    });
+  }
 
-    List<HomeworkItem> list = [];
-    if (currentUser?.role == UserRole.teacher) {
-      list = await _repository.getTeacherAssignments();
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      _loadData(silent: true);
+      _startRefresh();
     } else {
-      String? childAdm = (currentUser?.role == UserRole.parent)
-          ? currentUser?.admissionNo
-          : null;
-      list = await _repository.getStudentAssignments(admissionNo: childAdm);
-      if (list.isEmpty) {
-        list = await _repository.getHomework(
-          currentUser?.id ?? '1',
-          className: currentUser?.className,
-        );
-      }
+      _refreshTimer?.cancel();
     }
+  }
 
-    if (mounted) {
-      setState(() {
-        _homeworkList = list;
-        _isLoading = false;
-      });
+  Future<void> _loadData({bool silent = false}) async {
+    if (!mounted || _fetching) return;
+    _fetching = true;
+    if (!silent) setState(() => _isLoading = true);
+    try {
+      final currentUser = context.read<AuthBloc>().state.user;
+      if (currentUser == null) {
+        throw StateError('Please sign in to view assignments.');
+      }
+      final list = currentUser.role == UserRole.teacher
+          ? await _repository.getTeacherAssignments()
+          : await _repository.getStudentAssignments(
+              admissionNo: currentUser.admissionNo,
+            );
+      if (mounted) {
+        setState(() {
+          _homeworkList = list;
+          _loadError = null;
+          _isLoading = false;
+        });
+      }
+    } catch (error) {
+      if (mounted) {
+        setState(() {
+          _loadError = error.toString();
+          _isLoading = false;
+        });
+      }
+    } finally {
+      _fetching = false;
     }
   }
 
@@ -374,8 +403,9 @@ class _HomeworkScreenState extends State<HomeworkScreen>
                             onChanged: (val) {
                               if (val != null) {
                                 setSheetState(() => selectedClass = val);
-                                if (isTargeted)
+                                if (isTargeted) {
                                   fetchClassStudents(val, selectedSection);
+                                }
                               }
                             },
                           ),
@@ -403,8 +433,9 @@ class _HomeworkScreenState extends State<HomeworkScreen>
                             onChanged: (val) {
                               if (val != null) {
                                 setSheetState(() => selectedSection = val);
-                                if (isTargeted)
+                                if (isTargeted) {
                                   fetchClassStudents(selectedClass, val);
+                                }
                               }
                             },
                           ),
@@ -733,6 +764,28 @@ class _HomeworkScreenState extends State<HomeworkScreen>
           : null,
       body: _isLoading
           ? const SmoothSkeletonCardList(count: 3)
+          : _loadError != null
+          ? Center(
+              child: Padding(
+                padding: const EdgeInsets.all(24),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(Icons.cloud_off, size: 48),
+                    const SizedBox(height: 12),
+                    const Text('Unable to load assignments'),
+                    const SizedBox(height: 8),
+                    Text(_loadError!, textAlign: TextAlign.center),
+                    const SizedBox(height: 16),
+                    OutlinedButton.icon(
+                      onPressed: _loadData,
+                      icon: const Icon(Icons.refresh),
+                      label: const Text('Retry'),
+                    ),
+                  ],
+                ),
+              ),
+            )
           : TabBarView(
               controller: _tabController,
               children: [
@@ -1201,8 +1254,9 @@ class _SubmissionsReviewSheetState extends State<_SubmissionsReviewSheet> {
                           )
                           .toList(),
                       onChanged: (val) {
-                        if (val != null)
+                        if (val != null) {
                           setDialogState(() => chosenStatus = val);
+                        }
                       },
                     ),
                     10.h.height,
@@ -1315,10 +1369,12 @@ class _SubmissionsReviewSheetState extends State<_SubmissionsReviewSheet> {
                 itemBuilder: (context, i) {
                   final sub = _submissions[i];
                   Color statusColor = AppColors.textMuted;
-                  if (sub.status == 'SUBMITTED')
+                  if (sub.status == 'SUBMITTED') {
                     statusColor = const Color(0xFF0284C7);
-                  if (sub.status == 'ACCEPTED' || sub.status == 'GRADED')
+                  }
+                  if (sub.status == 'ACCEPTED' || sub.status == 'GRADED') {
                     statusColor = AppColors.success;
+                  }
                   if (sub.status == 'REJECTED') statusColor = AppColors.error;
 
                   return Container(

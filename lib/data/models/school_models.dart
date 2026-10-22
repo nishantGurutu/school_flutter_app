@@ -1,4 +1,3 @@
-
 // Attendance
 enum AttendanceStatus { present, absent, holiday, late }
 
@@ -43,7 +42,9 @@ class AttendanceRecord {
     return AttendanceRecord(
       id: (json['id'] ?? '').toString(),
       userId: json['userId'] ?? json['user_id'],
-      date: DateTime.tryParse(json['date'] ?? json['attendanceDate'] ?? '') ?? DateTime.now(),
+      date:
+          DateTime.tryParse(json['date'] ?? json['attendanceDate'] ?? '') ??
+          DateTime.now(),
       status: stat,
       notes: json['notes'] ?? json['note'],
       name: json['name'],
@@ -61,7 +62,8 @@ class AttendanceRecord {
     return {
       'id': id,
       'userId': userId,
-      'date': '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}',
+      'date':
+          '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}',
       'status': status.name,
       'notes': notes,
       'name': name,
@@ -126,9 +128,15 @@ class ClassAttendanceStat {
   factory ClassAttendanceStat.fromJson(Map<String, dynamic> json) {
     return ClassAttendanceStat(
       className: json['className'] ?? 'Class',
-      total: (json['total'] ?? 0) is int ? json['total'] : int.tryParse(json['total'].toString()) ?? 0,
-      present: (json['present'] ?? 0) is int ? json['present'] : int.tryParse(json['present'].toString()) ?? 0,
-      absent: (json['absent'] ?? 0) is int ? json['absent'] : int.tryParse(json['absent'].toString()) ?? 0,
+      total: (json['total'] ?? 0) is int
+          ? json['total']
+          : int.tryParse(json['total'].toString()) ?? 0,
+      present: (json['present'] ?? 0) is int
+          ? json['present']
+          : int.tryParse(json['present'].toString()) ?? 0,
+      absent: (json['absent'] ?? 0) is int
+          ? json['absent']
+          : int.tryParse(json['absent'].toString()) ?? 0,
       percentage: (json['percentage'] ?? 0.0).toDouble(),
     );
   }
@@ -178,18 +186,48 @@ class AttendanceStats {
   }
 
   factory AttendanceStats.fromJson(Map<String, dynamic> json) {
-    final list = json['classBreakdown'] is List ? (json['classBreakdown'] as List) : [];
+    final list = json['classBreakdown'] is List
+        ? (json['classBreakdown'] as List)
+        : [];
     return AttendanceStats(
-      totalStudents: (json['totalStudents'] ?? 0) is int ? json['totalStudents'] : int.tryParse(json['totalStudents'].toString()) ?? 0,
-      presentStudents: (json['presentStudents'] ?? 0) is int ? json['presentStudents'] : int.tryParse(json['presentStudents'].toString()) ?? 0,
-      absentStudents: (json['absentStudents'] ?? 0) is int ? json['absentStudents'] : int.tryParse(json['absentStudents'].toString()) ?? 0,
-      studentPercentage: ((json['studentPercentage'] ?? 0.0) is num ? json['studentPercentage'] : double.tryParse(json['studentPercentage'].toString()) ?? 0.0).toDouble(),
-      totalStaff: (json['totalStaff'] ?? 0) is int ? json['totalStaff'] : int.tryParse(json['totalStaff'].toString()) ?? 0,
-      presentStaff: (json['presentStaff'] ?? 0) is int ? json['presentStaff'] : int.tryParse(json['presentStaff'].toString()) ?? 0,
-      absentStaff: (json['absentStaff'] ?? 0) is int ? json['absentStaff'] : int.tryParse(json['absentStaff'].toString()) ?? 0,
-      staffPercentage: ((json['staffPercentage'] ?? 0.0) is num ? json['staffPercentage'] : double.tryParse(json['staffPercentage'].toString()) ?? 0.0).toDouble(),
-      overallPercentage: ((json['overallPercentage'] ?? 0.0) is num ? json['overallPercentage'] : double.tryParse(json['overallPercentage'].toString()) ?? 0.0).toDouble(),
-      classBreakdown: list.map((item) => ClassAttendanceStat.fromJson(item)).toList(),
+      totalStudents: (json['totalStudents'] ?? 0) is int
+          ? json['totalStudents']
+          : int.tryParse(json['totalStudents'].toString()) ?? 0,
+      presentStudents: (json['presentStudents'] ?? 0) is int
+          ? json['presentStudents']
+          : int.tryParse(json['presentStudents'].toString()) ?? 0,
+      absentStudents: (json['absentStudents'] ?? 0) is int
+          ? json['absentStudents']
+          : int.tryParse(json['absentStudents'].toString()) ?? 0,
+      studentPercentage:
+          ((json['studentPercentage'] ?? 0.0) is num
+                  ? json['studentPercentage']
+                  : double.tryParse(json['studentPercentage'].toString()) ??
+                        0.0)
+              .toDouble(),
+      totalStaff: (json['totalStaff'] ?? 0) is int
+          ? json['totalStaff']
+          : int.tryParse(json['totalStaff'].toString()) ?? 0,
+      presentStaff: (json['presentStaff'] ?? 0) is int
+          ? json['presentStaff']
+          : int.tryParse(json['presentStaff'].toString()) ?? 0,
+      absentStaff: (json['absentStaff'] ?? 0) is int
+          ? json['absentStaff']
+          : int.tryParse(json['absentStaff'].toString()) ?? 0,
+      staffPercentage:
+          ((json['staffPercentage'] ?? 0.0) is num
+                  ? json['staffPercentage']
+                  : double.tryParse(json['staffPercentage'].toString()) ?? 0.0)
+              .toDouble(),
+      overallPercentage:
+          ((json['overallPercentage'] ?? 0.0) is num
+                  ? json['overallPercentage']
+                  : double.tryParse(json['overallPercentage'].toString()) ??
+                        0.0)
+              .toDouble(),
+      classBreakdown: list
+          .map((item) => ClassAttendanceStat.fromJson(item))
+          .toList(),
       date: json['date'] ?? 'Today',
     );
   }
@@ -257,7 +295,10 @@ class HomeworkItem {
 
   factory HomeworkItem.fromJson(Map<String, dynamic> json) {
     HomeworkStatus stat = HomeworkStatus.pending;
-    final rawStatus = (json['status'] ?? json['submissionStatus'] ?? 'pending').toString().toLowerCase();
+    final rawStatus = (json['submissionStatus'] ?? json['status'] ?? 'pending')
+        .toString()
+        .trim()
+        .toLowerCase();
     if (rawStatus == 'submitted') {
       stat = HomeworkStatus.submitted;
     } else if (rawStatus == 'overdue') {
@@ -272,14 +313,18 @@ class HomeworkItem {
 
     final pts = (json['points'] ?? json['maxPoints'] ?? 100) is int
         ? (json['points'] ?? json['maxPoints'] ?? 100) as int
-        : int.tryParse((json['points'] ?? json['maxPoints'] ?? 100).toString()) ?? 100;
+        : int.tryParse(
+                (json['points'] ?? json['maxPoints'] ?? 100).toString(),
+              ) ??
+              100;
 
     return HomeworkItem(
       id: (json['id'] ?? json['dbId'] ?? '').toString(),
       subject: json['subject'] ?? 'Subject',
       title: json['title'] ?? 'Assignment',
       description: json['description'] ?? '',
-      dueDate: DateTime.tryParse(json['dueDate'] ?? json['due_date'] ?? '') ??
+      dueDate:
+          DateTime.tryParse(json['dueDate'] ?? json['due_date'] ?? '') ??
           DateTime.now().add(const Duration(days: 3)),
       status: stat,
       className: json['className'] ?? json['class_name'] ?? 'Class',
@@ -291,20 +336,17 @@ class HomeworkItem {
       targetStudentId: json['targetStudentId'],
       targetStudentName: json['targetStudentName'],
       targetStudentAdmissionNo: json['targetStudentAdmissionNo'],
-      isPersonalized: json['isPersonalized'] == true ||
+      isPersonalized:
+          json['isPersonalized'] == true ||
           json['isTargetedToStudent'] == true ||
           json['targetStudentId'] != null,
       fileAttachmentUrl: json['fileAttachmentUrl'],
-      submissionCount: (json['submissionCount'] ?? 0) is int
-          ? json['submissionCount']
-          : int.tryParse(json['submissionCount'].toString()) ?? 0,
-      evaluatedCount: (json['evaluatedCount'] ?? 0) is int
-          ? json['evaluatedCount']
-          : int.tryParse(json['evaluatedCount'].toString()) ?? 0,
-      totalStudents: (json['totalStudents'] ?? 0) is int
-          ? json['totalStudents']
-          : int.tryParse(json['totalStudents'].toString()) ?? 0,
-      submissionStatus: json['submissionStatus'] ?? rawStatus,
+      submissionCount:
+          int.tryParse((json['submissionCount'] ?? 0).toString()) ?? 0,
+      evaluatedCount:
+          int.tryParse((json['evaluatedCount'] ?? 0).toString()) ?? 0,
+      totalStudents: int.tryParse((json['totalStudents'] ?? 0).toString()) ?? 0,
+      submissionStatus: stat.name,
       scoredPoints: json['scoredPoints'] != null
           ? int.tryParse(json['scoredPoints'].toString())
           : null,
@@ -358,7 +400,8 @@ class HomeworkItem {
       maxPoints: maxPoints ?? this.maxPoints,
       targetStudentId: targetStudentId ?? this.targetStudentId,
       targetStudentName: targetStudentName ?? this.targetStudentName,
-      targetStudentAdmissionNo: targetStudentAdmissionNo ?? this.targetStudentAdmissionNo,
+      targetStudentAdmissionNo:
+          targetStudentAdmissionNo ?? this.targetStudentAdmissionNo,
       isPersonalized: isPersonalized ?? this.isPersonalized,
       fileAttachmentUrl: fileAttachmentUrl ?? this.fileAttachmentUrl,
       submissionCount: submissionCount ?? this.submissionCount,
@@ -419,8 +462,12 @@ class AssignmentSubmissionItem {
       submissionText: json['submissionText']?.toString(),
       fileUrl: json['fileUrl']?.toString(),
       status: (json['status'] ?? 'PENDING').toString().toUpperCase(),
-      points: json['points'] != null ? int.tryParse(json['points'].toString()) : null,
-      maxPoints: json['maxPoints'] != null ? int.tryParse(json['maxPoints'].toString()) ?? 100 : 100,
+      points: json['points'] != null
+          ? int.tryParse(json['points'].toString())
+          : null,
+      maxPoints: json['maxPoints'] != null
+          ? int.tryParse(json['maxPoints'].toString()) ?? 100
+          : 100,
       teacherFeedback: json['teacherFeedback']?.toString(),
       reviewedAt: json['reviewedAt']?.toString(),
     );
@@ -577,7 +624,8 @@ class TeacherLessonModel {
       id: json['id'],
       chapterNumber: json['chapterNumber'] ?? 'Chapter 1',
       chapterTitle: json['chapterTitle'] ?? 'Lesson',
-      title: json['title'] ??
+      title:
+          json['title'] ??
           ('${json['chapterNumber'] ?? ''}: ${json['chapterTitle'] ?? ''}'),
       description: json['description'] ?? '',
       className: json['className'] ?? '',
@@ -588,7 +636,7 @@ class TeacherLessonModel {
     );
   }
 }
- 
+
 enum FeeStatus { unpaid, paid }
 
 class FeeRecord {
@@ -634,7 +682,7 @@ class FeeRecord {
 // Timetable
 class TimetableSlot {
   final String id;
-  final String dayOfWeek; 
+  final String dayOfWeek;
   final String subject;
   final String startTime;
   final String endTime;
@@ -740,6 +788,7 @@ class ExamItem {
 
 // Expense
 enum ExpenseStatus { pending, approved, rejected }
+
 enum ExpenseCategory { maintenance, supplies, transport, utilities, other }
 
 class ExpenseItem {
