@@ -33,6 +33,7 @@ abstract class SchoolRepository {
   Future<List<LeaveRecord>> approveLeave(String userId, String leaveId);
   Future<List<LeaveRecord>> rejectLeave(String userId, String leaveId);
   Future<List<NoticeItem>> getNotices();
+  Future<List<DashboardGalleryAlbum>> getGalleryAlbums();
   
   Future<List<ChatChannel>> getChatChannels(String userId);
   Future<List<ChatChannel>> sendMessage(String userId, String channelId, String text);

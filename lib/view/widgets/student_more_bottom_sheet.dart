@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import '../../core/routes/routes_name.dart';
 import '../../core/theme/app_colors.dart';
 import '../../data/models/user_model.dart';
 import '../../core/extensions/context_extensions.dart';
+import '../../logic/school/school_bloc.dart';
 
 class MoreMenuItem {
   final String label;
@@ -18,6 +20,7 @@ class MoreMenuItem {
 }
 
 class StudentMoreBottomSheet extends StatelessWidget {
+  final BuildContext? parentContext;
   final UserModel? user;
   final String? overrideName;
   final String? overrideClass;
@@ -26,6 +29,7 @@ class StudentMoreBottomSheet extends StatelessWidget {
 
   const StudentMoreBottomSheet({
     super.key,
+    this.parentContext,
     this.user,
     this.overrideName,
     this.overrideClass,
@@ -46,6 +50,7 @@ class StudentMoreBottomSheet extends StatelessWidget {
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (ctx) => StudentMoreBottomSheet(
+        parentContext: context,
         user: user,
         overrideName: overrideName,
         overrideClass: overrideClass,
@@ -294,6 +299,7 @@ class StudentMoreBottomSheet extends StatelessWidget {
   }
 
   List<MoreMenuItem> _buildMenuItems(BuildContext context) {
+    final targetCtx = parentContext ?? context;
     return [
       // 1. Attendance
       MoreMenuItem(
@@ -301,7 +307,7 @@ class StudentMoreBottomSheet extends StatelessWidget {
         icon: Icons.fact_check_outlined,
         onTap: () {
           Navigator.pop(context);
-          Navigator.pushNamed(context, RoutesName.attendance);
+          Navigator.pushNamed(targetCtx, RoutesName.attendance);
         },
       ),
 
@@ -311,7 +317,7 @@ class StudentMoreBottomSheet extends StatelessWidget {
         icon: Icons.calendar_month_outlined,
         onTap: () {
           Navigator.pop(context);
-          Navigator.pushNamed(context, RoutesName.timetable);
+          Navigator.pushNamed(targetCtx, RoutesName.timetable);
         },
       ),
 
@@ -321,7 +327,7 @@ class StudentMoreBottomSheet extends StatelessWidget {
         icon: Icons.co_present_outlined,
         onTap: () {
           Navigator.pop(context);
-          Navigator.pushNamed(context, RoutesName.notice);
+          Navigator.pushNamed(targetCtx, RoutesName.notice);
         },
       ),
 
@@ -331,7 +337,7 @@ class StudentMoreBottomSheet extends StatelessWidget {
         icon: Icons.assignment_outlined,
         onTap: () {
           Navigator.pop(context);
-          Navigator.pushNamed(context, RoutesName.exam);
+          Navigator.pushNamed(targetCtx, RoutesName.exam);
         },
       ),
 
@@ -341,7 +347,7 @@ class StudentMoreBottomSheet extends StatelessWidget {
         icon: Icons.military_tech_outlined,
         onTap: () {
           Navigator.pop(context);
-          Navigator.pushNamed(context, RoutesName.exam, arguments: 1);
+          Navigator.pushNamed(targetCtx, RoutesName.exam, arguments: 1);
         },
       ),
 
@@ -351,7 +357,7 @@ class StudentMoreBottomSheet extends StatelessWidget {
         icon: Icons.description_outlined,
         onTap: () {
           Navigator.pop(context);
-          _showReportCardDialog(context);
+          _showReportCardDialog(targetCtx);
         },
       ),
 
@@ -361,7 +367,7 @@ class StudentMoreBottomSheet extends StatelessWidget {
         icon: Icons.family_restroom_rounded,
         onTap: () {
           Navigator.pop(context);
-          _showGuardianDialog(context);
+          _showGuardianDialog(targetCtx);
         },
       ),
 
@@ -371,17 +377,17 @@ class StudentMoreBottomSheet extends StatelessWidget {
         icon: Icons.beach_access_rounded,
         onTap: () {
           Navigator.pop(context);
-          _showHolidaysDialog(context);
+          _showHolidaysDialog(targetCtx);
         },
       ),
 
-      // 9. Gallery
+      // 9. Gallery -> Opens dynamic GalleryScreen from backend API
       MoreMenuItem(
         label: 'Gallery',
         icon: Icons.photo_library_outlined,
         onTap: () {
           Navigator.pop(context);
-          _showGalleryDialog(context);
+          Navigator.pushNamed(targetCtx, RoutesName.gallery);
         },
       ),
 
@@ -391,7 +397,7 @@ class StudentMoreBottomSheet extends StatelessWidget {
         icon: Icons.menu_book_rounded,
         onTap: () {
           Navigator.pop(context);
-          Navigator.pushNamed(context, RoutesName.homework);
+          Navigator.pushNamed(targetCtx, RoutesName.homework);
         },
       ),
 
@@ -401,7 +407,7 @@ class StudentMoreBottomSheet extends StatelessWidget {
         icon: Icons.directions_bus_rounded,
         onTap: () {
           Navigator.pop(context);
-          Navigator.pushNamed(context, RoutesName.studentTransport);
+          Navigator.pushNamed(targetCtx, RoutesName.studentTransport);
         },
       ),
 
@@ -411,7 +417,7 @@ class StudentMoreBottomSheet extends StatelessWidget {
         icon: Icons.workspace_premium_outlined,
         onTap: () {
           Navigator.pop(context);
-          _showCertificatesDialog(context);
+          _showCertificatesDialog(targetCtx);
         },
       ),
 
@@ -421,7 +427,7 @@ class StudentMoreBottomSheet extends StatelessWidget {
         icon: Icons.school_outlined,
         onTap: () {
           Navigator.pop(context);
-          _showTeachersDialog(context);
+          _showTeachersDialog(targetCtx);
         },
       ),
 
@@ -431,7 +437,7 @@ class StudentMoreBottomSheet extends StatelessWidget {
         icon: Icons.settings_outlined,
         onTap: () {
           Navigator.pop(context);
-          _showSettingsDialog(context);
+          _showSettingsDialog(targetCtx);
         },
       ),
     ];
@@ -597,13 +603,27 @@ class StudentMoreBottomSheet extends StatelessWidget {
   }
 
   static void _showHolidaysDialog(BuildContext context) {
-    final holidays = [
-      {'name': 'Diwali & New Year Vacation', 'date': '24 Oct - 28 Oct 2026', 'days': '5 Days'},
-      {'name': 'Guru Nanak Jayanti', 'date': '15 Nov 2026', 'days': '1 Day'},
-      {'name': 'Winter Holiday Break', 'date': '24 Dec - 02 Jan 2027', 'days': '10 Days'},
-      {'name': 'Republic Day', 'date': '26 Jan 2027', 'days': '1 Day'},
-      {'name': 'Holi Spring Festival', 'date': '18 Mar 2027', 'days': '1 Day'},
-    ];
+    List<Map<String, String>> holidays = [];
+    try {
+      final stateHolidays = context.read<SchoolBloc>().state.holidays;
+      if (stateHolidays.isNotEmpty) {
+        holidays = stateHolidays.map((h) => {
+          'name': h.title,
+          'date': h.endDate != null && h.endDate!.isNotEmpty ? '${h.date} - ${h.endDate}' : h.date,
+          'days': h.category ?? 'Holiday',
+        }).toList();
+      }
+    } catch (_) {}
+
+    if (holidays.isEmpty) {
+      holidays = [
+        {'name': 'Diwali & New Year Vacation', 'date': '24 Oct - 28 Oct 2026', 'days': '5 Days'},
+        {'name': 'Guru Nanak Jayanti', 'date': '15 Nov 2026', 'days': '1 Day'},
+        {'name': 'Winter Holiday Break', 'date': '24 Dec - 02 Jan 2027', 'days': '10 Days'},
+        {'name': 'Republic Day', 'date': '26 Jan 2027', 'days': '1 Day'},
+        {'name': 'Holi Spring Festival', 'date': '18 Mar 2027', 'days': '1 Day'},
+      ];
+    }
 
     showDialog(
       context: context,
@@ -859,44 +879,6 @@ class StudentMoreBottomSheet extends StatelessWidget {
         ),
         actions: [
           TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Done')),
-        ],
-      ),
-    );
-  }
-
-  static void _showGalleryDialog(BuildContext context) {
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20.r)),
-        title: Row(
-          children: [
-            const Icon(Icons.photo_library_outlined, color: AppColors.info),
-            8.w.horizontalSpace,
-            const Text('School Photo Gallery'),
-          ],
-        ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            ClipRRect(
-              borderRadius: BorderRadius.circular(12.r),
-              child: Image.network(
-                'https://images.unsplash.com/photo-1577896851231-70ef18881754?w=500&auto=format&fit=crop&q=80',
-                height: 150.h,
-                width: double.infinity,
-                fit: BoxFit.cover,
-              ),
-            ),
-            10.h.verticalSpace,
-            const Text(
-              'Browse latest captures from Annual Sports Meet, Science Fair & Cultural Festivals in the school gallery archive.',
-              style: TextStyle(fontSize: 12),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Close')),
         ],
       ),
     );

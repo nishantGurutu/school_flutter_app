@@ -18,10 +18,12 @@ import '../../view/screens/modules/classes_screen.dart';
 import '../../view/screens/modules/lesson_screen.dart';
 import '../../view/screens/modules/topics_screen.dart';
 import '../../view/screens/modules/academic_calendar_screen.dart';
+import '../../view/screens/modules/gallery_screen.dart';
 import '../../view/screens/modules/transport/active_trip_screen.dart';
 import '../../view/screens/modules/transport/parent_transport_screen.dart';
 import '../../view/screens/modules/transport/student_transport_screen.dart';
 import '../../data/models/chat_models.dart';
+import '../../data/models/home_dashboard_model.dart';
 
 class Routes {
   static Route<dynamic> generateRoute(RouteSettings settings) {
@@ -84,6 +86,12 @@ class Routes {
 
       case RoutesName.academicCalendar:
         return _slideLeftRoute(const AcademicCalendarScreen());
+
+      case RoutesName.gallery:
+        final albums = settings.arguments is List<DashboardGalleryAlbum>
+            ? settings.arguments as List<DashboardGalleryAlbum>
+            : null;
+        return _slideLeftRoute(GalleryScreen(initialAlbums: albums));
 
       case RoutesName.activeTrip:
         final args = settings.arguments;

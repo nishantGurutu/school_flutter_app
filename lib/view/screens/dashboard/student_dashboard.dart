@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import '../../../core/routes/routes_name.dart';
 import '../../../core/theme/app_colors.dart';
@@ -7,8 +8,11 @@ import '../../../core/extensions/context_extensions.dart';
 import '../../../data/models/user_model.dart';
 import '../../../data/models/home_dashboard_model.dart';
 import '../../../data/repositories/api_school_repository.dart';
+import '../../../logic/school/school_bloc.dart';
+import '../../../logic/school/school_event.dart';
 import '../../widgets/smooth_skeleton.dart';
 import '../../widgets/glass_card.dart';
+import '../../widgets/attendance_check_in_banner.dart';
 import '../../widgets/student_more_bottom_sheet.dart';
 import '../modules/subject_curriculum_screen.dart';
 import '../modules/topics_screen.dart';
@@ -49,6 +53,17 @@ class _StudentDashboardState extends State<StudentDashboard> {
   void initState() {
     super.initState();
     _fetchHomeData();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        final u = widget.user;
+        context.read<SchoolBloc>().add(
+          FetchAttendanceRequested(
+            userId: u?.id ?? '1',
+            className: u?.className,
+          ),
+        );
+      }
+    });
   }
 
   @override
@@ -60,6 +75,15 @@ class _StudentDashboardState extends State<StudentDashboard> {
 
   Future<void> _fetchHomeData() async {
     setState(() => _isLoading = true);
+    final u = widget.user;
+    if (mounted) {
+      context.read<SchoolBloc>().add(
+        FetchAttendanceRequested(
+          userId: u?.id ?? '1',
+          className: u?.className,
+        ),
+      );
+    }
     final data = await _repository.getHomeDashboard(
       admissionNo: widget.studentAdmissionNo,
     );
@@ -263,7 +287,25 @@ class _StudentDashboardState extends State<StudentDashboard> {
                   ),
                   18.h.height,
 
-                  // 2. Promotional Banners Slider
+                  // 2. Daily Student Attendance Check-In Banner
+                  Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 20.w),
+                    child: AttendanceCheckInBanner(
+                      user: widget.user ??
+                          UserModel(
+                            id: '1',
+                            name: displayName,
+                            email: 'student@school.com',
+                            role: UserRole.student,
+                            className: displayClass,
+                            avatarUrl: displayAvatar,
+                            details: '$displayClass | Roll: $displayRoll',
+                          ),
+                    ),
+                  ),
+                  20.h.height,
+
+                  // 3. Promotional Banners Slider
                   if (config.showBanners &&
                       (data?.banners.isNotEmpty ?? false)) ...[
                     Padding(
@@ -357,8 +399,10 @@ class _StudentDashboardState extends State<StudentDashboard> {
                             ),
                           ),
                           GestureDetector(
-                            onTap: () => context.showAppSnackBar(
-                              'Opening School Photo Gallery...',
+                            onTap: () => Navigator.pushNamed(
+                              context,
+                              RoutesName.gallery,
+                              arguments: data!.gallery,
                             ),
                             child: Text(
                               'View all',
@@ -996,8 +1040,10 @@ class _StudentDashboardState extends State<StudentDashboard> {
         itemBuilder: (context, index) {
           final album = albums[index];
           return GestureDetector(
-            onTap: () => context.showAppSnackBar(
-              'Opening ${album.title} album (${album.photoCount} photos)...',
+            onTap: () => Navigator.pushNamed(
+              context,
+              RoutesName.gallery,
+              arguments: albums,
             ),
             child: SizedBox(
               width: 140.w,

@@ -251,12 +251,18 @@ class DashboardGalleryAlbum {
   final String title;
   final int photoCount;
   final String coverImage;
+  final String description;
+  final String status;
+  final int displayOrder;
 
   DashboardGalleryAlbum({
     required this.id,
     required this.title,
     this.photoCount = 0,
     required this.coverImage,
+    this.description = '',
+    this.status = 'Active',
+    this.displayOrder = 0,
   });
 
   factory DashboardGalleryAlbum.fromJson(Map<String, dynamic> json) {
@@ -265,6 +271,9 @@ class DashboardGalleryAlbum {
       title: json['title']?.toString() ?? '',
       photoCount: int.tryParse(json['photoCount']?.toString() ?? '0') ?? 0,
       coverImage: json['coverImage']?.toString() ?? '',
+      description: json['description']?.toString() ?? '',
+      status: json['status']?.toString() ?? 'Active',
+      displayOrder: int.tryParse(json['displayOrder']?.toString() ?? '0') ?? 0,
     );
   }
 }

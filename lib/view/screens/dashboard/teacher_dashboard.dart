@@ -420,8 +420,10 @@ class _TeacherDashboardState extends State<TeacherDashboard> {
                               ),
                             ),
                             GestureDetector(
-                              onTap: () => context.showAppSnackBar(
-                                'Opening School Photo Gallery...',
+                              onTap: () => Navigator.pushNamed(
+                                context,
+                                RoutesName.gallery,
+                                arguments: gallery,
                               ),
                               child: Text(
                                 'View all',
@@ -979,8 +981,10 @@ class _TeacherDashboardState extends State<TeacherDashboard> {
         itemBuilder: (context, index) {
           final album = albums[index];
           return GestureDetector(
-            onTap: () => context.showAppSnackBar(
-              'Opening ${album.title} album (${album.photoCount} photos)...',
+            onTap: () => Navigator.pushNamed(
+              context,
+              RoutesName.gallery,
+              arguments: albums,
             ),
             child: SizedBox(
               width: 140.w,

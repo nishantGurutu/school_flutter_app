@@ -38,6 +38,10 @@ class AppUrl {
   static String homeDashboardWithStudent(String admissionNo) =>
       '$baseUrl/mobile/dashboard/home?admissionNo=${Uri.encodeComponent(admissionNo)}';
 
+  // School Photo Gallery Endpoints (Dynamic from Admin Dashboard)
+  static const String gallery = '$baseUrl/gallery';
+  static const String activeGallery = '$baseUrl/gallery/active';
+
   // Curriculum & Study Notes
   static String subjectCurriculum(String subjectId) =>
       '$baseUrl/mobile/subjects/$subjectId/curriculum';

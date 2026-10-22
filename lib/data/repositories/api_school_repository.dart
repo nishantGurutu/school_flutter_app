@@ -805,6 +805,39 @@ class ApiSchoolRepository implements SchoolRepository {
   }
 
   @override
+  Future<List<DashboardGalleryAlbum>> getGalleryAlbums() async {
+    try {
+      final res = await _apiService.getApi(AppUrl.activeGallery);
+      final rawList = _extractList(res);
+      if (rawList.isNotEmpty) {
+        return rawList
+            .where((item) => item != null && item is Map)
+            .map((item) => DashboardGalleryAlbum.fromJson(Map<String, dynamic>.from(item)))
+            .toList();
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        print('❌ Error fetching active gallery albums from API: $e');
+      }
+      try {
+        final resAll = await _apiService.getApi(AppUrl.gallery);
+        final rawAll = _extractList(resAll);
+        if (rawAll.isNotEmpty) {
+          return rawAll
+              .where((item) => item != null && item is Map)
+              .map((item) => DashboardGalleryAlbum.fromJson(Map<String, dynamic>.from(item)))
+              .toList();
+        }
+      } catch (e2) {
+        if (kDebugMode) {
+          print('❌ Error fetching all gallery albums from API: $e2');
+        }
+      }
+    }
+    return [];
+  }
+
+  @override
   Future<List<ChatChannel>> getChatChannels(String userId) async {
     return [];
   }
