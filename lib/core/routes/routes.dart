@@ -1,4 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import '../../logic/auth/auth_bloc.dart';
+import '../../data/models/user_model.dart';
+import '../../view/screens/modules/student_subjects_screen.dart';
 import 'routes_name.dart';
 import '../../view/screens/splash_screen.dart';
 import '../../view/screens/login_screen.dart';
@@ -82,7 +86,14 @@ class Routes {
         return _slideLeftRoute(const LessonScreen());
 
       case RoutesName.topics:
-        return _slideLeftRoute(const TopicsScreen());
+        return _slideLeftRoute(
+          Builder(
+            builder: (context) =>
+                context.read<AuthBloc>().state.user?.role == UserRole.student
+                ? const StudentSubjectsScreen()
+                : const TopicsScreen(),
+          ),
+        );
 
       case RoutesName.academicCalendar:
         return _slideLeftRoute(const AcademicCalendarScreen());

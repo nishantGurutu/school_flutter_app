@@ -4,6 +4,13 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../../data/models/curriculum_model.dart';
 import '../../../data/repositories/api_school_repository.dart';
 import '../../../utils/app_url.dart';
+import '../../widgets/study_note_pdf_preview.dart';
+
+bool isPdfStudyNote(StudyNoteModel note) =>
+    note.fileType.toUpperCase() == 'PDF' ||
+    (note.fileName?.toLowerCase().endsWith('.pdf') ?? false) ||
+    (Uri.tryParse(note.fileUrl ?? '')?.path.toLowerCase().endsWith('.pdf') ??
+        false);
 
 Uri? resolveNoteUrl(String? value) {
   if (value == null || value.trim().isEmpty) return null;
@@ -220,7 +227,13 @@ class _TopicNotesScreenState extends State<TopicNotesScreen> {
                                         ),
                                       ),
                                       icon: const Icon(Icons.menu_book),
-                                      label: const Text('Read notes'),
+                                      label: Text(
+                                        isPdfStudyNote(note) &&
+                                                resolveNoteUrl(note.fileUrl) !=
+                                                    null
+                                            ? 'View PDF'
+                                            : 'Read notes',
+                                      ),
                                     ),
                                   if (note.isDownloadable &&
                                       resolveNoteUrl(note.fileUrl) != null)
@@ -338,6 +351,14 @@ class _InAppNoteReaderScreenState extends State<InAppNoteReaderScreen> {
                   style: TextStyle(color: foreground),
                 ),
               ),
+            if (isPdfStudyNote(note) && attachment != null) ...[
+              const SizedBox(height: 16),
+              StudyNotePdfPreview(
+                uri: attachment,
+                fileName: note.fileName ?? 'Study-notes.pdf',
+                allowDownload: note.isDownloadable,
+              ),
+            ],
             if (attachment != null)
               Padding(
                 padding: const EdgeInsets.symmetric(vertical: 20),

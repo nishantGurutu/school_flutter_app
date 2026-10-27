@@ -15,7 +15,7 @@ import '../../widgets/glass_card.dart';
 import '../../widgets/attendance_check_in_banner.dart';
 import '../../widgets/student_more_bottom_sheet.dart';
 import '../modules/subject_curriculum_screen.dart';
-import '../modules/topics_screen.dart';
+import '../modules/student_subjects_screen.dart';
 
 class StudentDashboard extends StatefulWidget {
   final UserModel? user;
@@ -1152,7 +1152,11 @@ class _StudentDashboardState extends State<StudentDashboard> {
           GestureDetector(
             onTap: () => Navigator.push(
               context,
-              MaterialPageRoute(builder: (_) => const TopicsScreen()),
+              MaterialPageRoute(
+                builder: (_) => StudentSubjectsScreen(
+                  admissionNo: widget.studentAdmissionNo,
+                ),
+              ),
             ),
             behavior: HitTestBehavior.opaque,
             child: Column(

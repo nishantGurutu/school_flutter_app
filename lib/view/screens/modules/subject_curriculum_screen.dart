@@ -23,7 +23,8 @@ class SubjectCurriculumScreen extends StatefulWidget {
   });
 
   @override
-  State<SubjectCurriculumScreen> createState() => _SubjectCurriculumScreenState();
+  State<SubjectCurriculumScreen> createState() =>
+      _SubjectCurriculumScreenState();
 }
 
 class _SubjectCurriculumScreenState extends State<SubjectCurriculumScreen> {
@@ -42,7 +43,10 @@ class _SubjectCurriculumScreenState extends State<SubjectCurriculumScreen> {
   }
 
   Future<void> _loadCurriculum() async {
-    setState(() { _isLoading = true; _error = null; });
+    setState(() {
+      _isLoading = true;
+      _error = null;
+    });
     try {
       final res = await _repository.getSubjectCurriculum(widget.subjectId);
       if (mounted) {
@@ -59,7 +63,10 @@ class _SubjectCurriculumScreenState extends State<SubjectCurriculumScreen> {
       }
     } catch (e) {
       if (mounted) {
-        setState(() { _isLoading = false; _error = 'Unable to load topics. Please retry.'; });
+        setState(() {
+          _isLoading = false;
+          _error = 'Unable to load topics. Please retry.';
+        });
       }
     }
   }
@@ -75,7 +82,8 @@ class _SubjectCurriculumScreenState extends State<SubjectCurriculumScreen> {
   }
 
   Color _resolveSecondaryColor() {
-    if (widget.secondaryColorHex != null && widget.secondaryColorHex!.startsWith('#')) {
+    if (widget.secondaryColorHex != null &&
+        widget.secondaryColorHex!.startsWith('#')) {
       try {
         final hex = widget.secondaryColorHex!.replaceAll('#', '');
         return Color(int.parse('FF$hex', radix: 16));
@@ -118,7 +126,18 @@ class _SubjectCurriculumScreenState extends State<SubjectCurriculumScreen> {
               ),
             )
           : _error != null
-          ? Center(child: Column(mainAxisSize: MainAxisSize.min, children: [Text(_error!), TextButton(onPressed: _loadCurriculum, child: const Text('Retry'))]))
+          ? Center(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(_error!),
+                  TextButton(
+                    onPressed: _loadCurriculum,
+                    child: const Text('Retry'),
+                  ),
+                ],
+              ),
+            )
           : RefreshIndicator(
               onRefresh: _loadCurriculum,
               child: CustomScrollView(
@@ -130,16 +149,12 @@ class _SubjectCurriculumScreenState extends State<SubjectCurriculumScreen> {
                   ),
 
                   // 2. Search & Stats Filter
-                  SliverToBoxAdapter(
-                    child: _buildSearchAndStats(),
-                  ),
+                  SliverToBoxAdapter(child: _buildSearchAndStats()),
 
                   // 3. Chapters & Topics List
                   _buildChaptersList(primaryColor),
 
-                  SliverToBoxAdapter(
-                    child: SizedBox(height: 40.h),
-                  ),
+                  SliverToBoxAdapter(child: SizedBox(height: 40.h)),
                 ],
               ),
             ),
@@ -147,7 +162,8 @@ class _SubjectCurriculumScreenState extends State<SubjectCurriculumScreen> {
   }
 
   Widget _buildHeroBanner(Color primaryColor, Color secondaryColor) {
-    final totalChapters = _curriculum?.totalChapters ?? _curriculum?.chapters.length ?? 0;
+    final totalChapters =
+        _curriculum?.totalChapters ?? _curriculum?.chapters.length ?? 0;
     final totalTopics = _curriculum?.totalTopics ?? 0;
     final totalNotes = _curriculum?.totalNotes ?? 0;
 
@@ -200,7 +216,11 @@ class _SubjectCurriculumScreenState extends State<SubjectCurriculumScreen> {
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    const Icon(Icons.verified_rounded, color: Colors.white, size: 14),
+                    const Icon(
+                      Icons.verified_rounded,
+                      color: Colors.white,
+                      size: 14,
+                    ),
                     SizedBox(width: 4.w),
                     Text(
                       'Teacher Verified',
@@ -234,7 +254,8 @@ class _SubjectCurriculumScreenState extends State<SubjectCurriculumScreen> {
           ),
           SizedBox(height: 16.h),
           Wrap(
-            spacing: 4, runSpacing: 8,
+            spacing: 4,
+            runSpacing: 8,
             children: [
               _buildStatChip(Icons.layers_rounded, '$totalChapters Chapters'),
               SizedBox(width: 8.w),
@@ -277,14 +298,22 @@ class _SubjectCurriculumScreenState extends State<SubjectCurriculumScreen> {
     return Padding(
       padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 8.h),
       child: TextField(
-        onChanged: (val) => setState(() => _searchQuery = val.trim().toLowerCase()),
+        onChanged: (val) =>
+            setState(() => _searchQuery = val.trim().toLowerCase()),
         decoration: InputDecoration(
           hintText: 'Search chapters or topics...',
           hintStyle: TextStyle(fontSize: 13.sp, color: Colors.grey.shade400),
-          prefixIcon: Icon(Icons.search_rounded, color: Colors.grey.shade400, size: 20.sp),
+          prefixIcon: Icon(
+            Icons.search_rounded,
+            color: Colors.grey.shade400,
+            size: 20.sp,
+          ),
           filled: true,
           fillColor: Colors.white,
-          contentPadding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 12.h),
+          contentPadding: EdgeInsets.symmetric(
+            horizontal: 16.w,
+            vertical: 12.h,
+          ),
           border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(16.r),
             borderSide: BorderSide(color: Colors.grey.shade200),
@@ -306,10 +335,16 @@ class _SubjectCurriculumScreenState extends State<SubjectCurriculumScreen> {
     final rawChapters = _curriculum?.chapters ?? [];
     final filteredChapters = rawChapters.where((ch) {
       if (_searchQuery.isEmpty) return true;
-      final matchChapter = ch.chapterTitle.toLowerCase().contains(_searchQuery) ||
+      final matchChapter =
+          ch.chapterTitle.toLowerCase().contains(_searchQuery) ||
           ch.chapterNumber.toLowerCase().contains(_searchQuery);
-      final matchTopics = ch.topics.any((t) => t.title.toLowerCase().contains(_searchQuery));
-      return matchChapter || matchTopics;
+      final matchTopics = ch.topics.any(
+        (t) => t.title.toLowerCase().contains(_searchQuery),
+      );
+      final matchNotes = ch.notes.any(
+        (note) => note.title.toLowerCase().contains(_searchQuery),
+      );
+      return matchChapter || matchTopics || matchNotes;
     }).toList();
 
     if (filteredChapters.isEmpty) {
@@ -319,16 +354,29 @@ class _SubjectCurriculumScreenState extends State<SubjectCurriculumScreen> {
           child: Center(
             child: Column(
               children: [
-                Icon(Icons.menu_book_outlined, size: 48.sp, color: Colors.grey.shade300),
+                Icon(
+                  Icons.menu_book_outlined,
+                  size: 48.sp,
+                  color: Colors.grey.shade300,
+                ),
                 SizedBox(height: 12.h),
                 Text(
-                  _searchQuery.isEmpty ? 'No topics uploaded yet for this subject' : 'No matching topics found',
-                  style: TextStyle(fontSize: 14.sp, color: Colors.grey.shade600, fontWeight: FontWeight.w600),
+                  _searchQuery.isEmpty
+                      ? 'No topics uploaded yet for this subject'
+                      : 'No matching topics found',
+                  style: TextStyle(
+                    fontSize: 14.sp,
+                    color: Colors.grey.shade600,
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
                 SizedBox(height: 4.h),
                 Text(
                   'Your teacher will add chapters & notes soon.',
-                  style: TextStyle(fontSize: 12.sp, color: Colors.grey.shade400),
+                  style: TextStyle(
+                    fontSize: 12.sp,
+                    color: Colors.grey.shade400,
+                  ),
                 ),
               ],
             ),
@@ -340,60 +388,208 @@ class _SubjectCurriculumScreenState extends State<SubjectCurriculumScreen> {
     return SliverPadding(
       padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 8.h),
       sliver: SliverList(
-        delegate: SliverChildBuilderDelegate(
-          (context, index) {
-            final chapter = filteredChapters[index];
-            final isExpanded = _expandedChapterIds.contains(chapter.chapterId);
-            final topics = chapter.topics.where((t) {
-              if (_searchQuery.isEmpty || chapter.chapterTitle.toLowerCase().contains(_searchQuery) || chapter.chapterNumber.toLowerCase().contains(_searchQuery)) return true;
-              return t.title.toLowerCase().contains(_searchQuery);
-            }).toList();
+        delegate: SliverChildBuilderDelegate((context, index) {
+          final chapter = filteredChapters[index];
+          final isExpanded = _expandedChapterIds.contains(chapter.chapterId);
+          final topics = chapter.topics.where((t) {
+            if (_searchQuery.isEmpty ||
+                chapter.chapterTitle.toLowerCase().contains(_searchQuery) ||
+                chapter.chapterNumber.toLowerCase().contains(_searchQuery)) {
+              return true;
+            }
+            return t.title.toLowerCase().contains(_searchQuery);
+          }).toList();
 
-            return Container(
-              margin: EdgeInsets.only(bottom: 14.h),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(20.r),
-                border: Border.all(color: Colors.grey.shade100),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.02),
-                    blurRadius: 10,
-                    offset: const Offset(0, 4),
+          return Container(
+            margin: EdgeInsets.only(bottom: 14.h),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(20.r),
+              border: Border.all(color: Colors.grey.shade100),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.02),
+                  blurRadius: 10,
+                  offset: const Offset(0, 4),
+                ),
+              ],
+            ),
+            child: Column(
+              children: [
+                // Chapter Header
+                InkWell(
+                  borderRadius: BorderRadius.circular(20.r),
+                  onTap: () {
+                    setState(() {
+                      if (isExpanded) {
+                        _expandedChapterIds.remove(chapter.chapterId);
+                      } else {
+                        _expandedChapterIds.add(chapter.chapterId);
+                      }
+                    });
+                  },
+                  child: Padding(
+                    padding: EdgeInsets.all(16.w),
+                    child: Row(
+                      children: [
+                        Container(
+                          padding: EdgeInsets.symmetric(
+                            horizontal: 10.w,
+                            vertical: 5.h,
+                          ),
+                          decoration: BoxDecoration(
+                            color: primaryColor.withValues(alpha: 0.1),
+                            borderRadius: BorderRadius.circular(10.r),
+                          ),
+                          child: Text(
+                            chapter.chapterNumber,
+                            style: TextStyle(
+                              color: primaryColor,
+                              fontSize: 11.sp,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                        SizedBox(width: 12.w),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                chapter.chapterTitle,
+                                style: TextStyle(
+                                  fontSize: 14.sp,
+                                  fontWeight: FontWeight.bold,
+                                  color: const Color(0xFF1E293B),
+                                ),
+                              ),
+                              if (chapter.description != null &&
+                                  chapter.description!.isNotEmpty)
+                                Text(
+                                  chapter.description!,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: TextStyle(
+                                    fontSize: 11.sp,
+                                    color: Colors.grey.shade500,
+                                  ),
+                                ),
+                            ],
+                          ),
+                        ),
+                        if (chapter.notesCount > 0)
+                          Container(
+                            margin: EdgeInsets.only(right: 6.w),
+                            padding: EdgeInsets.symmetric(
+                              horizontal: 8.w,
+                              vertical: 3.h,
+                            ),
+                            decoration: BoxDecoration(
+                              color: primaryColor.withValues(alpha: 0.12),
+                              borderRadius: BorderRadius.circular(8.r),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(
+                                  Icons.description_rounded,
+                                  size: 11.sp,
+                                  color: primaryColor,
+                                ),
+                                SizedBox(width: 3.w),
+                                Text(
+                                  '${chapter.notesCount} ${chapter.notesCount == 1 ? "Note" : "Notes"}',
+                                  style: TextStyle(
+                                    fontSize: 10.sp,
+                                    color: primaryColor,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        if (topics.isNotEmpty)
+                          Container(
+                            padding: EdgeInsets.symmetric(
+                              horizontal: 8.w,
+                              vertical: 3.h,
+                            ),
+                            decoration: BoxDecoration(
+                              color: Colors.grey.shade100,
+                              borderRadius: BorderRadius.circular(8.r),
+                            ),
+                            child: Text(
+                              '${topics.length} ${topics.length == 1 ? "topic" : "topics"}',
+                              style: TextStyle(
+                                fontSize: 10.sp,
+                                color: Colors.grey.shade600,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                        SizedBox(width: 4.w),
+                        Icon(
+                          isExpanded
+                              ? Icons.keyboard_arrow_up_rounded
+                              : Icons.keyboard_arrow_down_rounded,
+                          color: Colors.grey.shade400,
+                        ),
+                      ],
+                    ),
                   ),
-                ],
-              ),
-              child: Column(
-                children: [
-                  // Chapter Header
+                ),
+
+                // Content inside Chapter: Direct Chapter Notes + Topics
+                if (isExpanded) ...[
+                  Divider(height: 1, color: Colors.grey.shade100),
+
+                  // Direct Chapter Notes Opener ("notes chapter ki hogi")
                   InkWell(
-                    borderRadius: BorderRadius.circular(20.r),
+                    borderRadius: BorderRadius.circular(14.r),
                     onTap: () {
-                      setState(() {
-                        if (isExpanded) {
-                          _expandedChapterIds.remove(chapter.chapterId);
-                        } else {
-                          _expandedChapterIds.add(chapter.chapterId);
-                        }
-                      });
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => TopicNotesScreen(
+                            repository: _repository,
+                            chapterId: chapter.chapterId,
+                            chapterTitle: chapter.chapterTitle,
+                            chapterNumber: chapter.chapterNumber,
+                            subjectName: widget.subjectName,
+                          ),
+                        ),
+                      );
                     },
-                    child: Padding(
-                      padding: EdgeInsets.all(16.w),
+                    child: Container(
+                      padding: EdgeInsets.symmetric(
+                        horizontal: 14.w,
+                        vertical: 12.h,
+                      ),
+                      margin: EdgeInsets.all(12.w),
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          colors: [
+                            primaryColor.withValues(alpha: 0.08),
+                            primaryColor.withValues(alpha: 0.03),
+                          ],
+                        ),
+                        borderRadius: BorderRadius.circular(14.r),
+                        border: Border.all(
+                          color: primaryColor.withValues(alpha: 0.2),
+                        ),
+                      ),
                       child: Row(
                         children: [
                           Container(
-                            padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 5.h),
+                            padding: EdgeInsets.all(8.w),
                             decoration: BoxDecoration(
-                              color: primaryColor.withValues(alpha: 0.1),
+                              color: primaryColor,
                               borderRadius: BorderRadius.circular(10.r),
                             ),
-                            child: Text(
-                              chapter.chapterNumber,
-                              style: TextStyle(
-                                color: primaryColor,
-                                fontSize: 11.sp,
-                                fontWeight: FontWeight.bold,
-                              ),
+                            child: Icon(
+                              Icons.menu_book_rounded,
+                              color: Colors.white,
+                              size: 18.sp,
                             ),
                           ),
                           SizedBox(width: 12.w),
@@ -402,183 +598,147 @@ class _SubjectCurriculumScreenState extends State<SubjectCurriculumScreen> {
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Text(
-                                  chapter.chapterTitle,
+                                  '${chapter.chapterNumber} Study Notes & PDFs',
                                   style: TextStyle(
-                                    fontSize: 14.sp,
+                                    fontSize: 13.sp,
                                     fontWeight: FontWeight.bold,
                                     color: const Color(0xFF1E293B),
                                   ),
                                 ),
-                                if (chapter.description != null && chapter.description!.isNotEmpty)
-                                  Text(
-                                    chapter.description!,
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                    style: TextStyle(
-                                      fontSize: 11.sp,
-                                      color: Colors.grey.shade500,
-                                    ),
+                                SizedBox(height: 2.h),
+                                Text(
+                                  chapter.notesCount > 0
+                                      ? '${chapter.notesCount} ${chapter.notesCount == 1 ? "note" : "notes"} attached • Tap to read or download'
+                                      : 'View notes attached to this chapter',
+                                  style: TextStyle(
+                                    fontSize: 11.sp,
+                                    color: primaryColor,
+                                    fontWeight: FontWeight.w500,
                                   ),
+                                ),
                               ],
                             ),
                           ),
-                          if (chapter.notesCount > 0)
-                            Container(
-                              margin: EdgeInsets.only(right: 6.w),
-                              padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 3.h),
-                              decoration: BoxDecoration(
-                                color: primaryColor.withValues(alpha: 0.12),
-                                borderRadius: BorderRadius.circular(8.r),
-                              ),
-                              child: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Icon(Icons.description_rounded, size: 11.sp, color: primaryColor),
-                                  SizedBox(width: 3.w),
-                                  Text(
-                                    '${chapter.notesCount} ${chapter.notesCount == 1 ? "Note" : "Notes"}',
-                                    style: TextStyle(
-                                      fontSize: 10.sp,
-                                      color: primaryColor,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          if (topics.isNotEmpty)
-                            Container(
-                              padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 3.h),
-                              decoration: BoxDecoration(
-                                color: Colors.grey.shade100,
-                                borderRadius: BorderRadius.circular(8.r),
-                              ),
-                              child: Text(
-                                '${topics.length} ${topics.length == 1 ? "topic" : "topics"}',
-                                style: TextStyle(
-                                  fontSize: 10.sp,
-                                  color: Colors.grey.shade600,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                            ),
-                          SizedBox(width: 4.w),
                           Icon(
-                            isExpanded ? Icons.keyboard_arrow_up_rounded : Icons.keyboard_arrow_down_rounded,
-                            color: Colors.grey.shade400,
+                            Icons.arrow_forward_ios_rounded,
+                            size: 14.sp,
+                            color: primaryColor,
                           ),
                         ],
                       ),
                     ),
                   ),
 
-                  // Content inside Chapter: Direct Chapter Notes + Topics
-                  if (isExpanded) ...[
-                    Divider(height: 1, color: Colors.grey.shade100),
-
-                    // Direct Chapter Notes Opener ("notes chapter ki hogi")
-                    InkWell(
-                      borderRadius: BorderRadius.circular(14.r),
-                      onTap: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => TopicNotesScreen(
-              repository: _repository,
-                              chapterId: chapter.chapterId,
-                              chapterTitle: chapter.chapterTitle,
-                              chapterNumber: chapter.chapterNumber,
-                              subjectName: widget.subjectName,
-
-                            ),
-                          ),
-                        );
-                      },
-                      child: Container(
-                        padding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 12.h),
-                        margin: EdgeInsets.all(12.w),
-                        decoration: BoxDecoration(
-                          gradient: LinearGradient(
-                            colors: [primaryColor.withValues(alpha: 0.08), primaryColor.withValues(alpha: 0.03)],
-                          ),
-                          borderRadius: BorderRadius.circular(14.r),
-                          border: Border.all(color: primaryColor.withValues(alpha: 0.2)),
-                        ),
-                        child: Row(
-                          children: [
-                            Container(
-                              padding: EdgeInsets.all(8.w),
-                              decoration: BoxDecoration(
-                                color: primaryColor,
-                                borderRadius: BorderRadius.circular(10.r),
+                  ...chapter.notes.map(
+                    (note) => Padding(
+                      padding: EdgeInsets.symmetric(
+                        horizontal: 12.w,
+                        vertical: 4.h,
+                      ),
+                      child: Card(
+                        child: Padding(
+                          padding: const EdgeInsets.all(14),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                note.title,
+                                style: Theme.of(context).textTheme.titleMedium,
                               ),
-                              child: Icon(Icons.menu_book_rounded, color: Colors.white, size: 18.sp),
-                            ),
-                            SizedBox(width: 12.w),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
+                              if (note.description?.isNotEmpty == true) ...[
+                                const SizedBox(height: 6),
+                                Text(note.description!),
+                              ],
+                              if (note.fileName?.isNotEmpty == true) ...[
+                                const SizedBox(height: 6),
+                                Text(note.fileName!),
+                              ],
+                              const SizedBox(height: 10),
+                              Wrap(
+                                spacing: 8,
+                                runSpacing: 8,
                                 children: [
-                                  Text(
-                                    '${chapter.chapterNumber} Study Notes & PDFs',
-                                    style: TextStyle(
-                                      fontSize: 13.sp,
-                                      fontWeight: FontWeight.bold,
-                                      color: const Color(0xFF1E293B),
+                                  if (note.isPreviewable)
+                                    FilledButton.icon(
+                                      icon: const Icon(Icons.menu_book),
+                                      label: Text(
+                                        isPdfStudyNote(note) &&
+                                                resolveNoteUrl(note.fileUrl) !=
+                                                    null
+                                            ? 'View PDF'
+                                            : 'Read notes',
+                                      ),
+                                      onPressed: () => Navigator.push(
+                                        context,
+                                        MaterialPageRoute<void>(
+                                          builder: (_) => InAppNoteReaderScreen(
+                                            note: note,
+                                            topicTitle: chapter.chapterTitle,
+                                            subjectName: widget.subjectName,
+                                          ),
+                                        ),
+                                      ),
                                     ),
-                                  ),
-                                  SizedBox(height: 2.h),
-                                  Text(
-                                    chapter.notesCount > 0
-                                        ? '${chapter.notesCount} ${chapter.notesCount == 1 ? "note" : "notes"} attached • Tap to read or download'
-                                        : 'View notes attached to this chapter',
-                                    style: TextStyle(fontSize: 11.sp, color: primaryColor, fontWeight: FontWeight.w500),
-                                  ),
+                                  if (note.isDownloadable &&
+                                      resolveNoteUrl(note.fileUrl) != null)
+                                    OutlinedButton.icon(
+                                      icon: const Icon(Icons.download),
+                                      label: const Text('Download'),
+                                      onPressed: () => openNoteAttachment(
+                                        context,
+                                        note.fileUrl,
+                                        download: true,
+                                      ),
+                                    ),
                                 ],
                               ),
-                            ),
-                            Icon(Icons.arrow_forward_ios_rounded, size: 14.sp, color: primaryColor),
-                          ],
+                            ],
+                          ),
                         ),
                       ),
                     ),
+                  ),
 
-                    if (topics.isNotEmpty) ...[
-                      Padding(
-                        padding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 4.h),
-                        child: Row(
-                          children: [
-                            Text(
-                              'Topics in this chapter',
-                              style: TextStyle(
-                                fontSize: 11.sp,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.grey.shade500,
-                                letterSpacing: 0.5,
-                              ),
+                  if (topics.isNotEmpty) ...[
+                    Padding(
+                      padding: EdgeInsets.symmetric(
+                        horizontal: 14.w,
+                        vertical: 4.h,
+                      ),
+                      child: Row(
+                        children: [
+                          Text(
+                            'Topics in this chapter',
+                            style: TextStyle(
+                              fontSize: 11.sp,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.grey.shade500,
+                              letterSpacing: 0.5,
                             ),
-                          ],
-                        ),
+                          ),
+                        ],
                       ),
-                      ListView.separated(
-                        shrinkWrap: true,
-                        physics: const NeverScrollableScrollPhysics(),
-                        padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 6.h),
-                        itemCount: topics.length,
-                        separatorBuilder: (_, _) => SizedBox(height: 8.h),
-                        itemBuilder: (context, tIndex) {
-                          final topic = topics[tIndex];
-                          return _buildTopicTile(topic, tIndex + 1);
-                        },
+                    ),
+                    ListView.separated(
+                      shrinkWrap: true,
+                      physics: const NeverScrollableScrollPhysics(),
+                      padding: EdgeInsets.symmetric(
+                        horizontal: 12.w,
+                        vertical: 6.h,
                       ),
-                    ],
+                      itemCount: topics.length,
+                      separatorBuilder: (_, _) => SizedBox(height: 8.h),
+                      itemBuilder: (context, tIndex) {
+                        final topic = topics[tIndex];
+                        return _buildTopicTile(topic, tIndex + 1);
+                      },
+                    ),
                   ],
                 ],
-              ),
-            );
-          },
-          childCount: filteredChapters.length,
-        ),
+              ],
+            ),
+          );
+        }, childCount: filteredChapters.length),
       ),
     );
   }
@@ -649,7 +809,10 @@ class _SubjectCurriculumScreenState extends State<SubjectCurriculumScreen> {
                   Row(
                     children: [
                       Container(
-                        padding: EdgeInsets.symmetric(horizontal: 6.w, vertical: 2.h),
+                        padding: EdgeInsets.symmetric(
+                          horizontal: 6.w,
+                          vertical: 2.h,
+                        ),
                         decoration: BoxDecoration(
                           color: difficultyColor.withValues(alpha: 0.12),
                           borderRadius: BorderRadius.circular(6.r),
@@ -674,15 +837,24 @@ class _SubjectCurriculumScreenState extends State<SubjectCurriculumScreen> {
                       if (topic.notesCount > 0) ...[
                         SizedBox(width: 8.w),
                         Container(
-                          padding: EdgeInsets.symmetric(horizontal: 6.w, vertical: 2.h),
+                          padding: EdgeInsets.symmetric(
+                            horizontal: 6.w,
+                            vertical: 2.h,
+                          ),
                           decoration: BoxDecoration(
-                            color: const Color(0xFFEC4899).withValues(alpha: 0.12),
+                            color: const Color(
+                              0xFFEC4899,
+                            ).withValues(alpha: 0.12),
                             borderRadius: BorderRadius.circular(6.r),
                           ),
                           child: Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [
-                              Icon(Icons.picture_as_pdf_rounded, color: const Color(0xFFEC4899), size: 10.sp),
+                              Icon(
+                                Icons.picture_as_pdf_rounded,
+                                color: const Color(0xFFEC4899),
+                                size: 10.sp,
+                              ),
                               SizedBox(width: 3.w),
                               Text(
                                 '${topic.notesCount} ${topic.notesCount == 1 ? "Note" : "Notes"}',
@@ -701,12 +873,14 @@ class _SubjectCurriculumScreenState extends State<SubjectCurriculumScreen> {
                 ],
               ),
             ),
-            Icon(Icons.chevron_right_rounded, color: Colors.grey.shade400, size: 20.sp),
+            Icon(
+              Icons.chevron_right_rounded,
+              color: Colors.grey.shade400,
+              size: 20.sp,
+            ),
           ],
         ),
       ),
     );
   }
 }
-
-

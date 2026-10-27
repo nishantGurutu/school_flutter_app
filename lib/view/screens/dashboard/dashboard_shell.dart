@@ -19,6 +19,7 @@ import '../modules/exam_screen.dart';
 import '../modules/attendance_screen.dart';
 import '../modules/leave_screen.dart';
 import '../modules/topics_screen.dart';
+import '../modules/student_subjects_screen.dart';
 import '../../widgets/student_more_bottom_sheet.dart';
 import '../../../core/config/role_navigation_config.dart';
 
@@ -87,7 +88,9 @@ class _DashboardShellState extends State<DashboardShell> {
             case 'home':
               return homeDashboard;
             case 'topics':
-              return const TopicsScreen(isInline: true);
+              return user.role == UserRole.student
+                  ? const StudentSubjectsScreen(isInline: true)
+                  : const TopicsScreen(isInline: true);
             case 'homework':
               return const HomeworkScreen(isInline: true);
             case 'exams':

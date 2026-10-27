@@ -29,6 +29,25 @@ class ApiSchoolRepository implements SchoolRepository {
   }
 
   List<AttendanceRecord>? _cachedAttendance;
+  Future<List<DashboardSubject>> getStudentSubjects({
+    String? admissionNo,
+  }) async {
+    final admission = admissionNo?.trim() ?? '';
+    final url =
+        '${AppUrl.baseUrl}/mobile/student/subjects'
+        '${admission.isEmpty ? '' : '?admissionNo=${Uri.encodeComponent(admission)}'}';
+    final response = await _apiService.getApi(url);
+    if (response is! List) {
+      throw const FormatException('Invalid subjects response');
+    }
+    return response
+        .map(
+          (item) =>
+              DashboardSubject.fromJson(Map<String, dynamic>.from(item as Map)),
+        )
+        .toList();
+  }
+
   List<HolidayModel>? _cachedHolidays;
 
   @override
