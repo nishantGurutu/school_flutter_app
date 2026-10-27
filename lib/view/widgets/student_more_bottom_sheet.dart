@@ -7,6 +7,7 @@ import '../../data/models/user_model.dart';
 import '../../core/extensions/context_extensions.dart';
 import '../../logic/school/school_bloc.dart';
 import 'certificate_viewer_dialog.dart';
+import 'guardian_list_dialog.dart';
 
 class MoreMenuItem {
   final String label;
@@ -23,6 +24,7 @@ class MoreMenuItem {
 class StudentMoreBottomSheet extends StatelessWidget {
   final BuildContext? parentContext;
   final UserModel? user;
+  final String? studentAdmissionNo;
   final String? overrideName;
   final String? overrideClass;
   final String? overrideRollNo;
@@ -32,6 +34,7 @@ class StudentMoreBottomSheet extends StatelessWidget {
     super.key,
     this.parentContext,
     this.user,
+    this.studentAdmissionNo,
     this.overrideName,
     this.overrideClass,
     this.overrideRollNo,
@@ -41,6 +44,7 @@ class StudentMoreBottomSheet extends StatelessWidget {
   static void show(
     BuildContext context, {
     UserModel? user,
+    String? studentAdmissionNo,
     String? overrideName,
     String? overrideClass,
     String? overrideRollNo,
@@ -53,6 +57,7 @@ class StudentMoreBottomSheet extends StatelessWidget {
       builder: (ctx) => StudentMoreBottomSheet(
         parentContext: context,
         user: user,
+        studentAdmissionNo: studentAdmissionNo,
         overrideName: overrideName,
         overrideClass: overrideClass,
         overrideRollNo: overrideRollNo,
@@ -369,7 +374,12 @@ class StudentMoreBottomSheet extends StatelessWidget {
         icon: Icons.family_restroom_rounded,
         onTap: () {
           Navigator.pop(context);
-          _showGuardianDialog(targetCtx);
+          GuardianListDialog.show(
+            targetCtx,
+            admissionNo:
+                studentAdmissionNo ??
+                (user?.role == UserRole.student ? user?.admissionNo : null),
+          );
         },
       ),
 
@@ -564,101 +574,6 @@ class StudentMoreBottomSheet extends StatelessWidget {
           TextButton(
             onPressed: () => Navigator.pop(ctx),
             child: const Text('Close'),
-          ),
-        ],
-      ),
-    );
-  }
-
-  static void _showGuardianDialog(BuildContext context) {
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(20.r),
-        ),
-        title: Row(
-          children: [
-            const Icon(Icons.family_restroom_rounded, color: AppColors.primary),
-            8.w.horizontalSpace,
-            const Text('Guardian Details'),
-          ],
-        ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _buildContactTile(
-              icon: Icons.person_outline_rounded,
-              title: 'Father: Robert Sousa',
-              subtitle: 'Phone: +1 (555) 321-9876 • Software Engineer',
-            ),
-            10.h.verticalSpace,
-            _buildContactTile(
-              icon: Icons.person_outline_rounded,
-              title: 'Mother: Maria Sousa',
-              subtitle: 'Phone: +1 (555) 789-4321 • Physician',
-            ),
-            10.h.verticalSpace,
-            _buildContactTile(
-              icon: Icons.home_outlined,
-              title: 'Residential Address',
-              subtitle: 'Apt 4B, Greenfield Avenue, New York, NY 10001',
-            ),
-            10.h.verticalSpace,
-            _buildContactTile(
-              icon: Icons.emergency_outlined,
-              title: 'Emergency Contact',
-              subtitle: '+1 (555) 000-1122 (Aunt: Clara Sousa)',
-            ),
-          ],
-        ),
-        actions: [
-          ElevatedButton(
-            onPressed: () => Navigator.pop(ctx),
-            style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary),
-            child: const Text('Done', style: TextStyle(color: Colors.white)),
-          ),
-        ],
-      ),
-    );
-  }
-
-  static Widget _buildContactTile({
-    required IconData icon,
-    required String title,
-    required String subtitle,
-  }) {
-    return Container(
-      padding: EdgeInsets.all(10.r),
-      decoration: BoxDecoration(
-        color: const Color(0xFFF8FAFC),
-        borderRadius: BorderRadius.circular(10.r),
-        border: Border.all(color: const Color(0xFFE2E8F0)),
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Icon(icon, size: 20.sp, color: AppColors.primary),
-          10.w.horizontalSpace,
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  style: TextStyle(
-                    fontSize: 13.sp,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-                2.h.verticalSpace,
-                Text(
-                  subtitle,
-                  style: TextStyle(fontSize: 11.sp, color: AppColors.textMuted),
-                ),
-              ],
-            ),
           ),
         ],
       ),

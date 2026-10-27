@@ -78,10 +78,7 @@ class _StudentDashboardState extends State<StudentDashboard> {
     final u = widget.user;
     if (mounted) {
       context.read<SchoolBloc>().add(
-        FetchAttendanceRequested(
-          userId: u?.id ?? '1',
-          className: u?.className,
-        ),
+        FetchAttendanceRequested(userId: u?.id ?? '1', className: u?.className),
       );
     }
     final data = await _repository.getHomeDashboard(
@@ -291,7 +288,8 @@ class _StudentDashboardState extends State<StudentDashboard> {
                   Padding(
                     padding: EdgeInsets.symmetric(horizontal: 20.w),
                     child: AttendanceCheckInBanner(
-                      user: widget.user ??
+                      user:
+                          widget.user ??
                           UserModel(
                             id: '1',
                             name: displayName,
@@ -1183,18 +1181,21 @@ class _StudentDashboardState extends State<StudentDashboard> {
             onTap: () {
               final data = _dashboardData;
               final profile = data?.profile;
-              final displayName = widget.overrideStudentName ??
+              final displayName =
+                  widget.overrideStudentName ??
                   (profile != null && profile.name.isNotEmpty
                       ? profile.name
                       : (widget.user?.name ?? 'Kauan Sousa'));
-              final displayClass = widget.overrideClassName ??
+              final displayClass =
+                  widget.overrideClassName ??
                   (profile != null && profile.className.isNotEmpty
                       ? profile.className
                       : (widget.user?.className ?? 'Class : 10 - A English'));
               final displayRoll = profile != null && profile.rollNo.isNotEmpty
                   ? profile.rollNo
                   : '31';
-              final displayAvatar = widget.overrideAvatarUrl ??
+              final displayAvatar =
+                  widget.overrideAvatarUrl ??
                   (profile != null && profile.avatarUrl.isNotEmpty
                       ? profile.avatarUrl
                       : (widget.user?.avatarUrl ??
@@ -1203,6 +1204,7 @@ class _StudentDashboardState extends State<StudentDashboard> {
               StudentMoreBottomSheet.show(
                 context,
                 user: widget.user,
+                studentAdmissionNo: widget.studentAdmissionNo,
                 overrideName: displayName,
                 overrideClass: displayClass,
                 overrideRollNo: displayRoll,
