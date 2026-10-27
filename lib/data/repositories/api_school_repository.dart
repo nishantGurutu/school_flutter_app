@@ -50,19 +50,23 @@ class ApiSchoolRepository implements SchoolRepository {
 
   List<HolidayModel>? _cachedHolidays;
 
+  Future<List<HolidayModel>> getLiveHolidays() async {
+    final response = await _apiService.getApi(AppUrl.holidays);
+    if (response is! List && response is! Map) {
+      throw const FormatException('Invalid holidays response');
+    }
+    return _extractList(response)
+        .map(
+          (item) =>
+              HolidayModel.fromJson(Map<String, dynamic>.from(item as Map)),
+        )
+        .toList();
+  }
+
   @override
   Future<List<HolidayModel>> getHolidays() async {
     try {
-      final res = await _apiService.getApi(AppUrl.holidays);
-      if (res == null) {
-        _cachedHolidays = [];
-        return [];
-      }
-      final rawList = _extractList(res);
-      _cachedHolidays = rawList
-          .where((item) => item != null && item is Map)
-          .map((item) => HolidayModel.fromJson(Map<String, dynamic>.from(item)))
-          .toList();
+      _cachedHolidays = await getLiveHolidays();
       return _cachedHolidays!;
     } catch (e) {
       if (kDebugMode) {

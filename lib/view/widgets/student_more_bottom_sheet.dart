@@ -1,13 +1,12 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import '../../core/routes/routes_name.dart';
 import '../../core/theme/app_colors.dart';
 import '../../data/models/user_model.dart';
 import '../../core/extensions/context_extensions.dart';
-import '../../logic/school/school_bloc.dart';
 import 'certificate_viewer_dialog.dart';
 import 'guardian_list_dialog.dart';
+import 'school_holidays_dialog.dart';
 
 class MoreMenuItem {
   final String label;
@@ -389,7 +388,10 @@ class StudentMoreBottomSheet extends StatelessWidget {
         icon: Icons.beach_access_rounded,
         onTap: () {
           Navigator.pop(context);
-          _showHolidaysDialog(targetCtx);
+          SchoolHolidaysDialog.show(
+            targetCtx,
+            role: user?.role ?? UserRole.student,
+          );
         },
       ),
 
@@ -569,145 +571,6 @@ class StudentMoreBottomSheet extends StatelessWidget {
               ),
             ),
           ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text('Close'),
-          ),
-        ],
-      ),
-    );
-  }
-
-  static void _showHolidaysDialog(BuildContext context) {
-    List<Map<String, String>> holidays = [];
-    try {
-      final stateHolidays = context.read<SchoolBloc>().state.holidays;
-      if (stateHolidays.isNotEmpty) {
-        holidays = stateHolidays
-            .map(
-              (h) => {
-                'name': h.title,
-                'date': h.endDate != null && h.endDate!.isNotEmpty
-                    ? '${h.date} - ${h.endDate}'
-                    : h.date,
-                'days': h.category ?? 'Holiday',
-              },
-            )
-            .toList();
-      }
-    } catch (_) {}
-
-    if (holidays.isEmpty) {
-      holidays = [
-        {
-          'name': 'Diwali & New Year Vacation',
-          'date': '24 Oct - 28 Oct 2026',
-          'days': '5 Days',
-        },
-        {'name': 'Guru Nanak Jayanti', 'date': '15 Nov 2026', 'days': '1 Day'},
-        {
-          'name': 'Winter Holiday Break',
-          'date': '24 Dec - 02 Jan 2027',
-          'days': '10 Days',
-        },
-        {'name': 'Republic Day', 'date': '26 Jan 2027', 'days': '1 Day'},
-        {
-          'name': 'Holi Spring Festival',
-          'date': '18 Mar 2027',
-          'days': '1 Day',
-        },
-      ];
-    }
-
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(20.r),
-        ),
-        title: Row(
-          children: [
-            const Icon(Icons.beach_access_rounded, color: AppColors.warning),
-            8.w.horizontalSpace,
-            const Text('School Holidays 2026-27'),
-          ],
-        ),
-        content: SizedBox(
-          width: double.maxFinite,
-          child: ListView.separated(
-            shrinkWrap: true,
-            itemCount: holidays.length,
-            separatorBuilder: (context, index) => 8.h.verticalSpace,
-            itemBuilder: (context, i) {
-              final h = holidays[i];
-              return Container(
-                padding: EdgeInsets.all(10.r),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFF8FAFC),
-                  borderRadius: BorderRadius.circular(10.r),
-                  border: Border.all(color: const Color(0xFFE2E8F0)),
-                ),
-                child: Row(
-                  children: [
-                    Container(
-                      padding: EdgeInsets.all(8.r),
-                      decoration: BoxDecoration(
-                        color: AppColors.warning.withValues(alpha: 0.15),
-                        shape: BoxShape.circle,
-                      ),
-                      child: const Icon(
-                        Icons.event_rounded,
-                        color: AppColors.warning,
-                        size: 18,
-                      ),
-                    ),
-                    12.w.horizontalSpace,
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            h['name']!,
-                            style: TextStyle(
-                              fontSize: 12.sp,
-                              fontWeight: FontWeight.w700,
-                            ),
-                          ),
-                          Text(
-                            h['date']!,
-                            style: TextStyle(
-                              fontSize: 11.sp,
-                              color: AppColors.textMuted,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    Container(
-                      padding: EdgeInsets.symmetric(
-                        horizontal: 8.w,
-                        vertical: 3.h,
-                      ),
-                      decoration: BoxDecoration(
-                        color: AppColors.primary.withValues(alpha: 0.1),
-                        borderRadius: BorderRadius.circular(6.r),
-                      ),
-                      child: Text(
-                        h['days']!,
-                        style: TextStyle(
-                          fontSize: 10.sp,
-                          fontWeight: FontWeight.bold,
-                          color: AppColors.primary,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              );
-            },
-          ),
         ),
         actions: [
           TextButton(
