@@ -7,6 +7,8 @@ import '../../core/extensions/context_extensions.dart';
 import 'certificate_viewer_dialog.dart';
 import 'guardian_list_dialog.dart';
 import 'school_holidays_dialog.dart';
+import 'student_reports_dialog.dart';
+import 'student_teachers_dialog.dart';
 
 class MoreMenuItem {
   final String label;
@@ -363,7 +365,12 @@ class StudentMoreBottomSheet extends StatelessWidget {
         icon: Icons.description_outlined,
         onTap: () {
           Navigator.pop(context);
-          _showReportCardDialog(targetCtx);
+          StudentReportsDialog.show(
+            targetCtx,
+            admissionNo:
+                studentAdmissionNo ??
+                (user?.role == UserRole.student ? user?.admissionNo : null),
+          );
         },
       ),
 
@@ -450,7 +457,12 @@ class StudentMoreBottomSheet extends StatelessWidget {
         icon: Icons.school_outlined,
         onTap: () {
           Navigator.pop(context);
-          _showTeachersDialog(targetCtx);
+          StudentTeachersDialog.show(
+            targetCtx,
+            admissionNo:
+                studentAdmissionNo ??
+                (user?.role == UserRole.student ? user?.admissionNo : null),
+          );
         },
       ),
 
@@ -576,204 +588,6 @@ class StudentMoreBottomSheet extends StatelessWidget {
           TextButton(
             onPressed: () => Navigator.pop(ctx),
             child: const Text('Close'),
-          ),
-        ],
-      ),
-    );
-  }
-
-  static void _showReportCardDialog(BuildContext context) {
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(20.r),
-        ),
-        title: Row(
-          children: [
-            const Icon(Icons.assessment_outlined, color: AppColors.primary),
-            8.w.horizontalSpace,
-            const Text('Academic Report Card'),
-          ],
-        ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              'Term 1 Comprehensive Progress Report has been published and approved by the academic council.',
-              style: TextStyle(fontSize: 13),
-            ),
-            12.h.verticalSpace,
-            Container(
-              padding: EdgeInsets.all(12.r),
-              decoration: BoxDecoration(
-                color: const Color(0xFFF1F5F9),
-                borderRadius: BorderRadius.circular(12.r),
-              ),
-              child: const Row(
-                children: [
-                  Icon(
-                    Icons.picture_as_pdf_rounded,
-                    color: Colors.red,
-                    size: 28,
-                  ),
-                  SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Term_1_Report_Card_2026.pdf',
-                          style: TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        Text(
-                          'Size: 1.4 MB • Certified',
-                          style: TextStyle(fontSize: 11, color: Colors.grey),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text('Cancel'),
-          ),
-          ElevatedButton.icon(
-            onPressed: () {
-              Navigator.pop(ctx);
-              context.showAppSnackBar('Downloading Report Card PDF...');
-            },
-            icon: const Icon(Icons.download_rounded, size: 18),
-            label: const Text('Download PDF'),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.primary,
-              foregroundColor: Colors.white,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  static void _showTeachersDialog(BuildContext context) {
-    final teachers = [
-      {
-        'name': 'Mr. David Clark',
-        'subject': 'Mathematics & Algebra (Class Teacher)',
-        'email': 'd.clark@school.edu',
-      },
-      {
-        'name': 'Mrs. Sarah Jenkins',
-        'subject': 'English Literature & Grammar',
-        'email': 's.jenkins@school.edu',
-      },
-      {
-        'name': 'Dr. Robert Miller',
-        'subject': 'Physics & Natural Sciences',
-        'email': 'r.miller@school.edu',
-      },
-      {
-        'name': 'Ms. Elena Rostova',
-        'subject': 'Computer Science & Coding',
-        'email': 'e.rostova@school.edu',
-      },
-      {
-        'name': 'Mr. Rajesh Sharma',
-        'subject': 'Social Studies & World History',
-        'email': 'r.sharma@school.edu',
-      },
-    ];
-
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(20.r),
-        ),
-        title: Row(
-          children: [
-            const Icon(Icons.school_outlined, color: AppColors.primary),
-            8.w.horizontalSpace,
-            const Text('My Teachers'),
-          ],
-        ),
-        content: SizedBox(
-          width: double.maxFinite,
-          child: ListView.separated(
-            shrinkWrap: true,
-            itemCount: teachers.length,
-            separatorBuilder: (context, index) => 8.h.verticalSpace,
-            itemBuilder: (context, i) {
-              final t = teachers[i];
-              return Container(
-                padding: EdgeInsets.all(10.r),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFF8FAFC),
-                  borderRadius: BorderRadius.circular(10.r),
-                  border: Border.all(color: const Color(0xFFE2E8F0)),
-                ),
-                child: Row(
-                  children: [
-                    CircleAvatar(
-                      backgroundColor: AppColors.primary.withValues(
-                        alpha: 0.15,
-                      ),
-                      child: Text(
-                        t['name']![4],
-                        style: const TextStyle(
-                          fontWeight: FontWeight.bold,
-                          color: AppColors.primary,
-                        ),
-                      ),
-                    ),
-                    10.w.horizontalSpace,
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            t['name']!,
-                            style: TextStyle(
-                              fontSize: 12.sp,
-                              fontWeight: FontWeight.w700,
-                            ),
-                          ),
-                          Text(
-                            t['subject']!,
-                            style: TextStyle(
-                              fontSize: 11.sp,
-                              color: AppColors.textMuted,
-                            ),
-                          ),
-                          Text(
-                            t['email']!,
-                            style: TextStyle(
-                              fontSize: 10.sp,
-                              color: AppColors.primary,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              );
-            },
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text('Done'),
           ),
         ],
       ),

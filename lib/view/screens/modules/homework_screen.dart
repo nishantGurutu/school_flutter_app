@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'assignment_submission_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
@@ -13,7 +14,14 @@ import '../../widgets/smooth_skeleton.dart';
 
 class HomeworkScreen extends StatefulWidget {
   final bool isInline;
-  const HomeworkScreen({super.key, this.isInline = false});
+  final ApiSchoolRepository? repository;
+  final UserModel? user;
+  const HomeworkScreen({
+    super.key,
+    this.isInline = false,
+    this.repository,
+    this.user,
+  });
 
   @override
   State<HomeworkScreen> createState() => _HomeworkScreenState();
@@ -21,7 +29,8 @@ class HomeworkScreen extends StatefulWidget {
 
 class _HomeworkScreenState extends State<HomeworkScreen>
     with SingleTickerProviderStateMixin, WidgetsBindingObserver {
-  final ApiSchoolRepository _repository = ApiSchoolRepository();
+  late final ApiSchoolRepository _repository =
+      widget.repository ?? ApiSchoolRepository();
   late TabController _tabController;
   List<HomeworkItem> _homeworkList = [];
   bool _isLoading = true;
@@ -90,7 +99,7 @@ class _HomeworkScreenState extends State<HomeworkScreen>
     _fetching = true;
     if (!silent) setState(() => _isLoading = true);
     try {
-      final currentUser = context.read<AuthBloc>().state.user;
+      final currentUser = widget.user ?? context.read<AuthBloc>().state.user;
       if (currentUser == null) {
         throw StateError('Please sign in to view assignments.');
       }
@@ -575,124 +584,42 @@ class _HomeworkScreenState extends State<HomeworkScreen>
     );
   }
 
-  void _showStudentSubmitSheet(HomeworkItem hw) {
-    final textCtrl = TextEditingController();
-    final linkCtrl = TextEditingController();
-
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: AppColors.surface,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(22.r)),
+  Future<void> _showStudentSubmitSheet(
+    HomeworkItem hw, {
+    bool readOnly = false,
+  }) async {
+    final submitted = await Navigator.push<bool>(
+      context,
+      MaterialPageRoute(
+        builder: (_) => AssignmentSubmissionScreen(
+          assignment: hw,
+          repository: _repository,
+          readOnly: readOnly,
+        ),
       ),
-      builder: (ctx) {
-        return Padding(
-          padding: EdgeInsets.only(
-            left: 20.w,
-            right: 20.w,
-            top: 20.h,
-            bottom: MediaQuery.of(ctx).viewInsets.bottom + 20.h,
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Expanded(
-                    child: Text(
-                      'Submit: ${hw.title}',
-                      style: TextStyle(
-                        fontSize: 16.sp,
-                        fontWeight: FontWeight.bold,
-                        color: AppColors.textPrimary,
-                      ),
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                  IconButton(
-                    icon: const Icon(Icons.close_rounded),
-                    onPressed: () => Navigator.pop(ctx),
-                  ),
-                ],
-              ),
-              12.h.height,
-              TextField(
-                controller: textCtrl,
-                maxLines: 4,
-                decoration: InputDecoration(
-                  labelText: 'Your Solution / Answer Notes',
-                  hintText:
-                      'Write your answers or summary of completed assignment...',
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12.r),
-                  ),
-                  filled: true,
-                  fillColor: AppColors.background,
-                ),
-              ),
-              12.h.height,
-              TextField(
-                controller: linkCtrl,
-                decoration: InputDecoration(
-                  labelText: 'Attachment / Google Drive File Link',
-                  hintText: 'https://drive.google.com/...',
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12.r),
-                  ),
-                  filled: true,
-                  fillColor: AppColors.background,
-                ),
-              ),
-              16.h.height,
-              ElevatedButton(
-                onPressed: () async {
-                  Navigator.pop(ctx);
-                  setState(() => _isLoading = true);
-                  await _repository.submitStudentAssignmentWork(
-                    assignmentId: hw.id,
-                    submissionText: textCtrl.text.trim(),
-                    fileUrl: linkCtrl.text.trim(),
-                  );
-                  _loadData();
-                },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.primary,
-                  padding: EdgeInsets.symmetric(vertical: 13.h),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12.r),
-                  ),
-                ),
-                child: Text(
-                  'Submit Assignment',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 14.sp,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ),
-            ],
-          ),
-        );
-      },
     );
+    if (!mounted) return;
+    if (submitted == true) {
+      context.showAppSnackBar(
+        'Work submitted successfully. Your teacher can now review it.',
+      );
+      await _loadData();
+      if (mounted) _tabController.animateTo(1);
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    final user = context.watch<AuthBloc>().state.user;
+    final user = widget.user ?? context.watch<AuthBloc>().state.user;
     final isTeacher = user?.role == UserRole.teacher;
 
     final pendingList = _homeworkList.where((h) {
-      final s = (h.submissionStatus ?? '').toLowerCase();
+      final s = (h.submissionStatus ?? h.status.name).toLowerCase();
       return s == 'pending' || s == 'overdue' || s == 'rejected';
     }).toList();
 
     final completedList = _homeworkList.where((h) {
-      final s = (h.submissionStatus ?? '').toLowerCase();
+      final s = (h.submissionStatus ?? h.status.name).toLowerCase();
       return s == 'submitted' || s == 'accepted' || s == 'graded';
     }).toList();
 
@@ -862,6 +789,9 @@ class _HomeworkScreenState extends State<HomeworkScreen>
 
   Widget _buildAssignmentCard(HomeworkItem hw, {required bool isTeacher}) {
     final statusStr = (hw.submissionStatus ?? hw.status.name).toLowerCase();
+    final isStudent =
+        (widget.user ?? context.read<AuthBloc>().state.user)?.role ==
+        UserRole.student;
     Color statusColor = AppColors.info;
     String statusLabel = 'Pending';
 
@@ -1045,8 +975,8 @@ class _HomeworkScreenState extends State<HomeworkScreen>
             ),
 
           // Footer info: Due date, Points, and Actions
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               Row(
                 children: [
@@ -1108,7 +1038,8 @@ class _HomeworkScreenState extends State<HomeworkScreen>
                     ),
                   ),
                 )
-              else if (statusStr == 'pending' || statusStr == 'rejected')
+              else if (isStudent &&
+                  ['pending', 'overdue', 'rejected'].contains(statusStr))
                 ElevatedButton.icon(
                   onPressed: () => _showStudentSubmitSheet(hw),
                   icon: Icon(
@@ -1135,6 +1066,13 @@ class _HomeworkScreenState extends State<HomeworkScreen>
                       borderRadius: BorderRadius.circular(8.r),
                     ),
                   ),
+                )
+              else if (isStudent &&
+                  ['submitted', 'accepted', 'graded'].contains(statusStr))
+                OutlinedButton.icon(
+                  onPressed: () => _showStudentSubmitSheet(hw, readOnly: true),
+                  icon: const Icon(Icons.assignment_turned_in_outlined),
+                  label: const Text('View submission'),
                 ),
             ],
           ),

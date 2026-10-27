@@ -1255,7 +1255,7 @@ class ApiSchoolRepository implements SchoolRepository {
       if (kDebugMode) {
         print('❌ Error submitting student assignment: $e');
       }
-      return false;
+      rethrow;
     }
   }
 }
