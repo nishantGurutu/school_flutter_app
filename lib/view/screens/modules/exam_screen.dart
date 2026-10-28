@@ -28,7 +28,11 @@ class _ExamScreenState extends State<ExamScreen>
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 2, vsync: this, initialIndex: widget.initialTab);
+    _tabController = TabController(
+      length: 2,
+      vsync: this,
+      initialIndex: widget.initialTab,
+    );
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _loadExams();
     });
@@ -52,6 +56,7 @@ class _ExamScreenState extends State<ExamScreen>
   }
 
   void _showCreateExamModal(BuildContext context) {
+    if (context.read<AuthBloc>().state.user?.role != UserRole.teacher) return;
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -64,10 +69,7 @@ class _ExamScreenState extends State<ExamScreen>
   Widget build(BuildContext context) {
     final authState = context.watch<AuthBloc>().state;
     final userRole = authState.user?.role ?? UserRole.student;
-    final isTeacherOrAdmin = userRole == UserRole.teacher ||
-        userRole == UserRole.staff ||
-        userRole == UserRole.admin ||
-        userRole == UserRole.masterAdmin;
+    final canScheduleExam = userRole == UserRole.teacher;
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -77,8 +79,10 @@ class _ExamScreenState extends State<ExamScreen>
         leading: widget.isInline
             ? null
             : IconButton(
-                icon: const Icon(Icons.arrow_back_ios_new_rounded,
-                    color: AppColors.textPrimary),
+                icon: const Icon(
+                  Icons.arrow_back_ios_new_rounded,
+                  color: AppColors.textPrimary,
+                ),
                 onPressed: () => Navigator.pop(context),
               ),
         title: Text(
@@ -88,16 +92,22 @@ class _ExamScreenState extends State<ExamScreen>
         centerTitle: true,
         actions: [
           IconButton(
-            icon: const Icon(Icons.refresh_rounded, color: AppColors.textPrimary),
+            icon: const Icon(
+              Icons.refresh_rounded,
+              color: AppColors.textPrimary,
+            ),
             tooltip: 'Sync Exams',
             onPressed: _loadExams,
           ),
-          if (isTeacherOrAdmin)
+          if (canScheduleExam)
             Padding(
               padding: EdgeInsets.only(right: 8.w),
               child: IconButton(
-                icon: const Icon(Icons.add_circle_outline_rounded,
-                    color: AppColors.primary, size: 26),
+                icon: const Icon(
+                  Icons.add_circle_outline_rounded,
+                  color: AppColors.primary,
+                  size: 26,
+                ),
                 tooltip: 'Schedule New Exam',
                 onPressed: () => _showCreateExamModal(context),
               ),
@@ -108,15 +118,14 @@ class _ExamScreenState extends State<ExamScreen>
           indicatorColor: AppColors.primary,
           labelColor: AppColors.primary,
           unselectedLabelColor: AppColors.textMuted,
-          labelStyle:
-              TextStyle(fontSize: 14.sp, fontWeight: FontWeight.bold),
+          labelStyle: TextStyle(fontSize: 14.sp, fontWeight: FontWeight.bold),
           tabs: const [
             Tab(text: 'Upcoming'),
             Tab(text: 'Results'),
           ],
         ),
       ),
-      floatingActionButton: isTeacherOrAdmin
+      floatingActionButton: canScheduleExam
           ? FloatingActionButton.extended(
               onPressed: () => _showCreateExamModal(context),
               backgroundColor: AppColors.primary,
@@ -160,17 +169,21 @@ class _ExamScreenState extends State<ExamScreen>
               return const SmoothSkeletonCardList(count: 4);
             }
 
-            final upcoming = state.exams
-                .where((e) =>
-                    e.status == ExamStatus.upcoming ||
-                    (e.status == ExamStatus.ongoing))
-                .toList()
-              ..sort((a, b) => a.date.compareTo(b.date));
+            final upcoming =
+                state.exams
+                    .where(
+                      (e) =>
+                          e.status == ExamStatus.upcoming ||
+                          (e.status == ExamStatus.ongoing),
+                    )
+                    .toList()
+                  ..sort((a, b) => a.date.compareTo(b.date));
 
-            final completed = state.exams
-                .where((e) => e.status == ExamStatus.completed)
-                .toList()
-              ..sort((a, b) => b.date.compareTo(a.date));
+            final completed =
+                state.exams
+                    .where((e) => e.status == ExamStatus.completed)
+                    .toList()
+                  ..sort((a, b) => b.date.compareTo(a.date));
 
             return TabBarView(
               controller: _tabController,
@@ -223,7 +236,8 @@ class _ExamListTab extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isTeacherOrAdmin = userRole == UserRole.teacher ||
+    final isTeacherOrAdmin =
+        userRole == UserRole.teacher ||
         userRole == UserRole.staff ||
         userRole == UserRole.admin ||
         userRole == UserRole.masterAdmin;
@@ -235,14 +249,21 @@ class _ExamListTab extends StatelessWidget {
       final scoredExams = exams.where((e) => e.scoredMarks != null).toList();
       if (scoredExams.isNotEmpty) {
         final totalPct = scoredExams.fold(0.0, (sum, e) => sum + e.percentage);
-        avgPercentage = double.parse((totalPct / scoredExams.length).toStringAsFixed(1));
+        avgPercentage = double.parse(
+          (totalPct / scoredExams.length).toStringAsFixed(1),
+        );
         if (avgPercentage >= 90) {
           overallGrade = 'A+';
-        } else if (avgPercentage >= 80) overallGrade = 'A';
-        else if (avgPercentage >= 70) overallGrade = 'B';
-        else if (avgPercentage >= 60) overallGrade = 'C';
-        else if (avgPercentage >= 50) overallGrade = 'D';
-        else overallGrade = 'F';
+        } else if (avgPercentage >= 80)
+          overallGrade = 'A';
+        else if (avgPercentage >= 70)
+          overallGrade = 'B';
+        else if (avgPercentage >= 60)
+          overallGrade = 'C';
+        else if (avgPercentage >= 50)
+          overallGrade = 'D';
+        else
+          overallGrade = 'F';
       }
     }
 
@@ -353,7 +374,8 @@ class _ExamListTab extends StatelessWidget {
           )
         else
           ...exams.map((exam) {
-            final isToday = exam.date.day == DateTime.now().day &&
+            final isToday =
+                exam.date.day == DateTime.now().day &&
                 exam.date.month == DateTime.now().month &&
                 exam.date.year == DateTime.now().year;
 
@@ -429,7 +451,9 @@ class _ExamListTab extends StatelessWidget {
                                 ),
                                 Container(
                                   padding: EdgeInsets.symmetric(
-                                      horizontal: 8.w, vertical: 4.h),
+                                    horizontal: 8.w,
+                                    vertical: 4.h,
+                                  ),
                                   decoration: BoxDecoration(
                                     color: dateColor.withValues(alpha: 0.08),
                                     borderRadius: BorderRadius.circular(8.r),
@@ -510,12 +534,15 @@ class _ExamListTab extends StatelessWidget {
                           children: [
                             Container(
                               padding: EdgeInsets.symmetric(
-                                  horizontal: 10.w, vertical: 4.h),
+                                horizontal: 10.w,
+                                vertical: 4.h,
+                              ),
                               decoration: BoxDecoration(
-                                color: (exam.isPassed
-                                        ? AppColors.success
-                                        : AppColors.error)
-                                    .withValues(alpha: 0.1),
+                                color:
+                                    (exam.isPassed
+                                            ? AppColors.success
+                                            : AppColors.error)
+                                        .withValues(alpha: 0.1),
                                 borderRadius: BorderRadius.circular(8.r),
                               ),
                               child: Text(
@@ -533,7 +560,9 @@ class _ExamListTab extends StatelessWidget {
                         ),
                         Container(
                           padding: EdgeInsets.symmetric(
-                              horizontal: 12.w, vertical: 6.h),
+                            horizontal: 12.w,
+                            vertical: 6.h,
+                          ),
                           decoration: BoxDecoration(
                             gradient: exam.scoredMarks! / exam.maxMarks >= 0.6
                                 ? AppColors.successGradient
@@ -567,7 +596,9 @@ class _ExamListTab extends StatelessWidget {
                         ),
                         Container(
                           padding: EdgeInsets.symmetric(
-                              horizontal: 8.w, vertical: 4.h),
+                            horizontal: 8.w,
+                            vertical: 4.h,
+                          ),
                           decoration: BoxDecoration(
                             color: AppColors.info.withValues(alpha: 0.08),
                             borderRadius: BorderRadius.circular(8.r),
@@ -616,7 +647,9 @@ class _ExamListTab extends StatelessWidget {
                               borderRadius: BorderRadius.circular(10.r),
                             ),
                             padding: EdgeInsets.symmetric(
-                                horizontal: 12.w, vertical: 6.h),
+                              horizontal: 12.w,
+                              vertical: 6.h,
+                            ),
                           ),
                         ),
                       ],
@@ -644,16 +677,20 @@ class _ExamListTab extends StatelessWidget {
       'Sep',
       'Oct',
       'Nov',
-      'Dec'
+      'Dec',
     ];
     return '${dt.day} ${months[dt.month - 1]} ${dt.year}';
   }
 
   Color _getSubjectColor(String subject) {
     if (subject.contains('Math')) return AppColors.primary;
-    if (subject.contains('Science') || subject.contains('Physics') || subject.contains('Chemistry')) return AppColors.info;
+    if (subject.contains('Science') ||
+        subject.contains('Physics') ||
+        subject.contains('Chemistry'))
+      return AppColors.info;
     if (subject.contains('English')) return AppColors.secondary;
-    if (subject.contains('Hindi') || subject.contains('Social')) return AppColors.warning;
+    if (subject.contains('Hindi') || subject.contains('Social'))
+      return AppColors.warning;
     return AppColors.primary;
   }
 }
@@ -879,8 +916,9 @@ class _CreateExamSheetState extends State<_CreateExamSheet> {
                 onChanged: (val) {
                   if (val != null) setState(() => _selectedSubject = val);
                 },
-                validator: (v) =>
-                    (v == null || v.trim().isEmpty) ? 'Please select subject' : null,
+                validator: (v) => (v == null || v.trim().isEmpty)
+                    ? 'Please select subject'
+                    : null,
               ),
               12.h.height,
               TextFormField(
@@ -892,8 +930,9 @@ class _CreateExamSheetState extends State<_CreateExamSheet> {
                     borderRadius: BorderRadius.circular(12.r),
                   ),
                 ),
-                validator: (v) =>
-                    (v == null || v.trim().isEmpty) ? 'Please enter title' : null,
+                validator: (v) => (v == null || v.trim().isEmpty)
+                    ? 'Please enter title'
+                    : null,
               ),
               12.h.height,
               TextFormField(
@@ -917,13 +956,17 @@ class _CreateExamSheetState extends State<_CreateExamSheet> {
                 decoration: InputDecoration(
                   labelText: 'Exam Date',
                   hintText: 'Select Date',
-                  suffixIcon: const Icon(Icons.calendar_today_rounded, size: 20),
+                  suffixIcon: const Icon(
+                    Icons.calendar_today_rounded,
+                    size: 20,
+                  ),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12.r),
                   ),
                 ),
-                validator: (v) =>
-                    (v == null || v.trim().isEmpty) ? 'Please select date' : null,
+                validator: (v) => (v == null || v.trim().isEmpty)
+                    ? 'Please select date'
+                    : null,
               ),
               12.h.height,
               Row(
@@ -939,13 +982,16 @@ class _CreateExamSheetState extends State<_CreateExamSheet> {
                         ),
                       ),
                       items: _classes
-                          .map((c) => DropdownMenuItem(value: c, child: Text(c)))
+                          .map(
+                            (c) => DropdownMenuItem(value: c, child: Text(c)),
+                          )
                           .toList(),
                       onChanged: (val) {
                         if (val != null) setState(() => _selectedClass = val);
                       },
-                      validator: (v) =>
-                          (v == null || v.trim().isEmpty) ? 'Please select class' : null,
+                      validator: (v) => (v == null || v.trim().isEmpty)
+                          ? 'Please select class'
+                          : null,
                     ),
                   ),
                   12.w.width,
@@ -977,7 +1023,10 @@ class _CreateExamSheetState extends State<_CreateExamSheet> {
                       decoration: InputDecoration(
                         labelText: 'Start Time',
                         hintText: 'Select Time',
-                        suffixIcon: const Icon(Icons.access_time_rounded, size: 20),
+                        suffixIcon: const Icon(
+                          Icons.access_time_rounded,
+                          size: 20,
+                        ),
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(12.r),
                         ),
@@ -996,7 +1045,10 @@ class _CreateExamSheetState extends State<_CreateExamSheet> {
                       decoration: InputDecoration(
                         labelText: 'End Time',
                         hintText: 'Select Time',
-                        suffixIcon: const Icon(Icons.access_time_rounded, size: 20),
+                        suffixIcon: const Icon(
+                          Icons.access_time_rounded,
+                          size: 20,
+                        ),
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(12.r),
                         ),
@@ -1081,11 +1133,8 @@ class _RecordScoreSheetState extends State<_RecordScoreSheet> {
       final score = double.tryParse(text);
       if (score != null) {
         context.read<SchoolBloc>().add(
-              UploadExamScoreRequested(
-                examId: widget.exam.id,
-                score: score,
-              ),
-            );
+          UploadExamScoreRequested(examId: widget.exam.id, score: score),
+        );
         Navigator.pop(context);
       }
     }

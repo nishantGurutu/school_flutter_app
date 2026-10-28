@@ -190,7 +190,7 @@ class AttendanceStats {
         ? (json['classBreakdown'] as List)
         : [];
     return AttendanceStats(
-      totalStudents: (json['totalStudents'] ?? 0) is int
+      totalStudents: json['totalStudents'] is int
           ? json['totalStudents']
           : int.tryParse(json['totalStudents'].toString()) ?? 0,
       presentStudents: (json['presentStudents'] ?? 0) is int
@@ -503,7 +503,7 @@ class TeacherClassModel {
       className: json['className'] ?? 'Class',
       section: json['section'] ?? 'A',
       subject: json['subject'] ?? 'General',
-      totalStudents: (json['totalStudents'] ?? 0) is int
+      totalStudents: json['totalStudents'] is int
           ? json['totalStudents']
           : int.tryParse(json['totalStudents'].toString()) ?? 0,
       room: json['room'] ?? 'Room 101',

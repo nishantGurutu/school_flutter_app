@@ -953,7 +953,7 @@ class ApiSchoolRepository implements SchoolRepository {
   // ============================================================
 
   @override
-  Future<List<TeacherClassModel>> getTeacherClasses() async {
+  Future<List<TeacherClassModel>> getTeacherClasses({bool throwOnError = false}) async {
     try {
       final res = await _apiService.getApi(AppUrl.teacherClasses);
       final rawList = _extractList(res);
@@ -968,6 +968,7 @@ class ApiSchoolRepository implements SchoolRepository {
       if (kDebugMode) {
         print('❌ Error fetching teacher classes: $e');
       }
+      if (throwOnError) rethrow;
       return [];
     }
   }
@@ -976,6 +977,7 @@ class ApiSchoolRepository implements SchoolRepository {
   Future<List<StudentInClassModel>> getClassStudents(
     String className, {
     String? section,
+    bool throwOnError = false,
   }) async {
     try {
       final url = AppUrl.classStudents(className, section: section);
@@ -992,6 +994,7 @@ class ApiSchoolRepository implements SchoolRepository {
       if (kDebugMode) {
         print('❌ Error fetching class students: $e');
       }
+      if (throwOnError) rethrow;
       return [];
     }
   }
