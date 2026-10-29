@@ -89,6 +89,27 @@ class PendingChat extends SchoolChatService {
   Future<void> sync() async {}
 }
 
+class HistoryChat extends FakeChat {
+  final int count;
+  HistoryChat(this.count);
+  @override
+  Future<void> select(String? id) async {
+    selectedRoom = id;
+    messages = List.generate(
+      count,
+      (i) => {
+        'id': i + 1,
+        'clientId': 'history-$i',
+        'senderId': 2,
+        'senderName': 'Parent',
+        'text': 'History $i',
+        'sentAt': '2026-10-30T10:00:00Z',
+      },
+    );
+    changed();
+  }
+}
+
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
   setUp(
@@ -219,6 +240,58 @@ void main() {
       expect(chat.status(chat.messages.first), 'Sending');
       await tester.pumpWidget(const SizedBox());
       await tester.pump();
+    },
+  );
+  testWidgets(
+    'short conversation starts at bottom in chronological order above composer',
+    (tester) async {
+      tester.view.physicalSize = const Size(390, 844);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      await tester.pumpWidget(
+        MaterialApp(home: SchoolChatScreen(service: HistoryChat(2))),
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Class teacher'));
+      await tester.pumpAndSettle();
+      final first = tester.getRect(find.text('History 0')),
+          latest = tester.getRect(find.text('History 1')),
+          composer = tester.getRect(find.byType(TextField));
+      expect(first.top, lessThan(latest.top));
+      expect(latest.bottom, greaterThan(600));
+      expect(composer.top - latest.bottom, lessThan(90));
+      await tester.pumpWidget(const SizedBox());
+    },
+  );
+  testWidgets(
+    'long conversation opens at latest and incoming message does not force older reader down',
+    (tester) async {
+      final chat = HistoryChat(70);
+      await tester.pumpWidget(
+        MaterialApp(home: SchoolChatScreen(service: chat)),
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Class teacher'));
+      await tester.pumpAndSettle();
+      expect(find.text('History 69'), findsOneWidget);
+      expect(find.text('History 0'), findsNothing);
+      final list = find.byType(ListView);
+      await tester.drag(list, const Offset(0, 500));
+      await tester.pumpAndSettle();
+      final controller = tester.widget<ListView>(list).controller!;
+      expect(controller.offset, greaterThan(180));
+      chat.messages.add({
+        'id': 71,
+        'senderId': 2,
+        'senderName': 'Parent',
+        'text': 'New while reading',
+        'sentAt': '2026-10-30T10:01:00Z',
+      });
+      chat.changed();
+      await tester.pumpAndSettle();
+      expect(controller.offset, greaterThan(180));
+      await tester.pumpWidget(const SizedBox());
     },
   );
 }

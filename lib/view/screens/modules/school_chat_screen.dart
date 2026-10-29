@@ -19,7 +19,8 @@ class SchoolChatScreen extends StatefulWidget {
 class _SchoolChatScreenState extends State<SchoolChatScreen>
     with WidgetsBindingObserver {
   late final SchoolChatService chat;
-  final text = TextEditingController(), scroll = ScrollController();
+  final text = TextEditingController(),
+      scroll = ScrollController(keepScrollOffset: false);
   Map<String, dynamic>? attachment;
   String? myId, role;
   bool busy = false, showEmoji = false;
@@ -96,10 +97,9 @@ class _SchoolChatScreenState extends State<SchoolChatScreen>
   void update() {
     if (!mounted) return;
     setState(() {});
-    if (scroll.hasClients &&
-        scroll.position.maxScrollExtent - scroll.offset < 180) {
+    if (scroll.hasClients && scroll.offset < 180) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (scroll.hasClients) scroll.jumpTo(scroll.position.maxScrollExtent);
+        if (scroll.hasClients) scroll.jumpTo(0);
       });
     }
   }
@@ -234,7 +234,7 @@ class _SchoolChatScreenState extends State<SchoolChatScreen>
       }),
     );
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (scroll.hasClients) scroll.jumpTo(scroll.position.maxScrollExtent);
+      if (scroll.hasClients) scroll.jumpTo(0);
     });
   }
 
@@ -732,11 +732,13 @@ class _SchoolChatScreenState extends State<SchoolChatScreen>
                                 .toList(),
                           )
                   : ListView.builder(
+                      key: ValueKey(chat.selectedRoom),
                       controller: scroll,
+                      reverse: true,
                       padding: const EdgeInsets.fromLTRB(10, 16, 10, 12),
                       itemCount: chat.messages.length,
                       itemBuilder: (context, i) {
-                        final m = chat.messages[i];
+                        final m = chat.messages[chat.messages.length - 1 - i];
                         final mine = '${m['senderId']}' == myId;
                         final status = chat.status(m);
                         final date = DateTime.tryParse(m['sentAt'])?.toLocal();
