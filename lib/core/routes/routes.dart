@@ -83,7 +83,9 @@ class Routes {
         return _slideLeftRoute(const ClassesScreen());
 
       case RoutesName.lesson:
-        return _slideLeftRoute(const LessonScreen());
+        return _slideLeftRoute(
+          LessonScreen(initialClassName: settings.arguments as String?),
+        );
 
       case RoutesName.topics:
         return _slideLeftRoute(

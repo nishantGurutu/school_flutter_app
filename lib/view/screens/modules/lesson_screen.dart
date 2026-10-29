@@ -8,7 +8,9 @@ import '../../widgets/glass_card.dart';
 import '../../widgets/smooth_skeleton.dart';
 
 class LessonScreen extends StatefulWidget {
-  const LessonScreen({super.key});
+  const LessonScreen({super.key, this.initialClassName});
+
+  final String? initialClassName;
 
   @override
   State<LessonScreen> createState() => _LessonScreenState();
@@ -19,21 +21,38 @@ class _LessonScreenState extends State<LessonScreen> {
   List<TeacherLessonModel> _lessons = [];
   bool _isLoading = true;
   String _selectedClass = 'All Classes';
-  final Set<dynamic> _expandedLessons = {};
+  List<String> _assignedClasses = [];
+  int _loadVersion = 0;
 
   @override
   void initState() {
     super.initState();
+    _selectedClass = widget.initialClassName ?? _selectedClass;
     _loadLessons();
   }
 
   Future<void> _loadLessons() async {
+    final version = ++_loadVersion;
     setState(() => _isLoading = true);
-    final data = await _repository.getTeacherLessons(
-      className: _selectedClass == 'All Classes' ? null : _selectedClass,
-    );
-    if (mounted) {
+    final classes = await _repository.getTeacherClasses();
+    if (!mounted || version != _loadVersion) return;
+    final names = classes
+        .map((c) => c.className.trim())
+        .where((name) => name.isNotEmpty)
+        .toSet()
+        .toList();
+    if (!names.contains(_selectedClass)) {
+      _selectedClass = names.isEmpty ? 'All Classes' : names.first;
+    }
+    final selected = _selectedClass;
+    final data = names.isEmpty
+        ? <TeacherLessonModel>[]
+        : await _repository.getTeacherLessons(
+            className: selected == 'All Classes' ? null : selected,
+          );
+    if (mounted && version == _loadVersion) {
       setState(() {
+        _assignedClasses = names;
         _lessons = data;
         _isLoading = false;
       });
@@ -41,13 +60,14 @@ class _LessonScreenState extends State<LessonScreen> {
   }
 
   void _showAddLessonDialog() {
+    if (_assignedClasses.isEmpty || _isLoading) return;
     final chapterNoCtrl = TextEditingController(
       text: 'Chapter ${_lessons.length + 1}',
     );
     final titleCtrl = TextEditingController();
     final descCtrl = TextEditingController();
     String chosenClass = _selectedClass == 'All Classes'
-        ? 'Class 10'
+        ? _assignedClasses.first
         : _selectedClass;
 
     showModalBottomSheet(
@@ -117,14 +137,7 @@ class _LessonScreenState extends State<LessonScreen> {
                     ),
                     12.h.height,
                     DropdownButtonFormField<String>(
-                      initialValue:
-                          [
-                            'Class 9',
-                            'Class 10',
-                            'Class 8',
-                          ].contains(chosenClass)
-                          ? chosenClass
-                          : 'Class 10',
+                      initialValue: chosenClass,
                       decoration: InputDecoration(
                         labelText: 'Select Class',
                         border: OutlineInputBorder(
@@ -133,7 +146,7 @@ class _LessonScreenState extends State<LessonScreen> {
                         filled: true,
                         fillColor: AppColors.background,
                       ),
-                      items: ['Class 8', 'Class 9', 'Class 10'].map((c) {
+                      items: _assignedClasses.map((c) {
                         return DropdownMenuItem(value: c, child: Text(c));
                       }).toList(),
                       onChanged: (val) {
@@ -274,8 +287,9 @@ class _LessonScreenState extends State<LessonScreen> {
                               return DropdownMenuItem(value: d, child: Text(d));
                             }).toList(),
                             onChanged: (val) {
-                              if (val != null)
+                              if (val != null) {
                                 setSheetState(() => difficulty = val);
+                              }
                             },
                           ),
                         ),
@@ -412,7 +426,9 @@ class _LessonScreenState extends State<LessonScreen> {
         ],
       ),
       floatingActionButton: FloatingActionButton.extended(
-        onPressed: _showAddLessonDialog,
+        onPressed: _assignedClasses.isEmpty || _isLoading
+            ? null
+            : _showAddLessonDialog,
         backgroundColor: const Color(0xFF059669),
         icon: const Icon(Icons.add_rounded, color: Colors.white),
         label: Text(
@@ -441,45 +457,39 @@ class _LessonScreenState extends State<LessonScreen> {
                       scrollDirection: Axis.horizontal,
                       physics: const BouncingScrollPhysics(),
                       child: Row(
-                        children:
-                            [
-                              'All Classes',
-                              'Class 9',
-                              'Class 10',
-                              'Class 8',
-                            ].map((c) {
-                              final isSelected = _selectedClass == c;
-                              return Padding(
-                                padding: EdgeInsets.only(right: 8.w),
-                                child: ChoiceChip(
-                                  label: Text(c),
-                                  selected: isSelected,
-                                  onSelected: (_) {
-                                    setState(() => _selectedClass = c);
-                                    _loadLessons();
-                                  },
-                                  selectedColor: const Color(0xFF059669),
-                                  labelStyle: TextStyle(
-                                    color: isSelected
-                                        ? Colors.white
-                                        : AppColors.textPrimary,
-                                    fontWeight: isSelected
-                                        ? FontWeight.w700
-                                        : FontWeight.w500,
-                                    fontSize: 12.sp,
-                                  ),
-                                  backgroundColor: AppColors.surface,
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(10.r),
-                                    side: BorderSide(
-                                      color: isSelected
-                                          ? const Color(0xFF059669)
-                                          : AppColors.border,
-                                    ),
-                                  ),
+                        children: ['All Classes', ..._assignedClasses].map((c) {
+                          final isSelected = _selectedClass == c;
+                          return Padding(
+                            padding: EdgeInsets.only(right: 8.w),
+                            child: ChoiceChip(
+                              label: Text(c),
+                              selected: isSelected,
+                              onSelected: (_) {
+                                setState(() => _selectedClass = c);
+                                _loadLessons();
+                              },
+                              selectedColor: const Color(0xFF059669),
+                              labelStyle: TextStyle(
+                                color: isSelected
+                                    ? Colors.white
+                                    : AppColors.textPrimary,
+                                fontWeight: isSelected
+                                    ? FontWeight.w700
+                                    : FontWeight.w500,
+                                fontSize: 12.sp,
+                              ),
+                              backgroundColor: AppColors.surface,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(10.r),
+                                side: BorderSide(
+                                  color: isSelected
+                                      ? const Color(0xFF059669)
+                                      : AppColors.border,
                                 ),
-                              );
-                            }).toList(),
+                              ),
+                            ),
+                          );
+                        }).toList(),
                       ),
                     ),
                     16.h.height,
@@ -506,7 +516,9 @@ class _LessonScreenState extends State<LessonScreen> {
                               ),
                               6.h.height,
                               Text(
-                                'Tap "+ New Lesson" below to create one.',
+                                _assignedClasses.isEmpty
+                                    ? 'No classes assigned to you yet.'
+                                    : 'Tap "+ New Lesson" below to create one.',
                                 style: TextStyle(
                                   fontSize: 12.sp,
                                   color: AppColors.textMuted,
@@ -524,10 +536,7 @@ class _LessonScreenState extends State<LessonScreen> {
                         separatorBuilder: (_, _) => 14.h.height,
                         itemBuilder: (context, index) {
                           final lesson = _lessons[index];
-                          final isExpanded = _expandedLessons.contains(
-                            lesson.id,
-                          );
-                          return _buildLessonCard(context, lesson, isExpanded);
+                          return _buildLessonCard(context, lesson);
                         },
                       ),
                     80.h.height,
@@ -538,11 +547,7 @@ class _LessonScreenState extends State<LessonScreen> {
     );
   }
 
-  Widget _buildLessonCard(
-    BuildContext context,
-    TeacherLessonModel lesson,
-    bool isExpanded,
-  ) {
+  Widget _buildLessonCard(BuildContext context, TeacherLessonModel lesson) {
     return GlassCard(
       padding: EdgeInsets.all(16.w),
       child: Column(
@@ -612,15 +617,7 @@ class _LessonScreenState extends State<LessonScreen> {
           ],
           12.h.height,
           InkWell(
-            onTap: () {
-              setState(() {
-                if (isExpanded) {
-                  _expandedLessons.remove(lesson.id);
-                } else {
-                  _expandedLessons.add(lesson.id);
-                }
-              });
-            },
+            onTap: () => _showChapterTopics(lesson),
             borderRadius: BorderRadius.circular(8.r),
             child: Container(
               padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 8.h),
@@ -651,133 +648,193 @@ class _LessonScreenState extends State<LessonScreen> {
                     ],
                   ),
                   Icon(
-                    isExpanded
-                        ? Icons.keyboard_arrow_up_rounded
-                        : Icons.keyboard_arrow_down_rounded,
+                    Icons.keyboard_arrow_up_rounded,
                     color: AppColors.textMuted,
                   ),
                 ],
               ),
             ),
           ),
-          if (isExpanded) ...[
-            10.h.height,
-            if (lesson.topics.isEmpty)
-              Padding(
-                padding: EdgeInsets.symmetric(vertical: 8.h),
-                child: Center(
-                  child: Text(
-                    'No topics added. Tap "+" to add a topic.',
-                    style: TextStyle(
-                      fontSize: 11.5.sp,
-                      color: AppColors.textMuted,
-                      fontStyle: FontStyle.italic,
-                    ),
+        ],
+      ),
+    );
+  }
+
+  void _showChapterTopics(TeacherLessonModel lesson) {
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      backgroundColor: AppColors.surface,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(22.r)),
+      ),
+      builder: (sheetContext) => DraggableScrollableSheet(
+        expand: false,
+        initialChildSize: 0.65,
+        minChildSize: 0.35,
+        maxChildSize: 0.95,
+        builder: (context, scrollController) => Padding(
+          padding: EdgeInsets.fromLTRB(20.w, 12.h, 20.w, 16.h),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Center(
+                child: Container(
+                  width: 40.w,
+                  height: 4.h,
+                  decoration: BoxDecoration(
+                    color: AppColors.border,
+                    borderRadius: BorderRadius.circular(4.r),
                   ),
                 ),
-              )
-            else
-              ListView.separated(
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                itemCount: lesson.topics.length,
-                separatorBuilder: (_, _) => 6.h.height,
-                itemBuilder: (context, i) {
-                  final topic = lesson.topics[i];
-                  return Container(
-                    padding: EdgeInsets.all(10.w),
-                    decoration: BoxDecoration(
-                      color: AppColors.surface,
-                      borderRadius: BorderRadius.circular(8.r),
-                      border: Border.all(
-                        color: AppColors.border.withValues(alpha: 0.6),
+              ),
+              Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      lesson.chapterTitle,
+                      style: TextStyle(
+                        fontSize: 18.sp,
+                        fontWeight: FontWeight.bold,
+                        color: AppColors.textPrimary,
                       ),
                     ),
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        CircleAvatar(
-                          radius: 12.r,
-                          backgroundColor: const Color(
-                            0xFF059669,
-                          ).withValues(alpha: 0.1),
+                  ),
+                  IconButton(
+                    tooltip: 'Close',
+                    onPressed: () => Navigator.pop(sheetContext),
+                    icon: const Icon(Icons.close_rounded),
+                  ),
+                ],
+              ),
+              Text(
+                '${lesson.chapterNumber} • ${lesson.className} • Topics (${lesson.topics.length})',
+                style: TextStyle(
+                  fontSize: 12.sp,
+                  color: AppColors.textSecondary,
+                ),
+              ),
+              16.h.height,
+              Expanded(
+                child: lesson.topics.isEmpty
+                    ? Padding(
+                        padding: EdgeInsets.symmetric(vertical: 8.h),
+                        child: Center(
                           child: Text(
-                            '${i + 1}',
+                            'No topics added. Tap "+" to add a topic.',
                             style: TextStyle(
-                              fontSize: 10.sp,
-                              fontWeight: FontWeight.bold,
-                              color: const Color(0xFF059669),
+                              fontSize: 11.5.sp,
+                              color: AppColors.textMuted,
+                              fontStyle: FontStyle.italic,
                             ),
                           ),
                         ),
-                        10.w.width,
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                topic.title,
-                                style: TextStyle(
-                                  fontSize: 13.sp,
-                                  fontWeight: FontWeight.bold,
-                                  color: AppColors.textPrimary,
-                                ),
+                      )
+                    : ListView.separated(
+                        controller: scrollController,
+                        itemCount: lesson.topics.length,
+                        separatorBuilder: (_, _) => 6.h.height,
+                        itemBuilder: (context, i) {
+                          final topic = lesson.topics[i];
+                          return Container(
+                            padding: EdgeInsets.all(10.w),
+                            decoration: BoxDecoration(
+                              color: AppColors.surface,
+                              borderRadius: BorderRadius.circular(8.r),
+                              border: Border.all(
+                                color: AppColors.border.withValues(alpha: 0.6),
                               ),
-                              if (topic.description.isNotEmpty) ...[
-                                3.h.height,
-                                Text(
-                                  topic.description,
-                                  style: TextStyle(
-                                    fontSize: 11.5.sp,
-                                    color: AppColors.textSecondary,
+                            ),
+                            child: Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                CircleAvatar(
+                                  radius: 12.r,
+                                  backgroundColor: const Color(
+                                    0xFF059669,
+                                  ).withValues(alpha: 0.1),
+                                  child: Text(
+                                    '${i + 1}',
+                                    style: TextStyle(
+                                      fontSize: 10.sp,
+                                      fontWeight: FontWeight.bold,
+                                      color: const Color(0xFF059669),
+                                    ),
+                                  ),
+                                ),
+                                10.w.width,
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        topic.title,
+                                        style: TextStyle(
+                                          fontSize: 13.sp,
+                                          fontWeight: FontWeight.bold,
+                                          color: AppColors.textPrimary,
+                                        ),
+                                      ),
+                                      if (topic.description.isNotEmpty) ...[
+                                        3.h.height,
+                                        Text(
+                                          topic.description,
+                                          style: TextStyle(
+                                            fontSize: 11.5.sp,
+                                            color: AppColors.textSecondary,
+                                          ),
+                                        ),
+                                      ],
+                                      6.h.height,
+                                      Row(
+                                        children: [
+                                          Container(
+                                            padding: EdgeInsets.symmetric(
+                                              horizontal: 6.w,
+                                              vertical: 2.h,
+                                            ),
+                                            decoration: BoxDecoration(
+                                              color: _difficultyColor(
+                                                topic.difficulty,
+                                              ).withValues(alpha: 0.1),
+                                              borderRadius:
+                                                  BorderRadius.circular(4.r),
+                                            ),
+                                            child: Text(
+                                              topic.difficulty,
+                                              style: TextStyle(
+                                                color: _difficultyColor(
+                                                  topic.difficulty,
+                                                ),
+                                                fontSize: 10.sp,
+                                                fontWeight: FontWeight.bold,
+                                              ),
+                                            ),
+                                          ),
+                                          8.w.width,
+                                          Text(
+                                            '${topic.estimatedMinutes} mins',
+                                            style: TextStyle(
+                                              fontSize: 11.sp,
+                                              color: AppColors.textMuted,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ],
                                   ),
                                 ),
                               ],
-                              6.h.height,
-                              Row(
-                                children: [
-                                  Container(
-                                    padding: EdgeInsets.symmetric(
-                                      horizontal: 6.w,
-                                      vertical: 2.h,
-                                    ),
-                                    decoration: BoxDecoration(
-                                      color: _difficultyColor(
-                                        topic.difficulty,
-                                      ).withValues(alpha: 0.1),
-                                      borderRadius: BorderRadius.circular(4.r),
-                                    ),
-                                    child: Text(
-                                      topic.difficulty,
-                                      style: TextStyle(
-                                        color: _difficultyColor(
-                                          topic.difficulty,
-                                        ),
-                                        fontSize: 10.sp,
-                                        fontWeight: FontWeight.bold,
-                                      ),
-                                    ),
-                                  ),
-                                  8.w.width,
-                                  Text(
-                                    '${topic.estimatedMinutes} mins',
-                                    style: TextStyle(
-                                      fontSize: 11.sp,
-                                      color: AppColors.textMuted,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
-                  );
-                },
+                            ),
+                          );
+                        },
+                      ),
               ),
-          ],
-        ],
+            ],
+          ),
+        ),
       ),
     );
   }

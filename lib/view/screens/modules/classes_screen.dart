@@ -245,39 +245,41 @@ class _ClassesScreenState extends State<ClassesScreen> {
                       physics: const BouncingScrollPhysics(),
                       child: Row(
                         children:
-                            ['All', 'Class Teacher', 'Class 9', 'Class 10'].map(
-                              (chip) {
-                                final isSelected = _selectedFilter == chip;
-                                return Padding(
-                                  padding: EdgeInsets.only(right: 8.w),
-                                  child: ChoiceChip(
-                                    label: Text(chip),
-                                    selected: isSelected,
-                                    onSelected: (_) =>
-                                        setState(() => _selectedFilter = chip),
-                                    selectedColor: AppColors.primary,
-                                    labelStyle: TextStyle(
+                            [
+                              'All',
+                              'Class Teacher',
+                              ..._classes.map((c) => c.className).toSet(),
+                            ].map((chip) {
+                              final isSelected = _selectedFilter == chip;
+                              return Padding(
+                                padding: EdgeInsets.only(right: 8.w),
+                                child: ChoiceChip(
+                                  label: Text(chip),
+                                  selected: isSelected,
+                                  onSelected: (_) =>
+                                      setState(() => _selectedFilter = chip),
+                                  selectedColor: AppColors.primary,
+                                  labelStyle: TextStyle(
+                                    color: isSelected
+                                        ? Colors.white
+                                        : AppColors.textPrimary,
+                                    fontWeight: isSelected
+                                        ? FontWeight.w700
+                                        : FontWeight.w500,
+                                    fontSize: 12.sp,
+                                  ),
+                                  backgroundColor: AppColors.surface,
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(10.r),
+                                    side: BorderSide(
                                       color: isSelected
-                                          ? Colors.white
-                                          : AppColors.textPrimary,
-                                      fontWeight: isSelected
-                                          ? FontWeight.w700
-                                          : FontWeight.w500,
-                                      fontSize: 12.sp,
-                                    ),
-                                    backgroundColor: AppColors.surface,
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(10.r),
-                                      side: BorderSide(
-                                        color: isSelected
-                                            ? AppColors.primary
-                                            : AppColors.border,
-                                      ),
+                                          ? AppColors.primary
+                                          : AppColors.border,
                                     ),
                                   ),
-                                );
-                              },
-                            ).toList(),
+                                ),
+                              );
+                            }).toList(),
                       ),
                     ),
                     16.h.height,
@@ -500,8 +502,11 @@ class _ClassesScreenState extends State<ClassesScreen> {
                 Expanded(
                   flex: 3,
                   child: OutlinedButton.icon(
-                    onPressed: () =>
-                        Navigator.pushNamed(context, RoutesName.lesson),
+                    onPressed: () => Navigator.pushNamed(
+                      context,
+                      RoutesName.lesson,
+                      arguments: item.className,
+                    ),
                     icon: Icon(
                       Icons.menu_book_rounded,
                       size: 14.sp,
@@ -779,3 +784,4 @@ class _ClassStudentsSheetState extends State<_ClassStudentsSheet> {
     );
   }
 }
+
