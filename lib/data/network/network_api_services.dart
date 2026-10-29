@@ -67,7 +67,9 @@ class NetworkApiService implements BaseApiServices {
             options.headers['Authorization'] = 'Bearer $token';
             options.headers['token'] = token;
           }
-          options.headers['Content-Type'] = 'application/json';
+          if (options.data is! FormData) {
+            options.headers['Content-Type'] = 'application/json';
+          }
 
           if (kDebugMode) {
             print("\n==========================================");
@@ -140,6 +142,9 @@ class NetworkApiService implements BaseApiServices {
     if (token == null || token.isEmpty) return null;
     return _dio.fetch<dynamic>(
       request.copyWith(
+        data: request.data is FormData
+            ? (request.data as FormData).clone()
+            : request.data,
         headers: {
           ...request.headers,
           'Authorization': 'Bearer $token',
@@ -230,6 +235,15 @@ class NetworkApiService implements BaseApiServices {
     } on SocketException {
       throw NoInternetException('No Internet Connection');
     }
+  }
+
+  Future<Uint8List> getBytes(String url) async {
+    final response = await _dio.get<List<int>>(
+      url,
+      options: Options(responseType: ResponseType.bytes),
+    );
+    if (response.statusCode != 200) _returnResponse(response);
+    return Uint8List.fromList(response.data!);
   }
 
   Future<Uint8List> getPdfBytes(String url) async {
