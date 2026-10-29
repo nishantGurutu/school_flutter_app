@@ -123,18 +123,6 @@ class RoleNavigationConfig {
             key: 'attendance',
           ),
           RoleNavItem(
-            icon: Icons.assignment_outlined,
-            activeIcon: Icons.assignment_rounded,
-            label: 'Homework',
-            key: 'homework',
-          ),
-          RoleNavItem(
-            icon: Icons.campaign_outlined,
-            activeIcon: Icons.campaign_rounded,
-            label: 'Notices',
-            key: 'notices',
-          ),
-          RoleNavItem(
             icon: Icons.person_outline_rounded,
             activeIcon: Icons.person_rounded,
             label: 'Profile',

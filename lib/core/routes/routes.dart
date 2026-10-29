@@ -7,6 +7,7 @@ import 'routes_name.dart';
 import '../../view/screens/splash_screen.dart';
 import '../../view/screens/login_screen.dart';
 import '../../view/screens/dashboard/dashboard_shell.dart';
+import '../../view/widgets/exit_confirmation.dart';
 import '../../view/screens/modules/attendance_screen.dart';
 import '../../view/screens/modules/exam_screen.dart';
 import '../../view/screens/modules/homework_screen.dart';
@@ -36,10 +37,10 @@ class Routes {
         return _fadeRoute(const SplashScreen());
 
       case RoutesName.login:
-        return _slideUpRoute(LoginScreen());
+        return _slideUpRoute(ExitConfirmation(child: LoginScreen()));
 
       case RoutesName.dashboard:
-        return _fadeRoute(const DashboardShell());
+        return _fadeRoute(const ExitConfirmation(child: DashboardShell()));
 
       case RoutesName.attendance:
         return _slideLeftRoute(const AttendanceScreen());

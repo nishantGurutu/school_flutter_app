@@ -721,6 +721,9 @@ class _TeacherDashboardState extends State<TeacherDashboard> {
   Widget _buildQuickAccessGrid(BuildContext context) {
     final actions = RoleNavigationConfig.getQuickAccessActions(widget.user.role);
     return GridView.builder(
+      // The surrounding scroll view handles page and bottom navigation insets.
+      padding: EdgeInsets.zero,
+      primary: false,
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
       itemCount: actions.length,
