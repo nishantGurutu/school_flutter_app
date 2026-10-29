@@ -1,49 +1,48 @@
+import '../services/runtime_environment.dart';
+
 class AppUrl {
-  // static const String baseUrl =
-  //     'https://school-springboot-backend.onrender.com/api';
-  static const String baseUrl = 'http://192.168.31.107:8080/api';
-  // static const String baseUrl = 'http://localhost:8080/api';
+  static String get baseUrl => RuntimeEnvironment.baseUrl;
 
   // Auth Endpoints
-  static const String login = '$baseUrl/auth/login';
-  static const String refresh = '$baseUrl/auth/refresh';
-  static const String logout = '$baseUrl/auth/logout';
+  static String get login => '$baseUrl/auth/login';
+  static String get refresh => '$baseUrl/auth/refresh';
+  static String get logout => '$baseUrl/auth/logout';
 
   // Mobile App Dynamic Endpoints
-  static const String profileMe = '$baseUrl/mobile/profile/me';
-  static const String attendance = '$baseUrl/mobile/attendance';
-  static const String holidays = '$baseUrl/mobile/holidays';
-  static const String markAttendance = '$baseUrl/mobile/attendance/mark';
-  static const String checkIn = '$baseUrl/mobile/attendance/check-in';
-  static const String checkOut = '$baseUrl/mobile/attendance/check-out';
-  static const String attendanceStats = '$baseUrl/mobile/attendance/stats';
-  static const String homework = '$baseUrl/mobile/homework';
+  static String get profileMe => '$baseUrl/mobile/profile/me';
+  static String get attendance => '$baseUrl/mobile/attendance';
+  static String get holidays => '$baseUrl/mobile/holidays';
+  static String get markAttendance => '$baseUrl/mobile/attendance/mark';
+  static String get checkIn => '$baseUrl/mobile/attendance/check-in';
+  static String get checkOut => '$baseUrl/mobile/attendance/check-out';
+  static String get attendanceStats => '$baseUrl/mobile/attendance/stats';
+  static String get homework => '$baseUrl/mobile/homework';
   static String submitHomework(String id) =>
       '$baseUrl/mobile/homework/submit/$id';
-  static const String fees = '$baseUrl/mobile/fees';
+  static String get fees => '$baseUrl/mobile/fees';
   static String payFee(String id) => '$baseUrl/mobile/fees/pay/$id';
-  static const String timetable = '$baseUrl/mobile/timetable';
-  static const String exams = '$baseUrl/mobile/exams';
-  static const String createExam = '$baseUrl/mobile/exams';
+  static String get timetable => '$baseUrl/mobile/timetable';
+  static String get exams => '$baseUrl/mobile/exams';
+  static String get createExam => '$baseUrl/mobile/exams';
   static String uploadExamScore(String id) => '$baseUrl/mobile/exams/$id/score';
-  static const String expenses = '$baseUrl/mobile/expenses';
+  static String get expenses => '$baseUrl/mobile/expenses';
   static String approveExpense(String id) =>
       '$baseUrl/mobile/expenses/$id/approve';
-  static const String payroll = '$baseUrl/mobile/payroll';
-  static const String leaves = '$baseUrl/mobile/leaves';
+  static String get payroll => '$baseUrl/mobile/payroll';
+  static String get leaves => '$baseUrl/mobile/leaves';
   static String approveLeave(String id) => '$baseUrl/mobile/leaves/$id/approve';
   static String rejectLeave(String id) => '$baseUrl/mobile/leaves/$id/reject';
-  static const String notices = '$baseUrl/mobile/notices';
-  static const String homeDashboard = '$baseUrl/mobile/dashboard/home';
+  static String get notices => '$baseUrl/mobile/notices';
+  static String get homeDashboard => '$baseUrl/mobile/dashboard/home';
   static String homeDashboardWithStudent(String admissionNo) =>
       '$baseUrl/mobile/dashboard/home?admissionNo=${Uri.encodeComponent(admissionNo)}';
 
   // School Photo Gallery Endpoints (Dynamic from Admin Dashboard)
-  static const String gallery = '$baseUrl/gallery';
-  static const String activeGallery = '$baseUrl/gallery/active';
+  static String get gallery => '$baseUrl/gallery';
+  static String get activeGallery => '$baseUrl/gallery/active';
 
   // Certificates Endpoints (Dynamic from Admin Dashboard & Backend PDF Generator)
-  static const String certificates = '$baseUrl/certificates';
+  static String get certificates => '$baseUrl/certificates';
   static String certificatePdf(dynamic id) => '$baseUrl/certificates/$id/pdf';
   static String certificateDownload(dynamic id) =>
       '$baseUrl/certificates/$id/download';
@@ -57,7 +56,7 @@ class AppUrl {
       '$baseUrl/mobile/topics/$topicId/notes';
 
   // eSchool Teacher Flow (Classes, Lessons, Assignments ID-wise)
-  static const String teacherClasses = '$baseUrl/mobile/teacher/classes';
+  static String get teacherClasses => '$baseUrl/mobile/teacher/classes';
   static String classStudents(String className, {String? section}) {
     String url =
         '$baseUrl/mobile/classes/${Uri.encodeComponent(className)}/students';
@@ -78,7 +77,7 @@ class AppUrl {
     return '$baseUrl/mobile/teacher/lessons${q.isNotEmpty ? '?${q.join('&')}' : ''}';
   }
 
-  static const String createTeacherLesson = '$baseUrl/mobile/teacher/lessons';
+  static String get createTeacherLesson => '$baseUrl/mobile/teacher/lessons';
   static String addLessonTopic(String lessonId) =>
       '$baseUrl/mobile/teacher/lessons/$lessonId/topics';
   static String deleteLesson(String lessonId) =>
@@ -94,7 +93,7 @@ class AppUrl {
     return '$baseUrl/mobile/teacher/assignments${q.isNotEmpty ? '?${q.join('&')}' : ''}';
   }
 
-  static const String createTeacherAssignment =
+  static String get createTeacherAssignment =>
       '$baseUrl/mobile/teacher/assignments';
   static String assignmentSubmissions(String assignmentId) =>
       '$baseUrl/mobile/teacher/assignments/$assignmentId/submissions';
@@ -109,10 +108,7 @@ class AppUrl {
   static String submitStudentAssignment(String assignmentId) =>
       '$baseUrl/mobile/student/assignments/$assignmentId/submit';
 
-  // ==========================================
-  // Transport & Driver Tracking Endpoints
-  // ==========================================
-  static const String transportBase = '$baseUrl/v1/transport';
+  static String get transportBase => '$baseUrl/v1/transport';
 
   static String transportDriverDuty({String? email}) =>
       '$transportBase/driver/my-duty${email != null && email.isNotEmpty ? '?email=${Uri.encodeComponent(email)}' : ''}';

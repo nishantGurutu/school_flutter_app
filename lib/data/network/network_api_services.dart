@@ -1,4 +1,5 @@
 import 'dart:async';
+import '../../services/runtime_environment.dart';
 import 'dart:io';
 import 'dart:developer';
 import 'package:dio/dio.dart';
@@ -11,7 +12,7 @@ import '../exception/app_exceptions.dart';
 class NetworkApiService implements BaseApiServices {
   late final Dio _dio;
   late final Dio _refreshDio;
-  Completer<String?>? _refreshTokenCompleter;
+  static Completer<String?>? _refreshTokenCompleter;
 
   NetworkApiService({Dio? dio, Dio? refreshDio}) {
     _dio =
@@ -39,7 +40,29 @@ class NetworkApiService implements BaseApiServices {
     _dio.interceptors.add(
       InterceptorsWrapper(
         onRequest: (options, handler) async {
-          final token = await StorageHelper.getAccessToken();
+          try {
+            if (Uri.parse(options.path).path.endsWith('/auth/login')) {
+              await RuntimeEnvironment.prepareLogin();
+            } else {
+              await RuntimeEnvironment.refresh();
+            }
+          } catch (error) {
+            handler.reject(
+              DioException(
+                requestOptions: options,
+                error: error,
+                message: error.toString(),
+              ),
+            );
+            return;
+          }
+          options.path = RuntimeEnvironment.resolve(options.path);
+          final isAuth = Uri.parse(options.path).path.startsWith('/api/auth/');
+          final token = isAuth ? null : await StorageHelper.getAccessToken();
+          if (isAuth) {
+            options.headers.remove('Authorization');
+            options.headers.remove('token');
+          }
           if (token != null && token.isNotEmpty) {
             options.headers['Authorization'] = 'Bearer $token';
             options.headers['token'] = token;
@@ -137,6 +160,7 @@ class NetworkApiService implements BaseApiServices {
                 'token',
                 'accesstoken',
                 'refreshtoken',
+                'devicetoken',
                 'password',
               }.contains(key.toString().toLowerCase())
               ? '[redacted]'
@@ -336,6 +360,21 @@ class NetworkApiService implements BaseApiServices {
         return FetchDataException("Request timeout");
       case DioExceptionType.connectionError:
         return NoInternetException("No Internet connection");
+      case DioExceptionType.badResponse:
+        if (error.response != null) {
+          if ([401, 403].contains(error.response!.statusCode)) {
+            return UnauthorisedException(
+              _extractErrorMessage(
+                error.response!,
+                'Session expired. Please sign in again.',
+              ),
+            );
+          }
+          return FetchDataException(
+            _extractErrorMessage(error.response!, 'Request failed'),
+          );
+        }
+        return FetchDataException('Request failed');
       default:
         return FetchDataException("Unexpected network error occurred");
     }

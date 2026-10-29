@@ -1,3 +1,4 @@
+import 'package:school_desk_app/services/runtime_environment.dart';
 import 'dart:async';
 import 'dart:convert';
 import 'dart:typed_data';
@@ -32,13 +33,21 @@ ResponseBody body(int status, Map<String, dynamic> data) =>
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
-  setUp(
-    () => FlutterSecureStorage.setMockInitialValues({
+  setUp(() async {
+    FlutterSecureStorage.setMockInitialValues({
       'accessToken': 'old-token',
       'refreshToken': 'refresh-token',
       'role': 'DRIVER',
-    }),
-  );
+    });
+    final config = Dio()
+      ..httpClientAdapter = FakeAdapter(
+        (_) => body(200, {
+          'environment': 'development',
+          'activeUrl': 'https://example.test/api',
+        }),
+      );
+    await RuntimeEnvironment.refresh(force: true, client: config);
+  });
 
   for (final accepts401 in [true, false]) {
     test(
@@ -120,7 +129,15 @@ void main() {
     final api = NetworkApiService(dio: dio, refreshDio: refresh);
     final results = Future.wait([
       api.getApi('https://example.test/a'),
-      api.getApi('https://example.test/b'),
+      NetworkApiService(
+        dio: Dio(BaseOptions(validateStatus: (_) => true))
+          ..httpClientAdapter = FakeAdapter(
+            (options) => options.headers['Authorization'] == 'Bearer new-token'
+                ? body(200, {'success': true})
+                : body(401, {}),
+          ),
+        refreshDio: refresh,
+      ).getApi('https://example.test/b'),
     ]);
     await started.future;
     release.complete();
@@ -146,4 +163,27 @@ void main() {
     expect(await StorageHelper.getAccessToken(), 'old-token');
     expect(await StorageHelper.getRefreshToken(), 'refresh-token');
   });
+  test(
+    'rejected refresh clears expired session and never retries indefinitely',
+    () async {
+      var refreshes = 0;
+      final dio = Dio(BaseOptions(validateStatus: (_) => true))
+        ..httpClientAdapter = FakeAdapter((_) => body(401, {}));
+      final refresh = Dio()
+        ..httpClientAdapter = FakeAdapter((_) {
+          refreshes++;
+          return body(401, {'message': 'Refresh token expired'});
+        });
+      await expectLater(
+        NetworkApiService(
+          dio: dio,
+          refreshDio: refresh,
+        ).getApi('https://example.test/a'),
+        throwsException,
+      );
+      expect(refreshes, 1);
+      expect(await StorageHelper.getAccessToken(), isNull);
+      expect(await StorageHelper.getRefreshToken(), isNull);
+    },
+  );
 }

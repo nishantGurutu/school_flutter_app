@@ -1,3 +1,6 @@
+import '../data/network/network_api_services.dart';
+import '../services/storage/local_storage.dart';
+import '../utils/app_url.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -20,11 +23,7 @@ Future<void> firebaseNotification([BuildContext? context]) async {
 
   final messaging = FirebaseMessaging.instance;
 
-  await messaging.requestPermission(
-    alert: true,
-    badge: true,
-    sound: true,
-  );
+  await messaging.requestPermission(alert: true, badge: true, sound: true);
 
   FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
 
@@ -44,9 +43,9 @@ Future<void> firebaseNotification([BuildContext? context]) async {
 
   FirebaseMessaging.onMessageOpenedApp.listen((_) {});
 
-  messaging.onTokenRefresh.listen((newToken) {
+  messaging.onTokenRefresh.listen((newToken) async {
     deviceTokenToSendPushNotification = newToken;
-    debugPrint("Firebase Device Token (Refreshed): $deviceTokenToSendPushNotification");
+    await syncPushDeviceToken();
   });
 
   String? token;
@@ -62,8 +61,22 @@ Future<void> firebaseNotification([BuildContext? context]) async {
 
   if (token != null) {
     deviceTokenToSendPushNotification = token;
-    debugPrint("==================================================");
-    debugPrint("🔥 Firebase Device Token: $deviceTokenToSendPushNotification");
-    debugPrint("==================================================");
+    await syncPushDeviceToken();
+  }
+}
+
+/// Handles FCM rotation and tokens that become available after login.
+Future<void> syncPushDeviceToken() async {
+  if (deviceTokenToSendPushNotification.isEmpty) return;
+  final accessToken = await StorageHelper.getAccessToken();
+  if (accessToken == null || accessToken.isEmpty) return;
+  try {
+    await NetworkApiService().postApi('${AppUrl.baseUrl}/mobile/push-devices', {
+      'token': deviceTokenToSendPushNotification,
+    });
+  } catch (_) {
+    debugPrint(
+      'Push device registration unavailable; token will be sent on next login/start.',
+    );
   }
 }

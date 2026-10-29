@@ -1,3 +1,4 @@
+import '../../firebase/notification_firebase.dart';
 import '../../location_tracking/data/datasources/location_service.dart';
 import 'package:school_desk_app/data/exception/app_exceptions.dart';
 import 'package:school_desk_app/data/network/network_api_services.dart';
@@ -24,6 +25,8 @@ class ApiAuthRepository implements AuthRepository {
     final Map<String, dynamic> payload = {
       'email': email.trim(),
       'password': password,
+      if (deviceTokenToSendPushNotification.trim().isNotEmpty)
+        'deviceToken': deviceTokenToSendPushNotification.trim(),
     };
 
     // Reset previous session
@@ -40,6 +43,10 @@ class ApiAuthRepository implements AuthRepository {
         throw UnauthorisedException('Invalid credentials');
       }
       await StorageHelper.saveLoginResponse(data);
+      if (deviceTokenToSendPushNotification.isNotEmpty &&
+          payload['deviceToken'] != deviceTokenToSendPushNotification) {
+        await syncPushDeviceToken();
+      }
       authToken = token.toString();
       final user = UserModel.fromJson(
         data,
@@ -66,6 +73,16 @@ class ApiAuthRepository implements AuthRepository {
   @override
   Future<void> logout() async {
     await LocationService.stop();
+    if (deviceTokenToSendPushNotification.isNotEmpty) {
+      try {
+        await _apiService.postApi(
+          '${AppUrl.baseUrl}/mobile/push-devices/remove',
+          {'token': deviceTokenToSendPushNotification},
+        );
+      } catch (_) {
+        /* Local logout must still complete if offline. */
+      }
+    }
     await StorageHelper.clear();
     authToken = null;
     currentUser = null;
