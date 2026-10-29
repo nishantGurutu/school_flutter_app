@@ -1,3 +1,4 @@
+import '../../../services/chat_attachment_picker.dart';
 import 'dart:async';
 import 'dart:typed_data';
 import 'chat_video_preview.dart';
@@ -11,7 +12,13 @@ import '../../../utils/app_url.dart';
 class SchoolChatScreen extends StatefulWidget {
   final bool isInline;
   final SchoolChatService? service;
-  const SchoolChatScreen({super.key, this.isInline = false, this.service});
+  final Future<ChatPickedAttachment?> Function(FileType)? attachmentPicker;
+  const SchoolChatScreen({
+    super.key,
+    this.isInline = false,
+    this.service,
+    this.attachmentPicker,
+  });
   @override
   State<SchoolChatScreen> createState() => _SchoolChatScreenState();
 }
@@ -22,8 +29,11 @@ class _SchoolChatScreenState extends State<SchoolChatScreen>
   final text = TextEditingController(),
       scroll = ScrollController(keepScrollOffset: false);
   Map<String, dynamic>? attachment;
+  ChatPickedAttachment? pendingFile;
+  bool picking = false;
+  String? attachmentError;
   String? myId, role;
-  bool busy = false, showEmoji = false;
+  bool showEmoji = false;
   final focus = FocusNode();
   final previews = <String, Future<Uint8List>>{};
   String search = '';
@@ -107,7 +117,7 @@ class _SchoolChatScreenState extends State<SchoolChatScreen>
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     chat.visible = state == AppLifecycleState.resumed;
-    if (chat.visible) chat.sync();
+    if (chat.visible) chat.resume();
   }
 
   @override
@@ -218,21 +228,26 @@ class _SchoolChatScreenState extends State<SchoolChatScreen>
   }
 
   void send() {
-    if (busy || (text.text.trim().isEmpty && attachment == null)) return;
-    final content = text.text, file = attachment;
-    final clientId =
+    if (picking ||
+        (text.text.trim().isEmpty &&
+            attachment == null &&
+            pendingFile == null)) {
+      return;
+    }
+    final content = text.text, selected = pendingFile, saved = attachment;
+    final id =
         '${DateTime.now().microsecondsSinceEpoch}-${Random.secure().nextInt(1 << 32)}';
     text.clear();
     setState(() {
+      pendingFile = null;
       attachment = null;
+      attachmentError = null;
     });
-    unawaited(
-      chat.send(content, clientId, file?['id'], attachment: file).catchError((
-        Object e,
-      ) {
-        failure(e);
-      }),
-    );
+    if (selected != null) {
+      chat.queueAttachment(content, id, selected);
+    } else {
+      unawaited(chat.send(content, id, saved?['id'], attachment: saved));
+    }
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (scroll.hasClients) scroll.jumpTo(0);
     });
@@ -249,48 +264,51 @@ class _SchoolChatScreenState extends State<SchoolChatScreen>
   }
 
   Future<void> upload() async {
-    if (busy) return;
-    final type = await showModalBottomSheet<FileType>(
-      context: context,
-      builder: (context) => SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(20),
-          child: Wrap(
-            spacing: 16,
-            children: [
-              for (final option in [
-                (FileType.image, Icons.photo_library, 'Photos'),
-                (FileType.video, Icons.videocam, 'Video'),
-                (FileType.any, Icons.insert_drive_file, 'Document / file'),
-              ])
-                TextButton.icon(
-                  onPressed: () => Navigator.pop(context, option.$1),
-                  icon: Icon(option.$2),
-                  label: Text(option.$3),
-                ),
-            ],
-          ),
-        ),
-      ),
-    );
-    if (type == null || !mounted) return;
+    if (picking) return;
+    focus.unfocus();
+    setState(() {
+      picking = true;
+      attachmentError = null;
+    });
     final originalRoom = chat.selectedRoom;
     try {
-      final file = await FilePicker.pickFile(type: type);
-      if (file == null || !mounted || chat.selectedRoom != originalRoom) return;
-      final size = await file.length();
-      if (size == null || size > 25 * 1024 * 1024) {
-        throw StateError('Choose a file up to 25 MB');
+      final type = await showModalBottomSheet<FileType>(
+        context: context,
+        builder: (context) => SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.all(20),
+            child: Wrap(
+              spacing: 16,
+              children: [
+                for (final option in [
+                  (FileType.image, Icons.photo_library, 'Photos'),
+                  (FileType.video, Icons.videocam, 'Video'),
+                  (FileType.any, Icons.insert_drive_file, 'Document / file'),
+                ])
+                  TextButton.icon(
+                    onPressed: () => Navigator.pop(context, option.$1),
+                    icon: Icon(option.$2),
+                    label: Text(option.$3),
+                  ),
+              ],
+            ),
+          ),
+        ),
+      );
+      if (type == null || !mounted) return;
+      final selected =
+          await (widget.attachmentPicker ?? ChatAttachmentPicker.pick)(type);
+      if (selected == null || !mounted || chat.selectedRoom != originalRoom) {
+        return;
       }
-      setState(() => busy = true);
-      final result = await chat.upload(file.name, await file.readAsBytes());
-      if (mounted && chat.selectedRoom == originalRoom) {
-        setState(() => attachment = result);
-      }
+      setState(() {
+        pendingFile = selected;
+        attachment = null;
+      });
     } catch (e) {
-      failure(e);
+      if (mounted) setState(() => attachmentError = e.toString());
     } finally {
-      if (mounted) setState(() => busy = false);
+      if (mounted) setState(() => picking = false);
     }
   }
 
@@ -303,9 +321,11 @@ class _SchoolChatScreenState extends State<SchoolChatScreen>
         );
         return;
       }
-      final bytes = await chat.api.getBytes(
-        '${AppUrl.baseUrl}/chat/attachments/${file['id']}',
-      );
+      final bytes = file['localBytes'] is Uint8List
+          ? file['localBytes'] as Uint8List
+          : await chat.api.getBytes(
+              '${AppUrl.baseUrl}/chat/attachments/${file['id']}',
+            );
       if (!mounted) return;
       if ((file['type'] as String).startsWith('image/')) {
         await showDialog<void>(
@@ -351,30 +371,37 @@ class _SchoolChatScreenState extends State<SchoolChatScreen>
             if (isImage)
               ClipRRect(
                 borderRadius: BorderRadius.circular(8),
-                child: FutureBuilder<Uint8List>(
-                  future: previews.putIfAbsent(
-                    file['id'],
-                    () => chat.api.getBytes(
-                      '${AppUrl.baseUrl}/chat/attachments/${file['id']}',
-                    ),
-                  ),
-                  builder: (_, snapshot) => snapshot.hasData
-                      ? Image.memory(
-                          snapshot.data!,
-                          height: 170,
-                          width: 250,
-                          fit: BoxFit.cover,
-                        )
-                      : SizedBox(
-                          height: 100,
-                          width: 220,
-                          child: Center(
-                            child: snapshot.hasError
-                                ? const Icon(Icons.broken_image_outlined)
-                                : const CircularProgressIndicator(),
+                child: file['localBytes'] is Uint8List
+                    ? Image.memory(
+                        file['localBytes'] as Uint8List,
+                        height: 170,
+                        width: 250,
+                        fit: BoxFit.cover,
+                      )
+                    : FutureBuilder<Uint8List>(
+                        future: previews.putIfAbsent(
+                          file['id'],
+                          () => chat.api.getBytes(
+                            '${AppUrl.baseUrl}/chat/attachments/${file['id']}',
                           ),
                         ),
-                ),
+                        builder: (_, snapshot) => snapshot.hasData
+                            ? Image.memory(
+                                snapshot.data!,
+                                height: 170,
+                                width: 250,
+                                fit: BoxFit.cover,
+                              )
+                            : SizedBox(
+                                height: 100,
+                                width: 220,
+                                child: Center(
+                                  child: snapshot.hasError
+                                      ? const Icon(Icons.broken_image_outlined)
+                                      : const CircularProgressIndicator(),
+                                ),
+                              ),
+                      ),
               ),
             if (isVideo)
               Container(
@@ -436,7 +463,25 @@ class _SchoolChatScreenState extends State<SchoolChatScreen>
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            if (attachment != null)
+            if (attachmentError != null)
+              Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 6,
+                ),
+                child: Text(
+                  attachmentError!,
+                  maxLines: 3,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(color: Colors.red, fontSize: 12),
+                ),
+              ),
+            if (picking)
+              const Padding(
+                padding: EdgeInsets.all(8),
+                child: Text('Reading selected file…'),
+              ),
+            if (attachment != null || pendingFile != null)
               Padding(
                 padding: const EdgeInsets.all(8),
                 child: Row(
@@ -444,15 +489,19 @@ class _SchoolChatScreenState extends State<SchoolChatScreen>
                     const Icon(Icons.attach_file, color: Color(0xff008069)),
                     Expanded(
                       child: Text(
-                        attachment!['name'],
+                        pendingFile?.name ?? attachment!['name'],
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                       ),
                     ),
                     IconButton(
-                      onPressed: busy
+                      onPressed: picking
                           ? null
-                          : () => setState(() => attachment = null),
+                          : () => setState(() {
+                              attachment = null;
+                              pendingFile = null;
+                              attachmentError = null;
+                            }),
                       icon: const Icon(Icons.close),
                     ),
                   ],
@@ -504,7 +553,7 @@ class _SchoolChatScreenState extends State<SchoolChatScreen>
                         ),
                         IconButton(
                           tooltip: 'Attach photo, video or file',
-                          onPressed: busy ? null : upload,
+                          onPressed: picking ? null : upload,
                           icon: const Icon(
                             Icons.attach_file,
                             color: Color(0xff667781),
@@ -522,15 +571,9 @@ class _SchoolChatScreenState extends State<SchoolChatScreen>
                     style: IconButton.styleFrom(
                       backgroundColor: const Color(0xff008069),
                     ),
-                    onPressed: busy ? null : send,
+                    onPressed: picking ? null : send,
                     tooltip: 'Send',
-                    icon: busy
-                        ? const SizedBox(
-                            width: 22,
-                            height: 22,
-                            child: CircularProgressIndicator(strokeWidth: 2),
-                          )
-                        : const Icon(Icons.send, color: Colors.white),
+                    icon: const Icon(Icons.send),
                   ),
                 ),
               ],
@@ -561,10 +604,12 @@ class _SchoolChatScreenState extends State<SchoolChatScreen>
     ),
   );
   void backToList() {
+    if (picking) return;
     chat.select(null);
     text.clear();
     setState(() {
       attachment = null;
+      pendingFile = null;
       showEmoji = false;
     });
   }
@@ -612,7 +657,7 @@ class _SchoolChatScreenState extends State<SchoolChatScreen>
           ),
           leading: chat.selectedRoom != null
               ? IconButton(
-                  onPressed: busy ? null : backToList,
+                  onPressed: picking ? null : backToList,
                   icon: const Icon(Icons.arrow_back),
                 )
               : widget.isInline
@@ -794,6 +839,16 @@ class _SchoolChatScreenState extends State<SchoolChatScreen>
                                       ),
                                     ),
                                   ),
+                                if (m['localState'] == 'uploading')
+                                  Padding(
+                                    padding: const EdgeInsets.symmetric(
+                                      vertical: 5,
+                                    ),
+                                    child: LinearProgressIndicator(
+                                      value: (m['uploadProgress'] as num? ?? 0)
+                                          .toDouble(),
+                                    ),
+                                  ),
                                 if (status.startsWith('Failed'))
                                   TextButton.icon(
                                     onPressed: () {
@@ -825,7 +880,13 @@ class _SchoolChatScreenState extends State<SchoolChatScreen>
                                         child: Tooltip(
                                           message: status,
                                           child: Icon(
-                                            status == 'Sending'
+                                            (status == 'Sending' ||
+                                                    status.startsWith(
+                                                      'Uploading',
+                                                    ) ||
+                                                    status.startsWith(
+                                                      'Waiting',
+                                                    ))
                                                 ? Icons.access_time
                                                 : status.startsWith('Failed')
                                                 ? Icons.error_outline

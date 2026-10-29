@@ -276,6 +276,29 @@ class NetworkApiService implements BaseApiServices {
     }
   }
 
+  Future<dynamic> postMultipart(
+    String url,
+    FormData data, {
+    ProgressCallback? onSendProgress,
+  }) async {
+    try {
+      final response = await _dio.post(
+        url,
+        data: data,
+        onSendProgress: onSendProgress,
+        options: Options(
+          sendTimeout: const Duration(minutes: 2),
+          receiveTimeout: const Duration(seconds: 45),
+        ),
+      );
+      return _returnResponse(response);
+    } on DioException catch (e) {
+      throw _handleDioError(e);
+    } on SocketException {
+      throw NoInternetException('No Internet Connection');
+    }
+  }
+
   @override
   Future<dynamic> putApi(String url, dynamic data) async {
     try {

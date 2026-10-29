@@ -203,7 +203,7 @@ void main() {
           (_) => body(200, {'accessToken': 'new-token'}),
         );
       final api = NetworkApiService(dio: dio, refreshDio: refresh);
-      final result = await api.postApi(
+      final result = await api.postMultipart(
         'https://example.test/api/chat/rooms/room/attachments',
         FormData.fromMap({
           'file': MultipartFile.fromBytes(

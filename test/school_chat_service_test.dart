@@ -1,3 +1,6 @@
+import 'dart:async';
+import 'package:flutter/foundation.dart';
+import 'package:school_desk_app/services/chat_attachment_picker.dart';
 import 'dart:convert';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:school_desk_app/services/school_chat_service.dart';
@@ -43,6 +46,24 @@ class ChatApi extends NetworkApiService {
   Future<dynamic> postApi(String url, dynamic data) async {
     writes.add(Map<String, dynamic>.from(data));
     return {};
+  }
+}
+
+class QueuedMediaChat extends SchoolChatService {
+  QueuedMediaChat(void Function(String, String) send)
+    : super(api: ChatApi(), socketSend: send);
+  final uploadGate = Completer<Map<String, dynamic>>();
+  int uploads = 0;
+  @override
+  Future<Map<String, dynamic>> upload(
+    String name,
+    List<int> bytes, {
+    String? roomId,
+    ValueChanged<double>? onProgress,
+  }) {
+    uploads++;
+    onProgress?.call(.5);
+    return uploadGate.future;
   }
 }
 
@@ -121,14 +142,17 @@ void main() {
       await chat.select('room');
       chat.setIdentity('1', 'Teacher');
       chat.connected = true;
-      await expectLater(chat.send('Hello', 'rejected', null), throwsStateError);
+      await chat.send('Hello', 'rejected', null);
+      expect(chat.messages.last['localState'], 'failed');
+      expect(chat.messages.last['sendError'], 'Chat access denied');
       chat.dispose();
     },
   );
   test('disconnected chat keeps send unconfirmed for retry', () async {
     final chat = SchoolChatService(api: ChatApi());
     await chat.select('room');
-    await expectLater(chat.send('Draft', 'offline', null), throwsStateError);
+    await chat.send('Draft', 'offline', null);
+    expect(chat.messages.last['localState'], 'queued');
     chat.dispose();
   });
   test(
@@ -195,6 +219,7 @@ void main() {
       service.connected = true;
       final sending = service.send('Instant', 'same-client', null);
       expect(service.messages.last['localState'], 'sending');
+      await Future<void>.delayed(Duration.zero);
       expect(command!['clientId'], 'same-client');
       final persisted = {
         'id': 102,
@@ -221,6 +246,76 @@ void main() {
       );
       expect(service.messages.last['localState'], isNull);
       service.dispose();
+    },
+  );
+  test(
+    'document upload survives reconnect and retry reuses the uploaded attachment',
+    () async {
+      final frames = <Map<String, dynamic>>[];
+      final chat = QueuedMediaChat(
+        (_, body) => frames.add(Map<String, dynamic>.from(jsonDecode(body))),
+      );
+      chat.setIdentity('1', 'Teacher');
+      await chat.select('room');
+      chat.connected = true;
+      chat.queueAttachment(
+        'Caption',
+        'media-stable',
+        ChatPickedAttachment(
+          name: 'notes.pdf',
+          bytes: Uint8List.fromList([1, 2, 3]),
+        ),
+      );
+      expect(chat.messages.last['localState'], 'uploading');
+      expect(chat.messages.last['attachment']['localBytes'], isNotEmpty);
+      chat.connected = false;
+      chat.uploadGate.complete({
+        'id': 'file-id',
+        'name': 'notes.pdf',
+        'type': 'application/pdf',
+        'size': 3,
+      });
+      await Future<void>.delayed(Duration.zero);
+      expect(chat.messages.last['localState'], 'queued');
+      expect(frames, isEmpty);
+      chat.connected = true;
+      chat.flushPending();
+      await Future<void>.delayed(Duration.zero);
+      expect(frames.single['attachmentId'], 'file-id');
+      expect(frames.single['clientId'], 'media-stable');
+      chat.handleSocketEvent({
+        'type': 'send-error',
+        'clientId': 'media-stable',
+        'error': 'Temporary rejection',
+      });
+      await Future<void>.delayed(Duration.zero);
+      expect(chat.messages.last['localState'], 'failed');
+      await chat.retry(chat.messages.last);
+      await Future<void>.delayed(Duration.zero);
+      expect(chat.uploads, 1);
+      expect(frames.length, 2);
+      expect(frames.last['clientId'], 'media-stable');
+      chat.handleSocketEvent({
+        'type': 'ack',
+        'clientId': 'media-stable',
+        'roomId': 'room',
+        'message': {
+          'id': 102,
+          'roomId': 'room',
+          'senderId': 1,
+          'clientId': 'media-stable',
+          'text': 'Caption',
+          'attachment': {'id': 'file-id'},
+        },
+      });
+      await Future<void>.delayed(Duration.zero);
+      expect(
+        chat.messages.where((m) => m['clientId'] == 'media-stable').length,
+        1,
+      );
+      chat.flushPending();
+      expect(frames.length, 2);
+      chat.dispose();
     },
   );
 }

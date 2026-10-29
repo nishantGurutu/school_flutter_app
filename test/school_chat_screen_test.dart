@@ -1,3 +1,7 @@
+import 'dart:async';
+import 'package:file_picker/file_picker.dart';
+import 'package:school_desk_app/services/chat_attachment_picker.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -5,6 +9,7 @@ import 'package:school_desk_app/services/school_chat_service.dart';
 import 'package:school_desk_app/view/screens/modules/school_chat_screen.dart';
 
 class FakeChat extends SchoolChatService {
+  FakeChat({super.socketSend});
   String? sent;
   @override
   Future<void> start() async {
@@ -107,6 +112,47 @@ class HistoryChat extends FakeChat {
       },
     );
     changed();
+  }
+}
+
+class AttachmentChat extends FakeChat {
+  AttachmentChat() : super(socketSend: (_, _) {}) {
+    connected = true;
+  }
+  Completer<Map<String, dynamic>>? uploadResult;
+  int uploads = 0;
+  bool rejectUpload = false;
+  String? sentAttachment;
+  @override
+  Future<Map<String, dynamic>> upload(
+    String name,
+    List<int> bytes, {
+    String? roomId,
+    ValueChanged<double>? onProgress,
+  }) async {
+    uploads++;
+    if (uploadResult != null) return uploadResult!.future;
+    expect(roomId, 'room');
+    expect(bytes, isNotEmpty);
+    onProgress?.call(0.5);
+    if (rejectUpload) throw StateError('Upload unavailable; retry');
+    return {
+      'id': 'uploaded-file',
+      'name': name,
+      'type': 'text/plain',
+      'size': bytes.length,
+    };
+  }
+
+  @override
+  Future<void> send(
+    String text,
+    String clientId,
+    String? attachmentId, {
+    Map<String, dynamic>? attachment,
+  }) async {
+    sentAttachment = attachmentId;
+    await super.send(text, clientId, attachmentId, attachment: attachment);
   }
 }
 
@@ -294,4 +340,142 @@ void main() {
       await tester.pumpWidget(const SizedBox());
     },
   );
+  testWidgets(
+    'selected file previews before upload then submits attachment-only message',
+    (tester) async {
+      final chat = AttachmentChat();
+      FileType? chosen;
+      await tester.pumpWidget(
+        MaterialApp(
+          home: SchoolChatScreen(
+            service: chat,
+            attachmentPicker: (type) async {
+              chosen = type;
+              return ChatPickedAttachment(
+                name: 'homework.txt',
+                bytes: Uint8List.fromList([65, 66]),
+              );
+            },
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Class teacher'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byTooltip('Attach photo, video or file'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Document / file'));
+      await tester.pumpAndSettle();
+      expect(chosen, FileType.any);
+      expect(find.text('homework.txt'), findsOneWidget);
+      expect(chat.uploads, 0);
+      await tester.tap(find.byTooltip('Send'));
+      await tester.pumpAndSettle();
+      expect(chat.uploads, 1);
+      expect(chat.messages.single['attachmentId'], 'uploaded-file');
+      await tester.pumpWidget(const SizedBox());
+    },
+  );
+  testWidgets(
+    'failed upload retains media in bubble and retries without blocking composer',
+    (tester) async {
+      final chat = AttachmentChat()..rejectUpload = true;
+      await tester.pumpWidget(
+        MaterialApp(
+          home: SchoolChatScreen(
+            service: chat,
+            attachmentPicker: (_) async => ChatPickedAttachment(
+              name: 'retry.txt',
+              bytes: Uint8List.fromList([65]),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Class teacher'));
+      await tester.pumpAndSettle();
+      await tester.enterText(find.byType(TextField), 'Keep my caption');
+      await tester.tap(find.byTooltip('Attach photo, video or file'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Photos'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byTooltip('Send'));
+      await tester.pumpAndSettle();
+      expect(find.text('retry.txt'), findsOneWidget);
+      expect(
+        tester.widget<TextField>(find.byType(TextField)).controller!.text,
+        isEmpty,
+      );
+      expect(find.text('Keep my caption'), findsOneWidget);
+      expect(find.text('Retry send'), findsOneWidget);
+      expect(chat.sentAttachment, isNull);
+      chat.rejectUpload = false;
+      await tester.tap(find.text('Retry send'));
+      await tester.pumpAndSettle();
+      expect(chat.messages.single['attachmentId'], 'uploaded-file');
+      expect(chat.uploads, 2);
+      await tester.pumpWidget(const SizedBox());
+    },
+  );
+  testWidgets('media upload displays immediately and composer stays usable', (
+    tester,
+  ) async {
+    final chat = AttachmentChat()
+      ..uploadResult = Completer<Map<String, dynamic>>();
+    await tester.pumpWidget(
+      MaterialApp(
+        home: SchoolChatScreen(
+          service: chat,
+          attachmentPicker: (_) async => ChatPickedAttachment(
+            name: 'document.pdf',
+            bytes: Uint8List.fromList([1, 2, 3]),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Class teacher'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byTooltip('Attach photo, video or file'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Document / file'));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byType(TextField), 'PDF caption');
+    await tester.tap(find.byTooltip('Send'));
+    await tester.pump();
+    expect(find.text('document.pdf'), findsOneWidget);
+    expect(find.text('PDF caption'), findsOneWidget);
+    expect(
+      tester.widget<TextField>(find.byType(TextField)).controller!.text,
+      isEmpty,
+    );
+    expect(
+      tester
+          .widget<IconButton>(
+            find.byWidgetPredicate(
+              (w) => w is IconButton && w.tooltip == 'Send',
+            ),
+          )
+          .onPressed,
+      isNotNull,
+    );
+    expect(
+      find.descendant(
+        of: find.byTooltip('Send'),
+        matching: find.byType(CircularProgressIndicator),
+      ),
+      findsNothing,
+    );
+    chat.connected = false;
+    chat.uploadResult!.complete({
+      'id': 'uploaded',
+      'name': 'document.pdf',
+      'type': 'application/pdf',
+      'size': 3,
+    });
+    await tester.pump();
+    expect(chat.messages.single['localState'], 'queued');
+    expect(tester.takeException(), isNull);
+    await tester.pumpWidget(const SizedBox());
+  });
 }

@@ -1,3 +1,4 @@
+import 'chat_attachment_picker.dart';
 import 'dart:convert';
 import 'dart:async';
 import 'package:dio/dio.dart';
@@ -10,7 +11,10 @@ import '../utils/app_url.dart';
 class SchoolChatService extends ChangeNotifier {
   final NetworkApiService api;
   final void Function(String destination, String body)? socketSend;
-  final Map<String, Completer<void>> _pendingSends = {};
+  final Map<String, Completer<String?>> _pendingSends = {};
+  final Map<String, Map<String, dynamic>> _queue = {};
+  final Set<String> _uploading = {};
+  final Map<String, ChatPickedAttachment> _files = {};
   SchoolChatService({NetworkApiService? api, this.socketSend})
     : api = api ?? NetworkApiService();
   List<Map<String, dynamic>> rooms = [], contacts = [], messages = [];
@@ -35,8 +39,10 @@ class SchoolChatService extends ChangeNotifier {
           message['clientId'] != null &&
           message['senderId'].toString() == _senderId) {
         _outgoing.remove('$selectedRoom:${message['clientId']}');
+        _queue.remove(message['clientId']);
+        _files.remove(message['clientId']);
         final pending = _pendingSends[message['clientId']];
-        if (pending != null && !pending.isCompleted) pending.complete();
+        if (pending != null && !pending.isCompleted) pending.complete(null);
       }
     }
     final merged = <String, Map<String, dynamic>>{};
@@ -90,6 +96,7 @@ class SchoolChatService extends ChangeNotifier {
     await _connect();
     _poll = Timer.periodic(const Duration(seconds: 5), (_) {
       unawaited(sync());
+      flushPending();
       if (_socketBase != AppUrl.baseUrl || _socket?.isActive != true) {
         unawaited(_connect());
       }
@@ -100,25 +107,42 @@ class SchoolChatService extends ChangeNotifier {
     changed();
   }
 
+  void _connectionLost() {
+    connected = false;
+    for (final pending in _pendingSends.values) {
+      if (!pending.isCompleted) pending.complete('__retry__');
+    }
+    changed();
+  }
+
   Future<void> _connect() async {
+    _connectionLost();
     _socket?.deactivate();
     if (_disposed) return;
     _socketBase = AppUrl.baseUrl;
     final headers = <String, String>{};
-    _socket = StompClient(
+    late StompClient client;
+    client = StompClient(
       config: StompConfig(
         url: '${_socketBase!.replaceFirst(RegExp('^http'), 'ws')}/chat/ws',
         stompConnectHeaders: headers,
+        reconnectDelay: const Duration(seconds: 2),
+        connectionTimeout: const Duration(seconds: 10),
         beforeConnect: () async {
           try {
             await api.getApi('${AppUrl.baseUrl}/chat/rooms');
+            if (_disposed || !identical(_socket, client)) {
+              client.deactivate();
+              return;
+            }
             headers['Authorization'] =
                 'Bearer ${await StorageHelper.getAccessToken()}';
           } catch (e) {
+            if (!identical(_socket, client)) return;
             error = e.toString().contains('static resource')
                 ? 'Chat API is missing on ${AppUrl.baseUrl}. Start the updated Spring Boot backend on this saved server and tap Retry.'
                 : e.toString();
-            _socket?.deactivate();
+            client.deactivate();
             connected = false;
             changed();
           }
@@ -126,11 +150,12 @@ class SchoolChatService extends ChangeNotifier {
         heartbeatIncoming: const Duration(seconds: 10),
         heartbeatOutgoing: const Duration(seconds: 10),
         onConnect: (_) {
-          if (_disposed) return;
+          if (_disposed || !identical(_socket, client)) return;
           connected = true;
-          _socket?.subscribe(
+          client.subscribe(
             destination: '/user/queue/chat',
             callback: (frame) {
+              if (_disposed || !identical(_socket, client)) return;
               if (frame.body != null) {
                 handleSocketEvent(
                   Map<String, dynamic>.from(jsonDecode(frame.body!)),
@@ -138,25 +163,27 @@ class SchoolChatService extends ChangeNotifier {
               }
             },
           );
+          flushPending();
           unawaited(sync());
           changed();
         },
         onWebSocketDone: () {
-          connected = false;
-          changed();
+          if (!identical(_socket, client)) return;
+          _connectionLost();
         },
         onWebSocketError: (_) {
-          connected = false;
-          changed();
+          if (!identical(_socket, client)) return;
+          _connectionLost();
         },
         onStompError: (_) {
-          connected = false;
-          changed();
-          _socket?.deactivate();
+          if (!identical(_socket, client)) return;
+          _connectionLost();
+          client.deactivate();
         },
       ),
     );
-    _socket!.activate();
+    _socket = client;
+    client.activate();
   }
 
   Future<void> select(String? roomId) async {
@@ -232,8 +259,12 @@ class SchoolChatService extends ChangeNotifier {
       if (message['senderId'].toString() == _senderId &&
           message['clientId'] != null) {
         _outgoing.remove('${event['roomId']}:${message['clientId']}');
+        _queue.remove(message['clientId']);
+        _files.remove(message['clientId']);
         final confirmed = _pendingSends[message['clientId']];
-        if (confirmed != null && !confirmed.isCompleted) confirmed.complete();
+        if (confirmed != null && !confirmed.isCompleted) {
+          confirmed.complete(null);
+        }
       }
       if (event['roomId'] == selectedRoom) {
         _merge([message]);
@@ -263,33 +294,100 @@ class SchoolChatService extends ChangeNotifier {
       return;
     }
     if (type == 'ack' && pending != null && !pending.isCompleted) {
-      pending.complete();
+      pending.complete(null);
     }
     if (type == 'send-error' && pending != null && !pending.isCompleted) {
-      pending.completeError(
-        StateError(event['error']?.toString() ?? 'Message rejected'),
-      );
+      pending.complete(event['error']?.toString() ?? 'Message rejected');
     }
     _backgroundSync();
   }
 
-  Future<void> send(
+  bool get _ready =>
+      connected &&
+      (socketSend != null ||
+          (_socket?.connected == true && _socketBase == AppUrl.baseUrl));
+
+  void resume() {
+    visible = true;
+    unawaited(sync());
+    if (!_ready && socketSend == null) unawaited(_connect());
+    flushPending();
+  }
+
+  void flushPending() {
+    if (_disposed) return;
+    for (final command in List<Map<String, dynamic>>.from(_queue.values)) {
+      final id = command['clientId'] as String;
+      final local = _outgoing['${command['roomId']}:$id'];
+      if (local == null ||
+          local['localState'] == 'failed' ||
+          _uploading.contains(id) ||
+          _pendingSends.containsKey(id)) {
+        continue;
+      }
+      if (command['baseUrl'] != AppUrl.baseUrl) {
+        local['localState'] = 'failed';
+        local['sendError'] =
+            'API environment changed. Return to the original environment to retry.';
+        changed();
+        continue;
+      }
+      if (_files.containsKey(id) && command['attachmentId'] == null) {
+        unawaited(_uploadQueued(command, local));
+      } else if (_ready) {
+        unawaited(_sendQueued(command, local));
+      }
+    }
+  }
+
+  void queueAttachment(
     String text,
     String clientId,
-    String? attachmentId, {
+    ChatPickedAttachment file,
+  ) {
+    final room = selectedRoom;
+    if (room == null) return;
+    _files[clientId] = file;
+    final mime = file.mimeType == 'application/octet-stream'
+        ? _guessMime(file.name)
+        : file.mimeType;
+    _stage(room, text, clientId, null, {
+      'id': 'local-$clientId',
+      'name': file.name,
+      'type': mime,
+      'size': file.bytes.length,
+      'localBytes': file.bytes,
+    });
+    flushPending();
+  }
+
+  String _guessMime(String name) {
+    final ext = name.toLowerCase().split('.').last;
+    return switch (ext) {
+      'jpg' || 'jpeg' => 'image/jpeg',
+      'png' => 'image/png',
+      'webp' => 'image/webp',
+      'gif' => 'image/gif',
+      'mp4' => 'video/mp4',
+      'mov' => 'video/quicktime',
+      'webm' => 'video/webm',
+      _ => 'application/octet-stream',
+    };
+  }
+
+  Map<String, dynamic> _stage(
+    String room,
+    String text,
+    String id,
+    String? attachmentId,
     Map<String, dynamic>? attachment,
-  }) async {
-    final current = selectedRoom;
-    if (current == null) return;
-    if (_pendingSends.containsKey(clientId)) {
-      return _pendingSends[clientId]!.future;
-    }
+  ) {
     final local = _outgoing.putIfAbsent(
-      '$current:$clientId',
+      '$room:$id',
       () => {
         'id': --_temporaryId,
-        'roomId': current,
-        'clientId': clientId,
+        'roomId': room,
+        'clientId': id,
         'senderId': _senderId ?? 'local',
         'senderName': _senderName,
         'text': text,
@@ -298,72 +396,193 @@ class SchoolChatService extends ChangeNotifier {
         'attachmentId': ?attachmentId,
       },
     );
-    local['localState'] = 'sending';
-    _merge([local]);
+    local['localState'] = 'queued';
+    _queue.putIfAbsent(
+      id,
+      () => {
+        'roomId': room,
+        'clientId': id,
+        'text': text,
+        'attachmentId': attachmentId,
+        'baseUrl': AppUrl.baseUrl,
+        'senderId': _senderId,
+      },
+    );
+    if (room == selectedRoom) _merge([local]);
     changed();
-    final completer = Completer<void>();
-    _pendingSends[clientId] = completer;
+    return local;
+  }
+
+  Future<bool> _sameAccount(Map<String, dynamic> command) async {
+    if (socketSend != null) return true;
+    return (await StorageHelper.getUserSession())?.id == command['senderId'];
+  }
+
+  Future<void> _uploadQueued(
+    Map<String, dynamic> command,
+    Map<String, dynamic> local,
+  ) async {
+    final id = command['clientId'] as String;
+    if (!_uploading.add(id)) return;
+    final file = _files[id];
+    if (file == null) {
+      _uploading.remove(id);
+      return;
+    }
+    local['localState'] = 'uploading';
+    local['uploadProgress'] = 0.0;
+    changed();
     try {
-      if (!connected || (_socket == null && socketSend == null)) {
-        throw StateError(
-          'Chat is reconnecting. Tap the failed message to retry when connected.',
-        );
+      if (!await _sameAccount(command) || _disposed) {
+        local['localState'] = 'failed';
+        local['sendError'] = 'Sign in with the original account to retry.';
+        changed();
+        return;
+      }
+      if (command['baseUrl'] != AppUrl.baseUrl) {
+        local['localState'] = 'failed';
+        local['sendError'] =
+            'API environment changed. Return to the original environment to retry.';
+        changed();
+        return;
+      }
+      final saved = await upload(
+        file.name,
+        file.bytes,
+        roomId: command['roomId'],
+        onProgress: (value) {
+          local['uploadProgress'] = value;
+          changed();
+        },
+      );
+      if (_disposed) return;
+      command['attachmentId'] = saved['id'];
+      local['attachmentId'] = saved['id'];
+      local['attachment'] = {...saved, 'localBytes': file.bytes};
+      local['localState'] = 'queued';
+      changed();
+    } catch (e) {
+      if (!_disposed) {
+        local['localState'] = 'failed';
+        local['sendError'] = e.toString();
+        changed();
+      }
+    } finally {
+      _uploading.remove(id);
+    }
+    if (!_disposed && local['localState'] != 'failed') flushPending();
+  }
+
+  Future<void> _sendQueued(
+    Map<String, dynamic> command,
+    Map<String, dynamic> local,
+  ) async {
+    final id = command['clientId'] as String;
+    if (_disposed || !_ready || _pendingSends.containsKey(id)) return;
+    final completer = Completer<String?>();
+    _pendingSends[id] = completer;
+    local['localState'] = 'sending';
+    changed();
+    try {
+      if (!await _sameAccount(command) || _disposed) {
+        local['localState'] = 'failed';
+        local['sendError'] = 'Sign in with the original account to retry.';
+        changed();
+        return;
+      }
+      if (!_ready || command['baseUrl'] != AppUrl.baseUrl) {
+        local['localState'] = 'queued';
+        changed();
+        return;
       }
       final body = jsonEncode({
-        'roomId': current,
-        'text': text,
-        'clientId': clientId,
-        'attachmentId': ?attachmentId,
+        'roomId': command['roomId'],
+        'text': command['text'],
+        'clientId': id,
+        'attachmentId': ?command['attachmentId'],
       });
       if (socketSend != null) {
         socketSend!('/app/chat.send', body);
       } else {
         _socket!.send(destination: '/app/chat.send', body: body);
       }
-      await completer.future.timeout(
+      final rejection = await completer.future.timeout(
         const Duration(seconds: 15),
-        onTimeout: () {
-          throw TimeoutException(
-            'Not confirmed yet. Tap this message to retry.',
-          );
-        },
+        onTimeout: () => '__retry__',
       );
-    } catch (e) {
-      if (_outgoing.containsKey('$current:$clientId')) {
+      if (_disposed || !_queue.containsKey(id)) return;
+      if (rejection == null) {
+        _queue.remove(id);
+        _files.remove(id);
+        local.remove('localState');
+      } else if (rejection == '__retry__') {
+        local['localState'] = 'queued';
+      } else {
         local['localState'] = 'failed';
-        local['sendError'] = e.toString();
+        local['sendError'] = rejection;
+      }
+      changed();
+    } catch (e) {
+      // A socket can close between the readiness check and send. Keep the message queued.
+      if (!_disposed && _queue.containsKey(id)) {
+        local['localState'] = 'queued';
+        local['sendError'] = 'Waiting for connection';
         changed();
-        rethrow;
       }
     } finally {
-      _pendingSends.remove(clientId);
+      _pendingSends.remove(id);
     }
   }
 
-  Future<void> retry(Map<String, dynamic> message) => send(
-    message['text'],
-    message['clientId'],
-    message['attachmentId'],
-    attachment: message['attachment'] is Map
-        ? Map<String, dynamic>.from(message['attachment'])
-        : null,
-  );
+  Future<void> send(
+    String text,
+    String clientId,
+    String? attachmentId, {
+    Map<String, dynamic>? attachment,
+  }) async {
+    final room = selectedRoom;
+    if (room == null) return;
+    final local = _stage(room, text, clientId, attachmentId, attachment);
+    if (_ready) {
+      await _sendQueued(_queue[clientId]!, local);
+    }
+    // Disconnected sends are queued; reconnect callbacks flush them without throwing.
+  }
 
-  Future<Map<String, dynamic>> upload(String name, List<int> bytes) async {
+  Future<void> retry(Map<String, dynamic> message) async {
+    message['localState'] = 'queued';
+    message.remove('sendError');
+    changed();
+    flushPending();
+  }
+
+  Future<Map<String, dynamic>> upload(
+    String name,
+    List<int> bytes, {
+    String? roomId,
+    ValueChanged<double>? onProgress,
+  }) async {
     if (bytes.length > 25 * 1024 * 1024) {
       throw StateError('Maximum file size is 25 MB');
     }
     return Map<String, dynamic>.from(
-      await api.postApi(
-        '${AppUrl.baseUrl}/chat/rooms/$selectedRoom/attachments',
+      await api.postMultipart(
+        '${AppUrl.baseUrl}/chat/rooms/${roomId ?? selectedRoom}/attachments',
         FormData.fromMap({
           'file': MultipartFile.fromBytes(bytes, filename: name),
         }),
+        onSendProgress: (sent, total) {
+          if (total > 0) onProgress?.call((sent / total).clamp(0, 1));
+        },
       ),
     );
   }
 
   String status(Map<String, dynamic> message) {
+    if (message['localState'] == 'uploading') {
+      return 'Uploading ${((message['uploadProgress'] as num? ?? 0) * 100).round()}%';
+    }
+    if (message['localState'] == 'queued') return 'Waiting for connection';
     if (message['localState'] == 'sending') return 'Sending';
     if (message['localState'] == 'failed') return 'Failed — tap to retry';
     final peers = (room?['members'] as List? ?? [])
@@ -393,9 +612,7 @@ class SchoolChatService extends ChangeNotifier {
     _socket?.deactivate();
     for (final pending in _pendingSends.values) {
       if (!pending.isCompleted) {
-        pending.completeError(
-          StateError('Chat closed; draft was not confirmed.'),
-        );
+        pending.complete('__retry__');
       }
     }
     super.dispose();

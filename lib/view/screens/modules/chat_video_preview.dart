@@ -1,3 +1,4 @@
+import 'dart:typed_data';
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:path_provider/path_provider.dart';
@@ -25,9 +26,11 @@ class _ChatVideoPreviewState extends State<ChatVideoPreview> {
 
   Future<void> load() async {
     try {
-      final bytes = await widget.api.getBytes(
-        '${AppUrl.baseUrl}/chat/attachments/${widget.file['id']}',
-      );
+      final bytes = widget.file['localBytes'] is Uint8List
+          ? widget.file['localBytes'] as Uint8List
+          : await widget.api.getBytes(
+              '${AppUrl.baseUrl}/chat/attachments/${widget.file['id']}',
+            );
       if (!mounted) return;
       final dir = await getTemporaryDirectory();
       final file = File(

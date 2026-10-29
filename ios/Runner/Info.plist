@@ -79,5 +79,7 @@
 		<string>sms</string>
 		<string>tel</string>
 	</array>
+<key>NSPhotoLibraryUsageDescription</key>
+<string>Select photos and videos to share in school conversations.</string>
 </dict>
 </plist>
