@@ -68,7 +68,9 @@ class NetworkApiService implements BaseApiServices {
             options.headers['Authorization'] = 'Bearer $token';
             options.headers['token'] = token;
           }
-          if (options.data is! FormData) {
+          if (options.data is FormData) {
+            options.contentType = 'multipart/form-data';
+          } else {
             options.headers['Content-Type'] = 'application/json';
           }
 
@@ -266,12 +268,33 @@ class NetworkApiService implements BaseApiServices {
   }
 
   Future<Uint8List> getBytes(String url) async {
-    final response = await _dio.get<List<int>>(
-      url,
-      options: Options(responseType: ResponseType.bytes),
-    );
-    if (response.statusCode != 200) _returnResponse(response);
-    return Uint8List.fromList(response.data!);
+    try {
+      final response = await _dio.get<List<int>>(
+        url,
+        options: Options(responseType: ResponseType.bytes),
+      );
+      _returnResponse(response);
+      return Uint8List.fromList(response.data!);
+    } on DioException catch (e) {
+      throw _handleDioError(e);
+    }
+  }
+
+  Future<dynamic> postMultipart(
+    String url,
+    FormData data, {
+    ProgressCallback? onSendProgress,
+  }) async {
+    try {
+      final response = await _dio.post(
+        url,
+        data: data,
+        onSendProgress: onSendProgress,
+      );
+      return _returnResponse(response);
+    } on DioException catch (e) {
+      throw _handleDioError(e);
+    }
   }
 
   Future<Uint8List> getPdfBytes(String url) async {
@@ -296,29 +319,6 @@ class NetworkApiService implements BaseApiServices {
   Future<dynamic> postApi(String url, dynamic data) async {
     try {
       final response = await _dio.post(url, data: data);
-      return _returnResponse(response);
-    } on DioException catch (e) {
-      throw _handleDioError(e);
-    } on SocketException {
-      throw NoInternetException('No Internet Connection');
-    }
-  }
-
-  Future<dynamic> postMultipart(
-    String url,
-    FormData data, {
-    ProgressCallback? onSendProgress,
-  }) async {
-    try {
-      final response = await _dio.post(
-        url,
-        data: data,
-        onSendProgress: onSendProgress,
-        options: Options(
-          sendTimeout: const Duration(minutes: 2),
-          receiveTimeout: const Duration(seconds: 45),
-        ),
-      );
       return _returnResponse(response);
     } on DioException catch (e) {
       throw _handleDioError(e);
