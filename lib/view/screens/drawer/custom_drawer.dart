@@ -86,22 +86,33 @@ class CustomDrawer extends StatelessWidget {
                         label: 'Home Dashboard',
                         onTap: () => Navigator.pop(context),
                       ),
-                      ...drawerItems.map(
-                        (item) => _DrawerTile(
-                          icon: item.icon,
-                          label: item.label,
-                          onTap: () {
-                            final navigator = Navigator.of(context);
-                            navigator.pop();
-                            if (item.route.isNotEmpty) {
-                              navigator.pushNamed(
-                                item.route,
-                                arguments: item.arguments,
-                              );
-                            }
-                          },
-                        ),
+                      _DrawerTile(
+                        icon: Icons.chat_bubble_outline_rounded,
+                        label: 'School Messages',
+                        onTap: () {
+                          final navigator = Navigator.of(context);
+                          navigator.pop();
+                          navigator.pushNamed(RoutesName.chat);
+                        },
                       ),
+                      ...drawerItems
+                          .where((item) => item.route != RoutesName.chat)
+                          .map(
+                            (item) => _DrawerTile(
+                              icon: item.icon,
+                              label: item.label,
+                              onTap: () {
+                                final navigator = Navigator.of(context);
+                                navigator.pop();
+                                if (item.route.isNotEmpty) {
+                                  navigator.pushNamed(
+                                    item.route,
+                                    arguments: item.arguments,
+                                  );
+                                }
+                              },
+                            ),
+                          ),
                       const Padding(
                         padding: EdgeInsets.symmetric(
                           horizontal: 20,

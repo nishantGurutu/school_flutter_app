@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 import '../../services/runtime_environment.dart';
 import 'dart:io';
 import 'dart:developer';
@@ -67,7 +68,9 @@ class NetworkApiService implements BaseApiServices {
             options.headers['Authorization'] = 'Bearer $token';
             options.headers['token'] = token;
           }
-          options.headers['Content-Type'] = 'application/json';
+          if (options.data is! FormData) {
+            options.headers['Content-Type'] = 'application/json';
+          }
 
           if (kDebugMode) {
             print("\n==========================================");
@@ -121,6 +124,33 @@ class NetworkApiService implements BaseApiServices {
     );
   }
 
+  /// Reuse a valid token for STOMP without a separate rooms HTTP round trip.
+  Future<String> socketAccessToken() async {
+    await RuntimeEnvironment.refresh();
+    var token = await StorageHelper.getAccessToken();
+    if (token == null || token.isEmpty)
+      throw StateError('Sign in to connect chat');
+    try {
+      final payload = jsonDecode(
+        utf8.decode(base64Url.decode(base64Url.normalize(token.split('.')[1]))),
+      );
+      final expires = (payload['exp'] as num).toInt();
+      if (expires * 1000 > DateTime.now().millisecondsSinceEpoch + 30000)
+        return token;
+    } catch (_) {
+      // Unknown token format: let the authenticated HTTP path validate/refresh it.
+      await getApi('${AppUrl.baseUrl}/chat/rooms');
+      final validated = await StorageHelper.getAccessToken();
+      if (validated == null || validated.isEmpty)
+        throw StateError('Chat session expired');
+      return validated;
+    }
+    token = await _handleTokenRefresh();
+    if (token == null || token.isEmpty)
+      throw StateError('Chat session expired');
+    return token;
+  }
+
   static const _authRetryKey = 'auth_retry_attempted';
 
   Future<Response<dynamic>?> _retryUnauthorized(RequestOptions request) async {
@@ -140,6 +170,9 @@ class NetworkApiService implements BaseApiServices {
     if (token == null || token.isEmpty) return null;
     return _dio.fetch<dynamic>(
       request.copyWith(
+        data: request.data is FormData
+            ? (request.data as FormData).clone()
+            : request.data,
         headers: {
           ...request.headers,
           'Authorization': 'Bearer $token',
@@ -232,6 +265,15 @@ class NetworkApiService implements BaseApiServices {
     }
   }
 
+  Future<Uint8List> getBytes(String url) async {
+    final response = await _dio.get<List<int>>(
+      url,
+      options: Options(responseType: ResponseType.bytes),
+    );
+    if (response.statusCode != 200) _returnResponse(response);
+    return Uint8List.fromList(response.data!);
+  }
+
   Future<Uint8List> getPdfBytes(String url) async {
     try {
       final response = await _dio.get<List<int>>(
@@ -254,6 +296,29 @@ class NetworkApiService implements BaseApiServices {
   Future<dynamic> postApi(String url, dynamic data) async {
     try {
       final response = await _dio.post(url, data: data);
+      return _returnResponse(response);
+    } on DioException catch (e) {
+      throw _handleDioError(e);
+    } on SocketException {
+      throw NoInternetException('No Internet Connection');
+    }
+  }
+
+  Future<dynamic> postMultipart(
+    String url,
+    FormData data, {
+    ProgressCallback? onSendProgress,
+  }) async {
+    try {
+      final response = await _dio.post(
+        url,
+        data: data,
+        onSendProgress: onSendProgress,
+        options: Options(
+          sendTimeout: const Duration(minutes: 2),
+          receiveTimeout: const Duration(seconds: 45),
+        ),
+      );
       return _returnResponse(response);
     } on DioException catch (e) {
       throw _handleDioError(e);

@@ -186,4 +186,34 @@ void main() {
       expect(await StorageHelper.getRefreshToken(), isNull);
     },
   );
+  test(
+    'multipart attachment survives expired-token refresh and replay',
+    () async {
+      var requests = 0;
+      final dio = Dio(BaseOptions(validateStatus: (_) => true))
+        ..httpClientAdapter = FakeAdapter((options) {
+          requests++;
+          expect(options.data, isA<FormData>());
+          return options.headers['Authorization'] == 'Bearer new-token'
+              ? body(200, {'id': 'file'})
+              : body(401, {});
+        });
+      final refresh = Dio()
+        ..httpClientAdapter = FakeAdapter(
+          (_) => body(200, {'accessToken': 'new-token'}),
+        );
+      final api = NetworkApiService(dio: dio, refreshDio: refresh);
+      final result = await api.postMultipart(
+        'https://example.test/api/chat/rooms/room/attachments',
+        FormData.fromMap({
+          'file': MultipartFile.fromBytes(
+            '%PDF-1.4 test file'.codeUnits,
+            filename: 'note.pdf',
+          ),
+        }),
+      );
+      expect(result['id'], 'file');
+      expect(requests, 2);
+    },
+  );
 }
