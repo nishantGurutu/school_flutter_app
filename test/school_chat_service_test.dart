@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart';
 import 'package:school_desk_app/services/chat_attachment_picker.dart';
 import 'dart:convert';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:school_desk_app/services/school_chat_service.dart';
 import 'package:school_desk_app/data/network/network_api_services.dart';
 
@@ -69,6 +70,27 @@ class QueuedMediaChat extends SchoolChatService {
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
+  test(
+    'session start is shared and cached room returns without reloading history',
+    () async {
+      FlutterSecureStorage.setMockInitialValues({});
+      final api = ChatApi();
+      final chat = SchoolChatService(api: api, socketSend: (_, _) {});
+      final firstStart = chat.start();
+      expect(identical(firstStart, chat.start()), isTrue);
+      await firstStart;
+      await chat.select('room');
+      expect(chat.messages.length, 101);
+      await chat.select(null);
+      final returning = chat.select('room');
+      // Cached content is available before any HTTP completion.
+      expect(chat.messages.length, 101);
+      await returning;
+      expect(api.reads, [0, 100, 101]);
+      chat.dispose();
+    },
+  );
+
   test(
     'reconnect drains all cursor pages, deduplicates and acknowledges visible messages',
     () async {

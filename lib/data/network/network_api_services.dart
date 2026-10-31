@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 import '../../services/runtime_environment.dart';
 import 'dart:io';
 import 'dart:developer';
@@ -121,6 +122,33 @@ class NetworkApiService implements BaseApiServices {
         },
       ),
     );
+  }
+
+  /// Reuse a valid token for STOMP without a separate rooms HTTP round trip.
+  Future<String> socketAccessToken() async {
+    await RuntimeEnvironment.refresh();
+    var token = await StorageHelper.getAccessToken();
+    if (token == null || token.isEmpty)
+      throw StateError('Sign in to connect chat');
+    try {
+      final payload = jsonDecode(
+        utf8.decode(base64Url.decode(base64Url.normalize(token.split('.')[1]))),
+      );
+      final expires = (payload['exp'] as num).toInt();
+      if (expires * 1000 > DateTime.now().millisecondsSinceEpoch + 30000)
+        return token;
+    } catch (_) {
+      // Unknown token format: let the authenticated HTTP path validate/refresh it.
+      await getApi('${AppUrl.baseUrl}/chat/rooms');
+      final validated = await StorageHelper.getAccessToken();
+      if (validated == null || validated.isEmpty)
+        throw StateError('Chat session expired');
+      return validated;
+    }
+    token = await _handleTokenRefresh();
+    if (token == null || token.isEmpty)
+      throw StateError('Chat session expired');
+    return token;
   }
 
   static const _authRetryKey = 'auth_retry_attempted';

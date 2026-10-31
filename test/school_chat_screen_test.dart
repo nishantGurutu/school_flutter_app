@@ -11,6 +11,13 @@ import 'package:school_desk_app/view/screens/modules/school_chat_screen.dart';
 class FakeChat extends SchoolChatService {
   FakeChat({super.socketSend});
   String? sent;
+  bool disposed = false;
+  @override
+  void dispose() {
+    disposed = true;
+    super.dispose();
+  }
+
   @override
   Future<void> start() async {
     contacts = [
@@ -167,6 +174,24 @@ void main() {
       'email': 'teacher@test.local',
     }),
   );
+  testWidgets('leaving and reopening chat preserves the session service', (
+    tester,
+  ) async {
+    final chat = FakeChat();
+    await tester.pumpWidget(MaterialApp(home: SchoolChatScreen(service: chat)));
+    await tester.pumpAndSettle();
+    expect(chat.visible, isTrue);
+    await tester.pumpWidget(const SizedBox());
+    expect(chat.disposed, isFalse);
+    expect(chat.visible, isFalse);
+    await tester.pumpWidget(MaterialApp(home: SchoolChatScreen(service: chat)));
+    await tester.pumpAndSettle();
+    expect(find.text('Class teacher'), findsOneWidget);
+    expect(chat.visible, isTrue);
+    await tester.pumpWidget(const SizedBox());
+    chat.dispose();
+  });
+
   testWidgets(
     'chat list opens conversation and sends a real draft with visible receipt',
     (tester) async {

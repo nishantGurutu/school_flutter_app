@@ -3,12 +3,13 @@ import 'dart:convert';
 import 'dart:async';
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/widgets.dart';
 import 'package:stomp_dart_client/stomp_dart_client.dart';
 import '../data/network/network_api_services.dart';
 import 'storage/local_storage.dart';
 import '../utils/app_url.dart';
 
-class SchoolChatService extends ChangeNotifier {
+class SchoolChatService extends ChangeNotifier with WidgetsBindingObserver {
   final NetworkApiService api;
   final void Function(String destination, String body)? socketSend;
   final Map<String, Completer<String?>> _pendingSends = {};
@@ -25,6 +26,17 @@ class SchoolChatService extends ChangeNotifier {
   String _senderName = 'You';
   final Map<String, Map<String, dynamic>> _outgoing = {};
   Timer? _eventSync;
+  Future<void>? _starting;
+  bool _foreground = true, _syncAgain = false;
+  final Map<String, List<Map<String, dynamic>>> _history = {};
+  final Map<String, int> _cursors = {};
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    _foreground = state == AppLifecycleState.resumed;
+    if (_foreground) resume();
+  }
+
   void setIdentity(String id, String name) {
     _senderId = id;
     _senderName = name;
@@ -79,32 +91,32 @@ class SchoolChatService extends ChangeNotifier {
     if (!_disposed) notifyListeners();
   }
 
-  Future<void> start() async {
-    final user = await StorageHelper.getUserSession();
-    if (user != null) setIdentity(user.id, user.name);
-    await sync();
-    try {
-      contacts = List<Map<String, dynamic>>.from(
-        await api.getApi('${AppUrl.baseUrl}/chat/contacts'),
-      );
-    } catch (e) {
-      error = e.toString().contains('static resource')
-          ? 'Chat API is missing on ${AppUrl.baseUrl}. Start the updated Spring Boot backend on this saved server and tap Retry.'
-          : e.toString();
-    }
+  bool get started => _starting != null;
+
+  Future<void> start() => _disposed ? Future.value() : (_starting ??= _start());
+
+  Future<void> _start() async {
     if (_disposed) return;
-    await _connect();
+    WidgetsBinding.instance.addObserver(this);
+    if (_senderId == null) {
+      final user = await StorageHelper.getUserSession();
+      if (_disposed) return;
+      if (user != null) setIdentity(user.id, user.name);
+    }
+    // Start transport and initial data independently. Neither waits for contacts.
+    if (socketSend == null) unawaited(_connect());
     _poll = Timer.periodic(const Duration(seconds: 5), (_) {
-      unawaited(sync());
+      if (!connected) unawaited(sync());
       flushPending();
-      if (_socketBase != AppUrl.baseUrl || _socket?.isActive != true) {
+      if (socketSend == null &&
+          (_socketBase != AppUrl.baseUrl || _socket?.isActive != true)) {
         unawaited(_connect());
       }
     });
     _reauth = Timer.periodic(const Duration(minutes: 20), (_) {
-      unawaited(_connect());
+      if (socketSend == null) unawaited(_connect(force: true));
     });
-    changed();
+    await sync();
   }
 
   void _connectionLost() {
@@ -115,7 +127,10 @@ class SchoolChatService extends ChangeNotifier {
     changed();
   }
 
-  Future<void> _connect() async {
+  Future<void> _connect({bool force = false}) async {
+    if (_disposed) return;
+    if (!force && _socketBase == AppUrl.baseUrl && _socket?.isActive == true)
+      return;
     _connectionLost();
     _socket?.deactivate();
     if (_disposed) return;
@@ -130,13 +145,12 @@ class SchoolChatService extends ChangeNotifier {
         connectionTimeout: const Duration(seconds: 10),
         beforeConnect: () async {
           try {
-            await api.getApi('${AppUrl.baseUrl}/chat/rooms');
+            final token = await api.socketAccessToken();
             if (_disposed || !identical(_socket, client)) {
               client.deactivate();
               return;
             }
-            headers['Authorization'] =
-                'Bearer ${await StorageHelper.getAccessToken()}';
+            headers['Authorization'] = 'Bearer $token';
           } catch (e) {
             if (!identical(_socket, client)) return;
             error = e.toString().contains('static resource')
@@ -187,27 +201,36 @@ class SchoolChatService extends ChangeNotifier {
   }
 
   Future<void> select(String? roomId) async {
+    if (selectedRoom != null) {
+      _history[selectedRoom!] = List.of(messages);
+      _cursors[selectedRoom!] = _cursor;
+    }
     selectedRoom = roomId;
-    _cursor = 0;
-    messages = _outgoing.values.where((m) => m['roomId'] == roomId).toList();
+    _cursor = _cursors[roomId] ?? 0;
+    messages = List.of(_history[roomId] ?? []);
+    _merge(_outgoing.values.where((m) => m['roomId'] == roomId).toList());
     error = null;
     changed();
     await sync();
   }
 
   Future<void> sync() async {
-    if (_syncing || _disposed) return;
+    if (_disposed) return;
+    if (_syncing) {
+      _syncAgain = true;
+      return;
+    }
     _syncing = true;
+    final requestedRoom = selectedRoom;
     try {
       rooms = List<Map<String, dynamic>>.from(
         await api.getApi('${AppUrl.baseUrl}/chat/rooms'),
       );
       if (_disposed) return;
       error = null;
+      changed();
       if (contacts.isEmpty) {
-        contacts = List<Map<String, dynamic>>.from(
-          await api.getApi('${AppUrl.baseUrl}/chat/contacts'),
-        );
+        unawaited(_loadContacts());
       }
       final current = selectedRoom;
       if (current == null) return;
@@ -219,16 +242,22 @@ class SchoolChatService extends ChangeNotifier {
         );
         final batch = List<Map<String, dynamic>>.from(page['messages']);
         received.addAll(batch);
+        if (selectedRoom == current && !_disposed) {
+          _merge(batch);
+          changed();
+        }
         more = page['hasMore'] == true && batch.isNotEmpty;
         if (batch.isNotEmpty) after = (batch.last['id'] as num).toInt();
       }
       if (selectedRoom != current || _disposed) return;
       _cursor = after;
       _merge(received);
+      _history[current] = List.of(messages);
+      _cursors[current] = after;
       if (after > 0) {
         await api.postApi('${AppUrl.baseUrl}/chat/rooms/$current/receipts', {
           'through': after,
-          'read': visible,
+          'read': visible && _foreground,
         });
       }
     } catch (e) {
@@ -237,6 +266,25 @@ class SchoolChatService extends ChangeNotifier {
           : e.toString();
     } finally {
       _syncing = false;
+      changed();
+      if (!_disposed && (_syncAgain || requestedRoom != selectedRoom)) {
+        _syncAgain = false;
+        unawaited(sync());
+      }
+    }
+  }
+
+  bool _loadingContacts = false;
+  Future<void> _loadContacts() async {
+    if (_loadingContacts || _disposed) return;
+    _loadingContacts = true;
+    try {
+      final result = await api.getApi('${AppUrl.baseUrl}/chat/contacts');
+      if (!_disposed) contacts = List<Map<String, dynamic>>.from(result);
+    } catch (e) {
+      if (!_disposed) error = e.toString();
+    } finally {
+      _loadingContacts = false;
       changed();
     }
   }
@@ -308,7 +356,6 @@ class SchoolChatService extends ChangeNotifier {
           (_socket?.connected == true && _socketBase == AppUrl.baseUrl));
 
   void resume() {
-    visible = true;
     unawaited(sync());
     if (!_ready && socketSend == null) unawaited(_connect());
     flushPending();
@@ -606,6 +653,7 @@ class SchoolChatService extends ChangeNotifier {
   @override
   void dispose() {
     _disposed = true;
+    WidgetsBinding.instance.removeObserver(this);
     _eventSync?.cancel();
     _poll?.cancel();
     _reauth?.cancel();

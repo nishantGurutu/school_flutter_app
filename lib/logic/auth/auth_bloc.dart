@@ -1,4 +1,5 @@
 import 'dart:async';
+import '../../services/school_chat_service.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../analytics/posthog_analytics_service.dart';
 import '../../analytics/posthog_feature.dart';
@@ -12,13 +13,37 @@ import 'auth_state.dart';
 class AuthBloc extends Bloc<AuthEvent, AuthState> {
   final AuthRepository _authRepository = getIt<AuthRepository>();
 
+  SchoolChatService? _chat;
+  String? _chatUserId;
+  SchoolChatService get chat =>
+      _chat ??= (SchoolChatService()..visible = false);
+
+  void _startChat(String id, String name) {
+    if (_chatUserId != null && _chatUserId != id) {
+      _chat?.dispose();
+      _chat = null;
+    }
+    _chatUserId = id;
+    chat.setIdentity(id, name);
+    unawaited(chat.start());
+  }
+
+  @override
+  Future<void> close() {
+    _chat?.dispose();
+    return super.close();
+  }
+
   AuthBloc() : super(const AuthState()) {
     on<LoginRequested>(_onLoginRequested);
     on<LogoutRequested>(_onLogoutRequested);
     on<CheckAuthStatus>(_onCheckAuthStatus);
   }
 
-  Future<void> _onLoginRequested(LoginRequested event, Emitter<AuthState> emit) async {
+  Future<void> _onLoginRequested(
+    LoginRequested event,
+    Emitter<AuthState> emit,
+  ) async {
     emit(state.copyWith(status: AuthStatus.authenticating, errorMessage: null));
 
     try {
@@ -29,12 +54,16 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
       );
 
       if (user == null) {
-        emit(state.copyWith(
-          status: AuthStatus.error,
-          errorMessage: 'Invalid credentials',
-        ));
+        emit(
+          state.copyWith(
+            status: AuthStatus.error,
+            errorMessage: 'Invalid credentials',
+          ),
+        );
         return;
       }
+
+      _startChat(user.id, user.name);
 
       // Progress through visual Role Verification stages (SOLID visual feedback)
       emit(state.copyWith(status: AuthStatus.verifyingCredentials));
@@ -70,28 +99,37 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
           message = errStr;
         }
       }
-      emit(state.copyWith(
-        status: AuthStatus.error,
-        errorMessage: message,
-      ));
+      emit(state.copyWith(status: AuthStatus.error, errorMessage: message));
     }
   }
 
-  Future<void> _onLogoutRequested(LogoutRequested event, Emitter<AuthState> emit) async {
+  Future<void> _onLogoutRequested(
+    LogoutRequested event,
+    Emitter<AuthState> emit,
+  ) async {
     emit(state.copyWith(status: AuthStatus.authenticating));
+    _chat?.dispose();
+    _chat = null;
+    _chatUserId = null;
     await _authRepository.logout();
     unawaited(resetPosthogIdentity());
     emit(const AuthState(status: AuthStatus.unauthenticated));
   }
 
-  Future<void> _onCheckAuthStatus(CheckAuthStatus event, Emitter<AuthState> emit) async {
+  Future<void> _onCheckAuthStatus(
+    CheckAuthStatus event,
+    Emitter<AuthState> emit,
+  ) async {
     final storedUser = await _authRepository.getStoredUser();
     if (storedUser != null) {
+      _startChat(storedUser.id, storedUser.name);
       unawaited(syncPosthogIdentity(storedUser));
       emit(state.copyWith(status: AuthStatus.authenticated, user: storedUser));
     } else {
+      _chat?.dispose();
+      _chat = null;
+      _chatUserId = null;
       emit(const AuthState(status: AuthStatus.unauthenticated));
     }
   }
 }
-

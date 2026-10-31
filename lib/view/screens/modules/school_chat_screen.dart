@@ -1,5 +1,7 @@
 import '../../../services/chat_attachment_picker.dart';
 import 'dart:async';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import '../../../logic/auth/auth_bloc.dart';
 import 'dart:typed_data';
 import 'chat_video_preview.dart';
 import 'dart:math';
@@ -23,8 +25,7 @@ class SchoolChatScreen extends StatefulWidget {
   State<SchoolChatScreen> createState() => _SchoolChatScreenState();
 }
 
-class _SchoolChatScreenState extends State<SchoolChatScreen>
-    with WidgetsBindingObserver {
+class _SchoolChatScreenState extends State<SchoolChatScreen> {
   late final SchoolChatService chat;
   final text = TextEditingController(),
       scroll = ScrollController(keepScrollOffset: false);
@@ -90,18 +91,21 @@ class _SchoolChatScreenState extends State<SchoolChatScreen>
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addObserver(this);
-    chat = widget.service ?? SchoolChatService();
+    chat = widget.service ?? context.read<AuthBloc>().chat;
+    chat.visible = true;
     chat.addListener(update);
     initialize();
   }
 
   Future<void> initialize() async {
     final user = await StorageHelper.getUserSession();
+    if (!mounted) return;
     myId = user?.id;
     role = user?.userType;
     if (user != null) chat.setIdentity(user.id, user.name);
+    final alreadyStarted = chat.started;
     await chat.start();
+    if (mounted && alreadyStarted) unawaited(chat.sync());
   }
 
   void update() {
@@ -115,16 +119,9 @@ class _SchoolChatScreenState extends State<SchoolChatScreen>
   }
 
   @override
-  void didChangeAppLifecycleState(AppLifecycleState state) {
-    chat.visible = state == AppLifecycleState.resumed;
-    if (chat.visible) chat.resume();
-  }
-
-  @override
   void dispose() {
-    WidgetsBinding.instance.removeObserver(this);
     chat.removeListener(update);
-    chat.dispose();
+    chat.visible = false;
     text.dispose();
     scroll.dispose();
     focus.dispose();
